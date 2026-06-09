@@ -69,21 +69,11 @@ public class CategoryService : ICategoryService
 
         // Batch-fetch all related data for this page in bulk (instead of N+1 per category)
         var categoryIds = categories.Select(c => c.Id).ToList();
-        var now = DateTime.UtcNow;
 
         var imagesByCategory = await _context.Media
             .Where(m => categoryIds.Contains(m.EntityId) && m.EntityType == EntityType.Category && m.CollectionName == "image")
             .ToListAsync();
         var imagesLookup = imagesByCategory.GroupBy(m => m.EntityId).ToDictionary(g => g.Key, g => g.ToList());
-
-        var activePromotions = await _context.Promotions
-            .Include(p => p.PromotionCategories)
-            .Where(p => p.IsActive && p.StartDateTime <= now && p.EndDateTime >= now)
-            .ToListAsync();
-
-        var categoryPromotions = activePromotions
-            .Where(p => ((int)p.ApplyTo & (int)PromotionApplyTo.Categories) != 0)
-            .ToList();
 
         var items = new List<CategoryDto>();
         foreach (var category in categories)
@@ -91,11 +81,6 @@ public class CategoryService : ICategoryService
             var images = imagesLookup.GetValueOrDefault(category.Id);
             var image = images?.FirstOrDefault();
             var imageUrl = image != null ? _mediaService.GetMediaUrl(image) : null;
-
-            var promotion = categoryPromotions
-                .Where(p => p.PromotionCategories.Any(pc => pc.CategoryId == category.Id))
-                .OrderByDescending(p => p.DiscountValue)
-                .FirstOrDefault();
 
             var dto = new CategoryDto
             {
@@ -114,18 +99,6 @@ public class CategoryService : ICategoryService
                 UpdatedAt = category.UpdatedAt,
                 ChildrenCount = category.Children?.Count ?? 0
             };
-
-            if (promotion != null)
-            {
-                dto.HasPromotion = true;
-                dto.PromotionId = promotion.Id;
-                dto.PromotionNameEn = promotion.NameEn;
-                dto.PromotionNameAr = promotion.NameAr;
-                if (promotion.DiscountType == DiscountType.Percentage)
-                {
-                    dto.DiscountPercentage = (int)promotion.DiscountValue;
-                }
-            }
 
             items.Add(dto);
         }
@@ -310,11 +283,6 @@ public class CategoryService : ICategoryService
             throw new InvalidOperationException("Cannot delete category: it is linked to products.");
         }
 
-        if (await _context.PromotionCategories.AnyAsync(pc => pc.CategoryId == id))
-        {
-            throw new InvalidOperationException("Cannot delete category: it is linked to promotions.");
-        }
-
         // Delete associated media
         var mediaList = await _mediaService.GetMediaForEntityAsync(id, EntityType.Category);
         foreach (var media in mediaList)
@@ -389,10 +357,6 @@ public class CategoryService : ICategoryService
     private async Task<CategoryDto> MapToDtoAsync(Category category)
     {
         var imageUrl = await GetCategoryImageUrlAsync(category.Id);
-        var now = DateTime.UtcNow;
-
-        // Get promotion for this category
-        var promotion = await GetPromotionForCategoryAsync(category.Id, now);
 
         var dto = new CategoryDto
         {
@@ -412,39 +376,6 @@ public class CategoryService : ICategoryService
             ChildrenCount = category.Children?.Count ?? 0
         };
 
-        // Apply promotion if found
-        if (promotion != null)
-        {
-            dto.HasPromotion = true;
-            dto.PromotionId = promotion.Id;
-            dto.PromotionNameEn = promotion.NameEn;
-            dto.PromotionNameAr = promotion.NameAr;
-            if (promotion.DiscountType == DiscountType.Percentage)
-            {
-                dto.DiscountPercentage = (int)promotion.DiscountValue;
-            }
-        }
-
         return dto;
-    }
-
-    private async Task<Promotion?> GetPromotionForCategoryAsync(Guid categoryId, DateTime now)
-    {
-        // Get all active promotions that have this category
-        var promotions = await _context.Promotions
-            .Include(p => p.PromotionCategories)
-            .Where(p => p.IsActive &&
-                        p.StartDateTime <= now &&
-                        p.EndDateTime >= now)
-            .ToListAsync();
-
-        // Filter in memory for the correct ApplyTo flag and category
-        var promotion = promotions
-            .Where(p => ((int)p.ApplyTo & (int)PromotionApplyTo.Categories) != 0 &&
-                        p.PromotionCategories.Any(pc => pc.CategoryId == categoryId))
-            .OrderByDescending(p => p.DiscountValue)
-            .FirstOrDefault();
-
-        return promotion;
     }
 }

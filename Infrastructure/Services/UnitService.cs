@@ -440,9 +440,6 @@ public class UnitService : IUnitService
         var entity = await _context.Units.FindAsync(id)
             ?? throw new KeyNotFoundException($"Unit with ID {id} not found.");
 
-        if (await _context.OrderItems.AnyAsync(oi => oi.UnitId == id))
-            throw new InvalidOperationException("Cannot delete unit: it is linked to existing orders.");
-
         if (await _context.StockBalances.AnyAsync(sb => sb.UnitId == id &&
                 (sb.AvailableQuantity != 0 || sb.ReservedQuantity != 0 || sb.InTransitQuantity != 0)))
             throw new InvalidOperationException("Cannot delete unit: it has stock balances in one or more warehouses.");
@@ -455,9 +452,6 @@ public class UnitService : IUnitService
 
         if (await _context.Set<StockTransferLine>().AnyAsync(l => l.UnitId == id))
             throw new InvalidOperationException("Cannot delete unit: it is linked to stock transfers.");
-
-        if (await _context.PromotionUnits.AnyAsync(pu => pu.UnitId == id))
-            throw new InvalidOperationException("Cannot delete unit: it is linked to promotions.");
 
         // Remove any pending requests related to this unit
         var pendingRequests = await _context.Requests

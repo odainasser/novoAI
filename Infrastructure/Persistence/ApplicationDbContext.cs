@@ -35,14 +35,7 @@ public class ApplicationDbContext
     public DbSet<Media> Media { get; set; }
     public DbSet<Category> Categories { get; set; }
     public DbSet<Product> Products { get; set; }
-    public DbSet<Order> Orders { get; set; }
-    public DbSet<OrderItem> OrderItems { get; set; }
-    public DbSet<OrderRefund> OrderRefunds { get; set; }
-    public DbSet<OrderRefundItem> OrderRefundItems { get; set; }
     public DbSet<Supplier> Suppliers { get; set; }
-    public DbSet<Promotion> Promotions { get; set; }
-    public DbSet<PromotionUnit> PromotionUnits { get; set; }
-    public DbSet<PromotionCategory> PromotionCategories { get; set; }
     public DbSet<Domain.Entities.Request> Requests { get; set; }
     public DbSet<Domain.Entities.Branch> Branches { get; set; }
     public DbSet<Domain.Entities.Warehouse> Warehouses { get; set; }
@@ -165,39 +158,6 @@ public class ApplicationDbContext
         builder.Entity<Supplier>(entity =>
         {
             entity.HasQueryFilter(s => !s.IsDeleted);
-        });
-
-        // Configure OrderRefund entity
-        builder.Entity<OrderRefund>(entity =>
-        {
-            entity.ToTable("OrderRefunds");
-            entity.HasKey(r => r.Id);
-            entity.Property(r => r.Amount).HasColumnType("decimal(18,2)");
-            entity.Property(r => r.CreatedAt).IsRequired();
-            entity.Property(r => r.Reason).HasMaxLength(500);
-
-            entity.HasOne(r => r.Order)
-                .WithMany(o => o.Refunds)
-                .HasForeignKey(r => r.OrderId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasQueryFilter(r => !r.IsDeleted);
-        });
-
-        builder.Entity<OrderRefundItem>(entity =>
-        {
-            entity.ToTable("OrderRefundItems");
-            entity.HasKey(ri => ri.Id);
-            entity.Property(ri => ri.Quantity).IsRequired();
-            entity.Property(ri => ri.UnitPrice).HasColumnType("decimal(18,2)");
-            entity.Property(ri => ri.Total).HasColumnType("decimal(18,2)");
-
-            entity.HasOne(ri => ri.OrderRefund)
-                .WithMany(r => r.Items)
-                .HasForeignKey(ri => ri.OrderRefundId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasQueryFilter(ri => !ri.IsDeleted);
         });
 
         // Configure Lookup entity
@@ -387,144 +347,6 @@ public class ApplicationDbContext
             entity.HasIndex(p => p.NameAr);
             entity.HasIndex(p => p.CategoryId);
             entity.HasIndex(p => p.IsActive);
-        });
-
-        // Configure Order entity
-        builder.Entity<Order>(entity =>
-        {
-            entity.ToTable("Orders");
-            entity.HasKey(o => o.Id);
-            entity.Property(o => o.OrderNumber).IsRequired().HasMaxLength(50);
-            entity.Property(o => o.IdempotencyKey).HasMaxLength(100);
-            entity.Property(o => o.Channel).IsRequired().HasConversion<string>().HasMaxLength(20);
-            entity.Property(o => o.Status).IsRequired().HasConversion<string>().HasMaxLength(20);
-            entity.Property(o => o.PaymentMethod).IsRequired().HasConversion<string>().HasMaxLength(20);
-            entity.Property(o => o.CashAmount).HasColumnType("decimal(18,2)");
-            entity.Property(o => o.CardAmount).HasColumnType("decimal(18,2)");
-            entity.Property(o => o.Subtotal).IsRequired().HasColumnType("decimal(18,2)");
-            entity.Property(o => o.VatRate).IsRequired().HasColumnType("decimal(5,4)");
-            entity.Property(o => o.VatAmount).IsRequired().HasColumnType("decimal(18,2)");
-            entity.Property(o => o.Total).IsRequired().HasColumnType("decimal(18,2)");
-            entity.Property(o => o.CustomerName).HasMaxLength(200);
-            entity.Property(o => o.CustomerEmail).HasMaxLength(256);
-            entity.Property(o => o.CustomerPhone).HasMaxLength(50);
-            entity.Property(o => o.Notes).HasMaxLength(1000);
-            entity.Property(o => o.CancellationReason).HasMaxLength(500);
-
-            entity.HasQueryFilter(o => !o.IsDeleted);
-
-            entity.HasIndex(o => o.OrderNumber).IsUnique();
-            // Unique only among rows that actually carry a key (filtered index)
-            // so the duplicate-suppression covers offline replays without
-            // forcing every order to have a key.
-            entity.HasIndex(o => o.IdempotencyKey)
-                  .IsUnique()
-                  .HasFilter("[IdempotencyKey] IS NOT NULL");
-            entity.HasIndex(o => o.Status);
-            entity.HasIndex(o => o.Channel);
-            entity.HasIndex(o => o.CreatedAt);
-        });
-
-        // Configure OrderItem entity
-        builder.Entity<OrderItem>(entity =>
-        {
-            entity.ToTable("OrderItems");
-            entity.HasKey(oi => oi.Id);
-            entity.Property(oi => oi.ProductNameEn).IsRequired().HasMaxLength(200);
-            entity.Property(oi => oi.ProductNameAr).IsRequired().HasMaxLength(200).IsUnicode(true);
-            entity.Property(oi => oi.ProductCode).IsRequired().HasMaxLength(100);
-            entity.Property(oi => oi.UnitNameEn).HasMaxLength(200).HasColumnName("SellingUnitNameEn");
-            entity.Property(oi => oi.UnitNameAr).HasMaxLength(200).IsUnicode(true).HasColumnName("SellingUnitNameAr");
-            entity.Property(oi => oi.UnitBarcode).HasMaxLength(48).HasColumnName("SellingUnitBarcode");
-            entity.Property(oi => oi.Quantity).IsRequired();
-            entity.Property(oi => oi.UnitPrice).IsRequired().HasColumnType("decimal(18,2)");
-            entity.Property(oi => oi.Total).IsRequired().HasColumnType("decimal(18,2)");
-
-            entity.HasOne(oi => oi.Order)
-                .WithMany(o => o.Items)
-                .HasForeignKey(oi => oi.OrderId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(oi => oi.Product)
-                .WithMany()
-                .HasForeignKey(oi => oi.ProductId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(oi => oi.Unit)
-                .WithMany()
-                .HasForeignKey(oi => oi.UnitId)
-                .HasConstraintName("FK_OrderItems_SellingUnits_SellingUnitId")
-                .OnDelete(DeleteBehavior.SetNull);
-
-            entity.Property(oi => oi.UnitId).HasColumnName("SellingUnitId");
-
-            entity.HasIndex(oi => oi.OrderId);
-            entity.HasIndex(oi => oi.ProductId);
-
-            entity.HasQueryFilter(oi => !oi.IsDeleted);
-        });
-
-        // Configure Promotion entity
-        builder.Entity<Promotion>(entity =>
-        {
-            entity.ToTable("Promotions");
-            entity.HasKey(p => p.Id);
-            entity.Property(p => p.NameEn).IsRequired().HasMaxLength(200);
-            entity.Property(p => p.NameAr).IsRequired().HasMaxLength(200).IsUnicode(true);
-            entity.Property(p => p.DescriptionEn).HasMaxLength(1000);
-            entity.Property(p => p.DescriptionAr).HasMaxLength(1000).IsUnicode(true);
-            entity.Property(p => p.DiscountType).IsRequired().HasConversion<string>().HasMaxLength(20);
-            entity.Property(p => p.DiscountValue).IsRequired().HasColumnType("decimal(18,2)");
-            entity.Property(p => p.ApplyTo).IsRequired().HasConversion<int>();
-
-            entity.HasQueryFilter(p => !p.IsDeleted);
-
-            entity.HasIndex(p => p.NameEn);
-            entity.HasIndex(p => p.NameAr);
-            entity.HasIndex(p => p.IsActive);
-            entity.HasIndex(p => new { p.StartDateTime, p.EndDateTime });
-        });
-
-        // Configure PromotionUnit entity
-        builder.Entity<PromotionUnit>(entity =>
-        {
-            entity.ToTable("PromotionUnits");
-            entity.HasKey(pu => pu.Id);
-
-            entity.HasOne(pu => pu.Promotion)
-                .WithMany(p => p.PromotionUnits)
-                .HasForeignKey(pu => pu.PromotionId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(pu => pu.Unit)
-                .WithMany()
-                .HasForeignKey(pu => pu.UnitId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasIndex(pu => new { pu.PromotionId, pu.UnitId }).IsUnique();
-
-            entity.HasQueryFilter(pu => !pu.IsDeleted);
-        });
-
-        // Configure PromotionCategory entity
-        builder.Entity<PromotionCategory>(entity =>
-        {
-            entity.ToTable("PromotionCategories");
-            entity.HasKey(pc => pc.Id);
-
-            entity.HasOne(pc => pc.Promotion)
-                .WithMany(p => p.PromotionCategories)
-                .HasForeignKey(pc => pc.PromotionId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(pc => pc.Category)
-                .WithMany()
-                .HasForeignKey(pc => pc.CategoryId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasIndex(pc => new { pc.PromotionId, pc.CategoryId }).IsUnique();
-
-            entity.HasQueryFilter(pc => !pc.IsDeleted);
         });
 
         // Configure Request entity

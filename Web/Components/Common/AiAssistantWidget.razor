@@ -782,15 +782,12 @@
         suggestions = ScopeBranchId.HasValue
             ? new[]
             {
-                Localizer["AiSuggestBranchOrders"],
                 Localizer["AiSuggestBranchLowStock"]
             }
             : new[]
             {
                 Localizer["AiSuggestDashboard"],
-                Localizer["AiSuggestTodaySales"],
-                Localizer["AiSuggestLowStock"],
-                Localizer["AiSuggestRevenue"]
+                Localizer["AiSuggestLowStock"]
             };
 
         try

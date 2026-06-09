@@ -1,10 +1,8 @@
 @using Microsoft.AspNetCore.Authorization
 @using Web.Authorization
 @using Web.Components.Common
-@using Web.Models.Promotions
 @using System.Globalization
 @inject ICategoryService CategoryService
-@inject IPromotionService PromotionService
 @inject NavigationManager Navigation
 
 <div class="flex justify-end mb-4">
@@ -57,19 +55,6 @@
                         </select>
                         <div class="pointer-events-none absolute inset-y-0 end-0 flex items-center px-2 text-gray-400"><svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg></div>
                     </div>
-                </div>
-                <div>
-                    <SearchableDropdown TItem="PromotionFilterOption"
-                                        TValue="string"
-                                        Items="PromotionFilterOptions"
-                                        @bind-Value="selectedPromotion"
-                                        OnChanged="ApplyFilters"
-                                        DisplayText="p => isAr ? p.NameAr : p.NameEn"
-                                        SearchText='p => $"{p.NameEn} {p.NameAr}"'
-                                        ItemValue="p => p.Value"
-                                        Label='@Localizer["Promotion"]'
-                                        Placeholder='@Localizer["AllPromotions"]'
-                                        Compact="true" />
                 </div>
             </div>
         </div>
@@ -139,35 +124,6 @@ else
                         </div>
                     }
 
-                    @if (category.HasPromotion)
-                    {
-                        <div class="mb-3">
-                            <AuthorizeView Policy="Permission:promotions.write">
-                                <Authorized>
-                                    @if (category.PromotionId.HasValue)
-                                    {
-                                        <a class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 hover:underline"
-                                           href="@($"/admin/promotions/edit/{category.PromotionId}")" target="_blank" rel="noopener noreferrer"
-                                           title="@(isAr ? category.PromotionNameAr : category.PromotionNameEn)">
-                                            <i class="bi bi-percent me-1"></i> @(isAr ? category.PromotionNameAr : category.PromotionNameEn) @(category.DiscountPercentage.HasValue ? $"({category.DiscountPercentage}%)" : "")
-                                        </a>
-                                    }
-                                    else
-                                    {
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                            <i class="bi bi-percent me-1"></i> @(isAr ? category.PromotionNameAr : category.PromotionNameEn) @(category.DiscountPercentage.HasValue ? $"({category.DiscountPercentage}%)" : "")
-                                        </span>
-                                    }
-                                </Authorized>
-                                <NotAuthorized>
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                        <i class="bi bi-percent me-1"></i> @Localizer["OnPromotion"] @(category.DiscountPercentage.HasValue ? $"({category.DiscountPercentage}%)" : "")
-                                    </span>
-                                </NotAuthorized>
-                            </AuthorizeView>
-                        </div>
-                    }
-
                     <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
                         <AuthorizeView Policy="Permission:categories.write">
                             <Authorized>
@@ -210,14 +166,12 @@ else
 
 @code {
     private List<CategoryDto> categories = new();
-    private List<PromotionDto> promotions = new();
     private bool isLoading = true;
     private bool isAr = false;
     private string errorMessage = string.Empty;
 
     private string search = string.Empty;
     private string selectedStatus = string.Empty;
-    private string selectedPromotion = string.Empty;
     private bool showFiltersPanel = false;
 
     private int pageIndex = 1;
@@ -228,67 +182,16 @@ else
     private bool showDeleteConfirm = false;
     private Guid categoryToDelete;
 
-    private sealed class PromotionFilterOption
-    {
-        public string Value { get; set; } = string.Empty;
-        public string NameEn { get; set; } = string.Empty;
-        public string NameAr { get; set; } = string.Empty;
-    }
+    private List<CategoryDto> DisplayList => categories;
 
-    private List<PromotionFilterOption> PromotionFilterOptions =>
-        [
-            new PromotionFilterOption
-            {
-                Value = "none",
-                NameEn = Localizer["WithoutPromotion"],
-                NameAr = Localizer["WithoutPromotion"]
-            },
-            ..promotions.Select(p => new PromotionFilterOption
-            {
-                Value = p.Id.ToString(),
-                NameEn = p.NameEn,
-                NameAr = p.NameAr
-            })
-        ];
-
-    private List<CategoryDto> DisplayList
-    {
-        get
-        {
-            if (string.IsNullOrEmpty(selectedPromotion)) return categories;
-            if (selectedPromotion == "none") return categories.Where(c => !c.HasPromotion).ToList();
-            var promo = promotions.FirstOrDefault(p => p.Id.ToString() == selectedPromotion);
-            return promo != null
-                ? categories.Where(c => c.HasPromotion && (c.PromotionNameEn == promo.NameEn || c.PromotionNameAr == promo.NameAr)).ToList()
-                : categories;
-        }
-    }
-
-    private bool HasActiveFilters() => !string.IsNullOrEmpty(selectedStatus) || !string.IsNullOrEmpty(selectedPromotion);
-    private int ActiveFilterCount => (string.IsNullOrEmpty(selectedStatus) ? 0 : 1) + (string.IsNullOrEmpty(selectedPromotion) ? 0 : 1);
+    private bool HasActiveFilters() => !string.IsNullOrEmpty(selectedStatus);
+    private int ActiveFilterCount => string.IsNullOrEmpty(selectedStatus) ? 0 : 1;
 
     protected override async Task OnInitializedAsync()
     {
         isAr = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("ar", StringComparison.OrdinalIgnoreCase);
 
-        var categoriesTask = LoadCategories();
-        var promotionsTask = LoadPromotions();
-
-        await categoriesTask;
-
-        _ = FinishLoadingSupportDataAsync(promotionsTask);
-    }
-
-    private async Task FinishLoadingSupportDataAsync(Task supportTask)
-    {
-        try { await supportTask; } catch { }
-        await InvokeAsync(StateHasChanged);
-    }
-
-    private async Task LoadPromotions()
-    {
-        try { promotions = await PromotionService.GetActivePromotionsAsync(); }
-        catch { }
+        await LoadCategories();
     }
 
     private async Task LoadCategories()
@@ -309,7 +212,7 @@ else
 
     private async Task HandleSearch(string v) { search = v; pageIndex = 1; await LoadCategories(); }
     private async Task ApplyFilters() { pageIndex = 1; await LoadCategories(); }
-    private async Task ResetFilters() { search = string.Empty; selectedStatus = string.Empty; selectedPromotion = string.Empty; pageIndex = 1; await LoadCategories(); }
+    private async Task ResetFilters() { search = string.Empty; selectedStatus = string.Empty; pageIndex = 1; await LoadCategories(); }
     private async Task OnPageChanged(int p) { pageIndex = p; await LoadCategories(); }
 
     private void NavigateToCreate() => Navigation.NavigateTo("/admin/categories/create");

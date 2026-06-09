@@ -1,7 +1,6 @@
 @using Microsoft.AspNetCore.Authorization
 @using Web.Authorization
 @using Web.Components.Common
-@using Web.Models.Promotions
 @using Web.Models.Enums
 @using Web.Models.Requests
 @using Web.Models.Units
@@ -12,7 +11,6 @@
 @inject IUnitService UnitService
 @inject IProductService ProductService
 @inject ICategoryService CategoryService
-@inject IPromotionService PromotionService
 @inject ILookupService LookupService
 @inject IRequestService RequestService
 @inject ISupplierService SupplierService
@@ -122,19 +120,6 @@
                                        Placeholder='@Localizer["AllSuppliers"]'
                                        Compact="true" />
                 </div>
-                <div>
-                    <SearchableDropdown TItem="PromotionDto"
-                                       TValue="string"
-                                       Items="promotions"
-                                       @bind-Value="selectedPromotionId"
-                                       OnChanged="ApplyFilters"
-                                       DisplayText="p => isAr ? p.NameAr : p.NameEn"
-                                       SearchText='p => $"{p.NameEn} {p.NameAr}"'
-                                       ItemValue="p => p.Id.ToString()"
-                                       Label='@Localizer["Promotion"]'
-                                       Placeholder='@Localizer["AllPromotions"]'
-                                       Compact="true" />
-                </div>
             </div>
         </div>
     }
@@ -213,29 +198,7 @@ else
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">@unit.Quantity</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm">
-                            @{
-                                var promoInfo = GetBestPromotion(unit);
-                            }
-                            @if (promoInfo.HasPromotion)
-                            {
-                                <div class="flex flex-col">
-                                    <span class="font-semibold bf-text-success">@promoInfo.DiscountedPrice.ToString("N2")</span>
-                                    <span class="text-xs text-gray-400 line-through">@unit.SellingPrice.ToString("N2")</span>
-                                    <span class="inline-flex items-center mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-100 text-orange-700 w-fit">
-                                        <i class="bi bi-tag-fill me-1"></i>
-                                        @if (promoInfo.DiscountType == DiscountType.Percentage)
-                                        { @($"-{promoInfo.DiscountValue:0.##}%") }
-                                        else
-                                        { @($"-{promoInfo.DiscountValue:N2}") }
-                                    </span>
-                                    <span class="text-[10px] text-purple-600 mt-0.5 truncate max-w-[150px]" title="@promoInfo.PromotionName">
-                                        <a href="/admin/promotions/edit/@promoInfo.PromotionId" class="hover:underline">
-                                            <i class="bi bi-megaphone-fill me-0.5"></i> @promoInfo.PromotionName
-                                        </a>
-                                    </span>
-                                </div>
-                            }
-                            else if (unit.SellingPrice > 0)
+                            @if (unit.SellingPrice > 0)
                             {
                                 <span class="font-medium text-gray-900">@unit.SellingPrice.ToString("N2")</span>
                             }
@@ -685,12 +648,10 @@ else
 @code {
     // ── Data ─────────────────────────────────────────
     private List<UnitDto> units = new();
-    private List<ProductDto> products = new(); // needed for promotion lookup
     private List<LookupDto> unitTypes = new();
     private List<ProductDto> filterProducts = new();
     private List<CategoryDto> filterCategories = new();
     private List<SupplierDto> filterSuppliers = new();
-    private List<PromotionDto> promotions = new();
 
     private bool isLoading = true;
     private bool isAr = false;
@@ -702,7 +663,6 @@ else
     private string selectedUnitTypeId = string.Empty;
     private Guid? selectedProductId;
     private string selectedCategoryId = string.Empty;
-    private string selectedPromotionId = string.Empty;
     private string selectedSupplierId = string.Empty;
     private bool showFiltersPanel = false;
 
@@ -715,15 +675,13 @@ else
 
     private bool HasActiveFilters() => !string.IsNullOrEmpty(selectedStatus) || !string.IsNullOrEmpty(selectedUnitTypeId) ||
         selectedProductId.HasValue || !string.IsNullOrEmpty(selectedCategoryId) ||
-        !string.IsNullOrEmpty(selectedPromotionId) || !string.IsNullOrEmpty(selectedSupplierId);
+        !string.IsNullOrEmpty(selectedSupplierId);
     private int ActiveFilterCount =>
         (string.IsNullOrEmpty(selectedStatus) ? 0 : 1) + (string.IsNullOrEmpty(selectedUnitTypeId) ? 0 : 1) +
         (selectedProductId.HasValue ? 1 : 0) + (string.IsNullOrEmpty(selectedCategoryId) ? 0 : 1) +
-        (string.IsNullOrEmpty(selectedPromotionId) ? 0 : 1) + (string.IsNullOrEmpty(selectedSupplierId) ? 0 : 1);
+        (string.IsNullOrEmpty(selectedSupplierId) ? 0 : 1);
 
-    private List<UnitDto> DisplayList => string.IsNullOrEmpty(selectedPromotionId)
-        ? units
-        : units.Where(u => { var pi = GetBestPromotion(u); return pi.HasPromotion && pi.PromotionId == Guid.Parse(selectedPromotionId); }).ToList();
+    private List<UnitDto> DisplayList => units;
 
     // ── Delete ───────────────────────────────────────
     private bool showDeleteConfirm = false;
@@ -788,12 +746,12 @@ else
         var unitsTask = LoadUnits();
         var supportTask = Task.WhenAll(
             LoadUnitTypes(), LoadFilterProducts(), LoadFilterCategories(),
-            LoadFilterSuppliers(), LoadPromotions());
+            LoadFilterSuppliers());
 
         // Wait for units first so the table renders immediately
         await unitsTask;
 
-        // Let filter/promotion data finish loading in the background
+        // Let filter data finish loading in the background
         _ = FinishLoadingSupportDataAsync(supportTask);
     }
 
@@ -804,10 +762,9 @@ else
     }
 
     private async Task LoadUnitTypes() { try { unitTypes = await LookupService.GetLookupsByParentAsync("UNIT_TYPE"); } catch { } }
-    private async Task LoadFilterProducts() { try { var r = await ProductService.GetAllProductsAsync(1, 1000); filterProducts = r.Items; products = r.Items; } catch { } }
+    private async Task LoadFilterProducts() { try { var r = await ProductService.GetAllProductsAsync(1, 1000); filterProducts = r.Items; } catch { } }
     private async Task LoadFilterCategories() { try { var r = await CategoryService.GetAllCategoriesAsync(1, 1000); filterCategories = r.Items; } catch { } }
     private async Task LoadFilterSuppliers() { try { var r = await SupplierService.GetAllSuppliersAsync(1, 1000); filterSuppliers = r.Items.ToList(); } catch { } }
-    private async Task LoadPromotions() { try { promotions = await PromotionService.GetActivePromotionsAsync(); } catch { } }
 
     private async Task LoadUnits()
     {
@@ -936,7 +893,7 @@ else
     {
         search = string.Empty; selectedStatus = string.Empty; selectedUnitTypeId = string.Empty;
         selectedProductId = null; selectedCategoryId = string.Empty;
-        selectedPromotionId = string.Empty; selectedSupplierId = string.Empty;
+        selectedSupplierId = string.Empty;
         pageIndex = 1; await LoadUnits();
     }
     private async Task OnPageChanged(int p) { pageIndex = p; await LoadUnits(); }
@@ -959,38 +916,6 @@ else
             await LoadUnits();
         }
         catch (Exception ex) { errorMessage = Localizer["FailedToDeleteUnit"] + $": {ex.Message}"; showDeleteConfirm = false; }
-    }
-
-    // ── Promotion Helper ─────────────────────────────
-    private (bool HasPromotion, decimal DiscountedPrice, DiscountType DiscountType, decimal DiscountValue, string PromotionName, Guid PromotionId) GetBestPromotion(UnitDto unit)
-    {
-        if (!promotions.Any() || !unit.UnitTypes.Any(ut => ut.Code == "UT_SELLING"))
-            return (false, unit.SellingPrice, default, 0, string.Empty, Guid.Empty);
-
-        var product = products.FirstOrDefault(p => p.Id == unit.ProductId);
-        var now = DateTime.UtcNow;
-        var applicable = promotions.Where(p =>
-            p.IsActive && p.StartDateTime <= now && p.EndDateTime >= now && (
-                p.ApplyTo.HasFlag(PromotionApplyTo.AllSellingUnits) ||
-                (p.ApplyTo.HasFlag(PromotionApplyTo.SpecificUnits) && p.UnitIds.Contains(unit.Id)) ||
-                (p.ApplyTo.HasFlag(PromotionApplyTo.Categories) && product?.CategoryId != null && p.CategoryIds.Contains(product.CategoryId.Value))
-            )).ToList();
-
-        if (!applicable.Any()) return (false, unit.SellingPrice, default, 0, string.Empty, Guid.Empty);
-
-        decimal bestPrice = unit.SellingPrice;
-        PromotionDto? bestPromo = null;
-        foreach (var promo in applicable)
-        {
-            decimal d = promo.DiscountType == DiscountType.Percentage
-                ? unit.SellingPrice * (1 - promo.DiscountValue / 100m)
-                : unit.SellingPrice - promo.DiscountValue;
-            d = Math.Max(0, d);
-            if (d < bestPrice) { bestPrice = d; bestPromo = promo; }
-        }
-
-        if (bestPromo == null) return (false, unit.SellingPrice, default, 0, string.Empty, Guid.Empty);
-        return (true, bestPrice, bestPromo.DiscountType, bestPromo.DiscountValue, isAr ? bestPromo.NameAr : bestPromo.NameEn, bestPromo.Id);
     }
 
     // ── Selling Details ──────────────────────────────

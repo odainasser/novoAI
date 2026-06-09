@@ -22,132 +22,7 @@ internal static class ToolDefinitions
     {
         var tools = new List<IAssistantTool>();
 
-        // ── Sales & revenue ───────────────────────────────────────────
-        tools.Add(new DelegateTool(
-            "get_revenue",
-            "Total sales revenue and order count for a period. Use for 'how much did we make', 'total sales/revenue'.",
-            permissions: new[] { Permissions.OrdersRead },
-            parametersSchema: ObjSchema(("period", ToolHelpers.PeriodParam("Time range; omit for all time."))),
-            exec: async (args, ctx) =>
-            {
-                var period = ToolArgs.Str(args, "period");
-                var (from, to) = ToolHelpers.ResolvePeriod(period);
-
-                if (ctx.BranchLocked)
-                {
-                    var revenue = await BranchRevenueAsync(ctx, from, to);
-                    var orders = (await ctx.Sp.GetRequiredService<IOrderService>().GetAllOrdersAsync(
-                        1, 1, null, null, null, null, from, to, ctx.WarehouseId, ctx.BranchWarehouseIds)).TotalCount;
-                    return new ToolResult(new
-                    {
-                        period = ToolHelpers.PeriodLabel(period),
-                        totalRevenue = ToolHelpers.Aed(revenue),
-                        totalOrders = orders,
-                        averageOrderValue = orders > 0 ? ToolHelpers.Aed(Math.Round(revenue / orders, 2)) : ToolHelpers.Aed(0m)
-                    });
-                }
-
-                var stats = await ctx.Sp.GetRequiredService<IOrderService>().GetOrderStatisticsAsync(from, to);
-                return new ToolResult(new
-                {
-                    period = ToolHelpers.PeriodLabel(period),
-                    totalRevenue = ToolHelpers.Aed(stats.TotalRevenue),
-                    totalOrders = stats.TotalOrders,
-                    completedOrders = stats.CompletedOrders,
-                    averageOrderValue = stats.TotalOrders > 0 ? ToolHelpers.Aed(Math.Round(stats.TotalRevenue / stats.TotalOrders, 2)) : ToolHelpers.Aed(0m)
-                });
-            }));
-
-        tools.Add(new DelegateTool(
-            "get_monthly_revenue_trend",
-            "Revenue per month for the last several months — use to compare or trend revenue over time. Company-wide.",
-            permissions: new[] { Permissions.OrdersRead },
-            crossBranch: true,
-            exec: async (args, ctx) =>
-            {
-                var months = await ctx.Sp.GetRequiredService<IDashboardService>().GetMonthlyRevenueAsync(6);
-                return new ToolResult(new { months });
-            }));
-
-        // ── Orders ────────────────────────────────────────────────────
-        tools.Add(new DelegateTool(
-            "count_orders",
-            "How many orders (optionally filtered by status: completed/refunded) in a period.",
-            permissions: new[] { Permissions.OrdersRead },
-            parametersSchema: ObjSchema(
-                ("period", ToolHelpers.PeriodParam("Time range; omit for all time.")),
-                ("status", StatusSchema("completed", "refunded"))),
-            exec: async (args, ctx) =>
-            {
-                var (from, to) = ToolHelpers.ResolvePeriod(ToolArgs.Str(args, "period"));
-                var count = (await ctx.Sp.GetRequiredService<IOrderService>().GetAllOrdersAsync(
-                    1, 1, null, OrderStatusOf(ToolArgs.Str(args, "status")), null, null,
-                    from, to, ctx.WarehouseId, ctx.BranchWarehouseIds)).TotalCount;
-                return new ToolResult(new { count, period = ToolHelpers.PeriodLabel(ToolArgs.Str(args, "period")) });
-            }));
-
-        tools.Add(new DelegateTool(
-            "list_orders",
-            "List recent orders (optionally by status/period). For browsing orders, not a single lookup.",
-            permissions: new[] { Permissions.OrdersRead },
-            parametersSchema: ObjSchema(
-                ("period", ToolHelpers.PeriodParam("Time range; omit for all time.")),
-                ("status", StatusSchema("completed", "refunded")),
-                ("limit", LimitSchema())),
-            exec: async (args, ctx) =>
-            {
-                var (from, to) = ToolHelpers.ResolvePeriod(ToolArgs.Str(args, "period"));
-                var page = await ctx.Sp.GetRequiredService<IOrderService>().GetAllOrdersAsync(
-                    1, ToolHelpers.ClampLimit(ToolArgs.Int(args, "limit")), null,
-                    OrderStatusOf(ToolArgs.Str(args, "status")), null, null,
-                    from, to, ctx.WarehouseId, ctx.BranchWarehouseIds);
-                return new ToolResult(new { totalCount = page.TotalCount, items = page.Items });
-            }));
-
-        tools.Add(new DelegateTool(
-            "get_order_by_number",
-            "Full detail of one order by its order number (e.g. ORD-1024).",
-            permissions: new[] { Permissions.OrdersRead },
-            parametersSchema: ObjSchema(("orderNumber", StrSchema("The order number, e.g. ORD-1024.")), required: "orderNumber"),
-            exec: async (args, ctx) =>
-            {
-                var number = (ToolArgs.Str(args, "orderNumber") ?? "").Replace(" ", "").ToUpperInvariant();
-                if (number.Length == 0) return new ToolResult(null);
-                var order = await ctx.Sp.GetRequiredService<IOrderService>().GetOrderByNumberAsync(number);
-                return new ToolResult(order);
-            }));
-
-        tools.Add(new DelegateTool(
-            "list_returns",
-            "List returned/refunded orders for a period.",
-            permissions: new[] { Permissions.OrdersRead },
-            parametersSchema: ObjSchema(
-                ("period", ToolHelpers.PeriodParam("Time range; omit for all time.")),
-                ("limit", LimitSchema())),
-            exec: async (args, ctx) =>
-            {
-                var (from, to) = ToolHelpers.ResolvePeriod(ToolArgs.Str(args, "period"));
-                var page = await ctx.Sp.GetRequiredService<IOrderService>().GetAllOrdersAsync(
-                    1, ToolHelpers.ClampLimit(ToolArgs.Int(args, "limit")), null, OrderStatus.Refunded, null, null,
-                    from, to, ctx.WarehouseId, ctx.BranchWarehouseIds);
-                return new ToolResult(new { totalCount = page.TotalCount, items = page.Items });
-            }));
-
         // ── Products ──────────────────────────────────────────────────
-        tools.Add(new DelegateTool(
-            "top_selling_products",
-            "The best-selling products by quantity sold in a period.",
-            permissions: new[] { Permissions.ProductsRead },
-            parametersSchema: ObjSchema(
-                ("period", ToolHelpers.PeriodParam("Time range; omit for all time.")),
-                ("limit", LimitSchema())),
-            exec: async (args, ctx) =>
-            {
-                var (from, to) = ToolHelpers.ResolvePeriod(ToolArgs.Str(args, "period"));
-                var top = await TopProductsAsync(ctx, from, to, ToolHelpers.ClampLimit(ToolArgs.Int(args, "limit")));
-                return new ToolResult(new { period = ToolHelpers.PeriodLabel(ToolArgs.Str(args, "period")), products = top });
-            }));
-
         tools.Add(new DelegateTool(
             "list_products",
             "List or search products in the catalog (optionally by active/inactive status).",
@@ -208,7 +83,7 @@ internal static class ToolDefinitions
                 return new ToolResult(new { totalCount = page.TotalCount, items = page.Items });
             }));
 
-        // ── Suppliers / categories / promotions / units ──────────────
+        // ── Suppliers / categories / units ────────────────────────────
         tools.Add(SimpleListTool(
             "list_suppliers", "List or search suppliers.", Permissions.SuppliersRead,
             async (args, ctx) =>
@@ -233,23 +108,6 @@ internal static class ToolDefinitions
             {
                 var page = await ctx.Sp.GetRequiredService<IUnitService>().GetAllAsync(
                     1, ToolHelpers.ClampLimit(ToolArgs.Int(args, "limit")), search: ToolArgs.Str(args, "search"), isActive: null, status: null);
-                return new ToolResult(new { totalCount = page.TotalCount, items = page.Items });
-            }));
-
-        tools.Add(new DelegateTool(
-            "list_promotions",
-            "List promotions. By default returns the currently-active promotions.",
-            permissions: new[] { Permissions.PromotionsRead },
-            parametersSchema: ObjSchema(("activeOnly", BoolSchema("True (default) for active promotions only."))),
-            exec: async (args, ctx) =>
-            {
-                var promos = ctx.Sp.GetRequiredService<IPromotionService>();
-                if (ToolArgs.Bool(args, "activeOnly") != false)
-                {
-                    var active = await promos.GetActivePromotionsAsync();
-                    return new ToolResult(new { totalCount = active.Count, items = active });
-                }
-                var page = await promos.GetAllPromotionsAsync(1, 20, null, null);
                 return new ToolResult(new { totalCount = page.TotalCount, items = page.Items });
             }));
 
@@ -369,7 +227,7 @@ internal static class ToolDefinitions
 
         tools.Add(new DelegateTool(
             "get_business_overview",
-            "A company-wide KPI summary (overall sales, orders, inventory health). Company-wide.",
+            "A company-wide KPI summary (catalog and inventory health). Company-wide.",
             crossBranch: true,
             exec: async (args, ctx) =>
             {
@@ -378,78 +236,6 @@ internal static class ToolDefinitions
             }));
 
         // ── Composite MIXING tools (two datasets joined in code) ───────
-        tools.Add(new DelegateTool(
-            "low_stock_products_with_no_sales",
-            "Products that are LOW ON STOCK and had NO sales in the period — a combined (mixing) report. Use when both conditions are asked together.",
-            permissions: new[] { Permissions.InventoryRead, Permissions.ProductsRead },
-            isMixing: true,
-            parametersSchema: ObjSchema(
-                ("period", ToolHelpers.PeriodParam("Sales window to check for 'no sales'; omit for all time.")),
-                ("limit", LimitSchema())),
-            exec: async (args, ctx) =>
-            {
-                var (from, to) = ToolHelpers.ResolvePeriod(ToolArgs.Str(args, "period"));
-                var limit = ToolHelpers.ClampLimit(ToolArgs.Int(args, "limit"));
-
-                var low = await ctx.Sp.GetRequiredService<IInventoryHistoryService>()
-                    .GetAllStockBalancesAsync(1, 500, null, ctx.WarehouseId, "lowstock", ctx.BranchWarehouseIds);
-                var stats = await ctx.Sp.GetRequiredService<IDashboardService>().GetWarehouseProductStatsAsync(from, to);
-                var soldIds = stats.Where(w => InBranch(ctx, w.WarehouseId))
-                    .SelectMany(w => w.Products).Where(p => p.QuantitySold > 0)
-                    .Select(p => p.ProductId).ToHashSet();
-
-                var all = low.Items.Where(s => !soldIds.Contains(s.ProductId))
-                    .GroupBy(s => s.ProductId)
-                    .Select(g => new
-                    {
-                        product = g.First().ProductNameEn,
-                        productAr = g.First().ProductNameAr,
-                        currentStock = g.Sum(x => x.AvailableQuantity),
-                        lowStockThreshold = g.First().LowStockThreshold
-                    })
-                    .OrderBy(r => r.currentStock)
-                    .ToList();
-
-                return new ToolResult(MixPayload(ToolArgs.Str(args, "period"), all, limit));
-            }));
-
-        tools.Add(new DelegateTool(
-            "top_products_with_stock",
-            "Top-selling products in a period WITH their current stock level — a combined (mixing) report joining sales and inventory.",
-            permissions: new[] { Permissions.ProductsRead, Permissions.InventoryRead },
-            isMixing: true,
-            parametersSchema: ObjSchema(
-                ("period", ToolHelpers.PeriodParam("Sales window; omit for all time.")),
-                ("limit", LimitSchema())),
-            exec: async (args, ctx) =>
-            {
-                var (from, to) = ToolHelpers.ResolvePeriod(ToolArgs.Str(args, "period"));
-                var limit = ToolHelpers.ClampLimit(ToolArgs.Int(args, "limit"));
-
-                var top = await TopProductsAsync(ctx, from, to, limit);
-                var stock = await ctx.Sp.GetRequiredService<IInventoryHistoryService>()
-                    .GetAllStockBalancesAsync(1, 500, null, ctx.WarehouseId, null, ctx.BranchWarehouseIds);
-                var stockByProduct = stock.Items.GroupBy(s => s.ProductId)
-                    .ToDictionary(g => g.Key, g => g.Sum(x => x.AvailableQuantity));
-
-                var rows = top.Select(p => new
-                {
-                    product = p.Product,
-                    productAr = p.ProductAr,
-                    sold = p.QuantitySold,
-                    currentStock = stockByProduct.TryGetValue(p.ProductId, out var s) ? s : 0
-                }).ToList();
-
-                return new ToolResult(new
-                {
-                    period = ToolHelpers.PeriodLabel(ToolArgs.Str(args, "period")),
-                    total = rows.Count,
-                    shown = rows.Count,
-                    truncated = false,
-                    rows
-                });
-            }));
-
         tools.Add(new DelegateTool(
             "suppliers_with_pending_purchases",
             "Suppliers that have pending (submitted) purchase requests, with how many and the total items requested — a combined (mixing) report. Company-wide.",
@@ -492,13 +278,6 @@ internal static class ToolDefinitions
     private static readonly IReadOnlyDictionary<string, (string Domain, string[] Entities)> Meta =
         new Dictionary<string, (string, string[])>(StringComparer.OrdinalIgnoreCase)
         {
-            ["get_revenue"] = ("Sales", new[] { "Order" }),
-            ["get_monthly_revenue_trend"] = ("Sales", new[] { "Order" }),
-            ["count_orders"] = ("Orders", new[] { "Order" }),
-            ["list_orders"] = ("Orders", new[] { "Order" }),
-            ["get_order_by_number"] = ("Orders", new[] { "Order" }),
-            ["list_returns"] = ("Orders", new[] { "Order" }),
-            ["top_selling_products"] = ("Products", new[] { "Product" }),
             ["list_products"] = ("Products", new[] { "Product" }),
             ["count_products"] = ("Products", new[] { "Product" }),
             ["list_low_stock"] = ("Inventory", new[] { "StockBalance", "Product" }),
@@ -506,8 +285,6 @@ internal static class ToolDefinitions
             ["list_suppliers"] = ("Suppliers", new[] { "Supplier" }),
             ["list_categories"] = ("Catalog", new[] { "Category" }),
             ["list_units"] = ("Catalog", new[] { "Unit" }),
-            ["list_promotions"] = ("Promotions", new[] { "Promotion" }),
-            ["list_shifts"] = ("Shifts", new[] { "Shift" }),
             ["list_approval_requests"] = ("Requests", new[] { "Request" }),
             ["list_purchase_requests"] = ("Purchasing", new[] { "PurchaseRequest" }),
             ["get_my_profile"] = ("Identity", new[] { "User" }),
@@ -516,54 +293,11 @@ internal static class ToolDefinitions
             ["get_my_branches"] = ("Identity", new[] { "Branch" }),
             ["list_users"] = ("Administration", new[] { "User" }),
             ["list_roles"] = ("Administration", new[] { "Role" }),
-            ["list_cashiers"] = ("Administration", new[] { "Cashier" }),
             ["list_warehouses"] = ("Warehouses", new[] { "Warehouse" }),
             ["list_branches"] = ("Branches", new[] { "Branch" }),
             ["get_business_overview"] = ("Overview", new[] { "Dashboard" }),
-            ["low_stock_products_with_no_sales"] = ("Inventory", new[] { "Product", "StockBalance", "Order" }),
-            ["top_products_with_stock"] = ("Products", new[] { "Product", "StockBalance" }),
             ["suppliers_with_pending_purchases"] = ("Purchasing", new[] { "Supplier", "PurchaseRequest" }),
         };
-
-    // ── Shared fetch helpers (ported from the previous query mapper) ──
-
-    private sealed record TopProductRow(Guid ProductId, string Product, string ProductAr, int QuantitySold);
-
-    private static async Task<List<TopProductRow>> TopProductsAsync(ToolContext ctx, DateTime? from, DateTime? to, int limit)
-    {
-        var stats = await ctx.Sp.GetRequiredService<IDashboardService>().GetWarehouseProductStatsAsync(from, to);
-        return stats
-            .Where(w => InBranch(ctx, w.WarehouseId))
-            .SelectMany(w => w.Products)
-            .GroupBy(p => new { p.ProductId, p.ProductName, p.ProductNameAr })
-            .Select(g => new TopProductRow(g.Key.ProductId, g.Key.ProductName, g.Key.ProductNameAr, g.Sum(x => x.QuantitySold)))
-            .OrderByDescending(r => r.QuantitySold)
-            .Take(limit)
-            .ToList();
-    }
-
-    private static async Task<decimal> BranchRevenueAsync(ToolContext ctx, DateTime? from, DateTime? to)
-    {
-        var stats = await ctx.Sp.GetRequiredService<IDashboardService>().GetWarehouseProductStatsAsync(from, to);
-        return stats.Where(w => InBranch(ctx, w.WarehouseId)).Sum(w => w.Revenue);
-    }
-
-    private static bool InBranch(ToolContext ctx, Guid warehouseId) =>
-        ctx.BranchWarehouseIds is null || ctx.BranchWarehouseIds.Contains(warehouseId);
-
-    // Cap + "shown X of Y" indicator for a mixing row set.
-    private static object MixPayload<T>(string? period, IReadOnlyList<T> all, int limit)
-    {
-        var shown = all.Take(limit).ToList();
-        return new
-        {
-            period = ToolHelpers.PeriodLabel(period),
-            total = all.Count,
-            shown = shown.Count,
-            truncated = all.Count > shown.Count,
-            rows = shown
-        };
-    }
 
     // ── A list tool with the common search+limit schema ───────────────
     private static DelegateTool SimpleListTool(
@@ -576,13 +310,6 @@ internal static class ToolDefinitions
             crossBranch: crossBranch);
 
     // ── Status converters (ported) ────────────────────────────────────
-    private static OrderStatus? OrderStatusOf(string? s) => s switch
-    {
-        "completed" => OrderStatus.Completed,
-        "refunded" => OrderStatus.Refunded,
-        _ => null
-    };
-
     private static RequestStatus? RequestStatusOf(string? s) => s switch
     {
         "pending" => RequestStatus.Pending,
@@ -611,13 +338,6 @@ internal static class ToolDefinitions
     {
         "active" => true,
         "inactive" => false,
-        _ => null
-    };
-
-    private static string? ShiftStatusOf(string? s) => s switch
-    {
-        "active" => nameof(ShiftStatus.Active),
-        "completed" => nameof(ShiftStatus.Completed),
         _ => null
     };
 

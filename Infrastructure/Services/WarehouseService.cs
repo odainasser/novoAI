@@ -210,9 +210,6 @@ public class WarehouseService : IWarehouseService
         if (await _context.StockTransfers.AnyAsync(t => t.FromWarehouseId == id || t.ToWarehouseId == id))
             throw new InvalidOperationException("Cannot delete warehouse: it is linked to stock transfers.");
 
-        if (await _context.Orders.AnyAsync(o => o.WarehouseId == id))
-            throw new InvalidOperationException("Cannot delete warehouse: it is linked to orders.");
-
         _context.Warehouses.Remove(warehouse);
         await _context.SaveChangesAsync();
 

@@ -157,9 +157,7 @@ public static class DependencyInjection
         services.AddScoped<IMediaService, MediaService>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IProductService, ProductService>();
-        services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<ISupplierService, SupplierService>();
-        services.AddScoped<IPromotionService, PromotionService>();
         services.AddScoped<IRequestService, RequestService>();
         services.AddScoped<IBranchService, BranchService>();
         services.AddScoped<IWarehouseService, WarehouseService>();

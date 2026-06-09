@@ -169,37 +169,8 @@
                         <Authorized Context="auth">
                             @{
                                 var permissions = auth.User.FindAll("permission");
-                                var hasSalesPermissions = permissions.Any(p =>
-                                    p.Value == "orders.read");
                                 var hasMerchandisePermissions = permissions.Any(p =>
                                     p.Value == "inventory.read" || p.Value == "requests.read");
-                            }
-
-                            @* === SALES === *@
-                            @if (hasSalesPermissions)
-                            {
-                                <div class="sidebar-section-header mt-5 mb-1.5">
-                                    <div class="mx-3 mb-2 border-t border-gray-100"></div>
-                                    <p class="px-3 text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                        <i class="bi bi-wallet2 text-[0.6rem]"></i>
-                                        @Localizer["Sales"]
-                                    </p>
-                                </div>
-
-                                <AuthorizeView Policy="Permission:orders.read" Context="ordersAuth">
-                                    <Authorized Context="ordersAuth">
-                                        <NavLink href="/branch/orders"
-                                                 @onclick="CloseSidebar"
-                                                 class="sidebar-link group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium relative overflow-hidden"
-                                                 ActiveClass="sidebar-link-active">
-                                            <span class="sidebar-link-indicator"></span>
-                                            <span class="sidebar-link-icon"><i class="bi bi-bag-check"></i></span>
-                                            <span class="sidebar-text">@Localizer["Orders"]</span>
-                                            <span class="sidebar-tooltip">@Localizer["Orders"]</span>
-                                        </NavLink>
-                                    </Authorized>
-                                </AuthorizeView>
-
                             }
 
                             @* === MERCHANDISE === *@

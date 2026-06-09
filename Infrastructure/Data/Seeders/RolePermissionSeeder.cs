@@ -81,8 +81,7 @@ public class RolePermissionSeeder
         // UserBranches scopes the actual data the user sees; permissions only
         // gate which sidebar sections are visible.
         var branchManagerPermissions = allPermissions
-            .Where(p => p.Code == Permissions.OrdersRead ||
-                        p.Code == Permissions.InventoryRead ||
+            .Where(p => p.Code == Permissions.InventoryRead ||
                         // Stocktake (physical count) is owned end-to-end by the branch
                         // manager: create/count (write) and review/approve in their branch.
                         p.Code == Permissions.InventoryWrite ||

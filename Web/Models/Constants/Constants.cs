@@ -24,18 +24,9 @@ public static class Permissions
     public const string ProductsWrite = "products.write";
     public const string ProductsDelete = "products.delete";
 
-    public const string OrdersRead = "orders.read";
-    public const string OrdersWrite = "orders.write";
-    public const string OrdersDelete = "orders.delete";
-    public const string OrdersReadOwn = "orders.read.own";
-
     public const string SuppliersRead = "suppliers.read";
     public const string SuppliersWrite = "suppliers.write";
     public const string SuppliersDelete = "suppliers.delete";
-
-    public const string PromotionsRead = "promotions.read";
-    public const string PromotionsWrite = "promotions.write";
-    public const string PromotionsDelete = "promotions.delete";
 
     public const string RequestsRead = "requests.read";
     public const string RequestsWrite = "requests.write";
@@ -78,9 +69,7 @@ public static class Permissions
         LookupsRead, LookupsWrite, LookupsDelete,
         CategoriesRead, CategoriesWrite, CategoriesDelete,
         ProductsRead, ProductsWrite, ProductsDelete,
-        OrdersRead, OrdersWrite, OrdersDelete, OrdersReadOwn,
         SuppliersRead, SuppliersWrite, SuppliersDelete,
-        PromotionsRead, PromotionsWrite, PromotionsDelete,
         RequestsRead, RequestsWrite,
         BranchesRead, BranchesWrite, BranchesDelete,
         WarehousesRead, WarehousesWrite, WarehousesDelete,

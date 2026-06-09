@@ -22,20 +22,6 @@ public static class DashboardEndpoints
         .Produces<DashboardSummaryDto>(StatusCodes.Status200OK)
         .RequireAuthorization();
 
-        group.MapGet("/warehouse-stats", async (
-            [FromServices] IDashboardService service,
-            [FromQuery] DateTime? fromDate,
-            [FromQuery] DateTime? toDate,
-            CancellationToken cancellationToken) =>
-        {
-            var result = await service.GetWarehouseProductStatsAsync(fromDate, toDate);
-            return Results.Ok(result);
-        })
-        .WithName("GetWarehouseProductStats")
-        .WithSummary("Get product sold/returned quantities per store")
-        .Produces<List<WarehouseProductStatsDto>>(StatusCodes.Status200OK)
-        .RequireAuthorization();
-
         group.MapGet("/warehouse-stock", async (
             [FromServices] IDashboardService service,
             [FromQuery] DateTime? fromDate,
@@ -48,19 +34,6 @@ public static class DashboardEndpoints
         .WithName("GetWarehouseCurrentStock")
         .WithSummary("Get current stock quantities per warehouse for all products")
         .Produces<List<WarehouseStockDto>>(StatusCodes.Status200OK)
-        .RequireAuthorization();
-
-        group.MapGet("/monthly-revenue", async (
-            [FromServices] IDashboardService service,
-            [FromQuery] int? months,
-            CancellationToken cancellationToken) =>
-        {
-            var result = await service.GetMonthlyRevenueAsync(months ?? 12);
-            return Results.Ok(result);
-        })
-        .WithName("GetMonthlyRevenue")
-        .WithSummary("Get monthly revenue per store for the last N months")
-        .Produces<List<MonthlyRevenueDto>>(StatusCodes.Status200OK)
         .RequireAuthorization();
     }
 }

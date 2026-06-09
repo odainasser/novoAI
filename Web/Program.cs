@@ -84,11 +84,9 @@ builder.Services.AddScoped<ILookupService, ClientLookupService>();
 builder.Services.AddScoped<ICategoryService, ClientCategoryService>();
 
 builder.Services.AddScoped<IProductService, ClientProductService>();
-builder.Services.AddScoped<IOrderService, OrderClientService>();
 
 builder.Services.AddScoped<ISupplierService, ClientSupplierService>();
 builder.Services.AddScoped<IAssistantAdminService, ClientAssistantAdminService>();
-builder.Services.AddScoped<IPromotionService, ClientPromotionService>();
 builder.Services.AddScoped<IRequestService, ClientRequestService>();
 builder.Services.AddScoped<IBranchService, ClientBranchService>();
 

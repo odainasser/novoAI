@@ -196,15 +196,6 @@ public class UserLogService : IUserLogService
                     }
                     break;
 
-                case "promotion":
-                    var promotions = await _context.Promotions
-                        .Where(p => ids.Contains(p.Id))
-                        .Select(p => new { p.Id, p.NameAr, p.NameEn })
-                        .ToListAsync();
-                    foreach (var p in promotions)
-                        nameMap[(group.Key, p.Id.ToString())] = isArabic ? p.NameAr : p.NameEn;
-                    break;
-
                 case "goodsreceivingnote":
                     var grns = await _context.GoodsReceivingNotes
                         .Where(g => ids.Contains(g.Id))

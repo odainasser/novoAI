@@ -47,20 +47,10 @@ public class PermissionSeeder
             (Permissions.ProductsRead, "Read Products", "عرض المنتجات", "View products information and list products", "عرض بيانات وقائمة المنتجات", "Products"),
             (Permissions.ProductsWrite, "Write Products", "إدارة المنتجات", "Create and update products", "إنشاء وتحديث المنتجات", "Products"),
             (Permissions.ProductsDelete, "Delete Products", "حذف المنتجات", "Delete products", "حذف المنتجات", "Products"),
-            // Order Permissions
-            (Permissions.OrdersRead, "Read All Orders", "عرض جميع الطلبات", "View all orders in the system", "عرض جميع الطلبات في النظام", "Orders"),
-            (Permissions.OrdersWrite, "Write Orders", "إدارة الطلبات", "Create and update orders", "إنشاء وتحديث الطلبات", "Orders"),
-            (Permissions.OrdersDelete, "Delete Orders", "حذف الطلبات", "Delete orders", "حذف الطلبات", "Orders"),
-            (Permissions.OrdersReadOwn, "Read Own Orders", "عرض طلباتي", "View own orders only", "عرض الطلبات الخاصة بي فقط", "Orders"),
             // Supplier Permissions
             (Permissions.SuppliersRead, "Read Suppliers", "عرض الموردين", "View suppliers information and list suppliers", "عرض بيانات وقائمة الموردين", "Suppliers"),
             (Permissions.SuppliersWrite, "Write Suppliers", "إدارة الموردين", "Create and update suppliers", "إنشاء وتحديث الموردين", "Suppliers"),
             (Permissions.SuppliersDelete, "Delete Suppliers", "حذف الموردين", "Delete suppliers", "حذف الموردين", "Suppliers"),
-            // Promotion Permissions
-            (Permissions.PromotionsRead, "Read Promotions", "عرض العروض", "View promotions information and list promotions", "عرض بيانات وقائمة العروض", "Promotions"),
-            (Permissions.PromotionsWrite, "Write Promotions", "إدارة العروض", "Create and update promotions", "إنشاء وتحديث العروض", "Promotions"),
-            (Permissions.PromotionsDelete, "Delete Promotions", "حذف العروض", "Delete promotions", "حذف العروض", "Promotions")
-            ,
             // Request Permissions
             (Permissions.RequestsRead, "Read Requests", "عرض الطلبات", "View all requests in the system", "عرض جميع الطلبات في النظام", "Requests"),
             (Permissions.RequestsWrite, "Manage Requests", "إدارة الطلبات", "Create and review requests", "إنشاء ومراجعة الطلبات", "Requests"),

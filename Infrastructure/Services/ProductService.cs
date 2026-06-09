@@ -121,18 +121,6 @@ public class ProductService : IProductService
             .Select(g => new { UnitId = g.Key, Total = g.Sum(sb => sb.AvailableQuantity) })
             .ToListAsync();
 
-        var soldByProduct = await _context.OrderItems
-            .Where(oi => productIds.Contains(oi.ProductId) && (oi.Order.Status == OrderStatus.Completed || oi.Order.Status == OrderStatus.PartialRefunded))
-            .GroupBy(oi => oi.ProductId)
-            .Select(g => new { ProductId = g.Key, Total = g.Sum(oi => oi.Quantity) })
-            .ToListAsync();
-
-        var refundedByProduct = await _context.OrderRefundItems
-            .Where(ri => productIds.Contains(ri.ProductId))
-            .GroupBy(ri => ri.ProductId)
-            .Select(g => new { ProductId = g.Key, Total = g.Sum(ri => ri.Quantity) })
-            .ToListAsync();
-
         var unitsByProduct = await _context.Units
             .Include(su => su.UnitOfMeasure)
             .AsNoTracking()
@@ -142,8 +130,6 @@ public class ProductService : IProductService
 
         var stockLookup = stockByProduct.ToDictionary(x => x.ProductId, x => x.Total);
         var unitStockLookup = stockByUnit.ToDictionary(x => x.UnitId, x => x.Total);
-        var soldLookup = soldByProduct.ToDictionary(x => x.ProductId, x => x.Total);
-        var refundedLookup = refundedByProduct.ToDictionary(x => x.ProductId, x => x.Total);
         var unitsLookup = unitsByProduct.GroupBy(u => u.ProductId).ToDictionary(g => g.Key, g => g.ToList());
         var imagesLookup = imagesByProduct.GroupBy(m => m.EntityId).ToDictionary(g => g.Key, g => g.ToList());
 
@@ -170,9 +156,7 @@ public class ProductService : IProductService
                 Status = product.Status,
                 IsActive = product.IsActive,
                 CreatedAt = product.CreatedAt,
-                UpdatedAt = product.UpdatedAt,
-                TotalSold = soldLookup.GetValueOrDefault(product.Id, 0),
-                TotalRefunded = refundedLookup.GetValueOrDefault(product.Id, 0)
+                UpdatedAt = product.UpdatedAt
             };
 
             var productUnits = unitsLookup.GetValueOrDefault(product.Id);
@@ -557,11 +541,6 @@ public class ProductService : IProductService
             throw new InvalidOperationException("Cannot delete product: it has selling units. Delete the units first.");
         }
 
-        if (await _context.OrderItems.AnyAsync(oi => oi.ProductId == id))
-        {
-            throw new InvalidOperationException("Cannot delete product: it is linked to existing orders.");
-        }
-
         // Remove any pending requests related to this product
         var pendingRequests = await _context.Requests
             .Where(r => r.Status == RequestStatus.Pending && r.ProductId == id)
@@ -629,13 +608,7 @@ public class ProductService : IProductService
             .Where(p => p.Id == product.Id)
             .Select(p => new
             {
-                TotalStock = stockQuery.Sum(sb => (int?)sb.AvailableQuantity) ?? 0,
-                TotalSold = _context.OrderItems
-                    .Where(oi => oi.ProductId == p.Id && (oi.Order.Status == Domain.Enums.OrderStatus.Completed || oi.Order.Status == Domain.Enums.OrderStatus.PartialRefunded))
-                    .Sum(oi => (int?)oi.Quantity) ?? 0,
-                TotalRefunded = _context.OrderRefundItems
-                    .Where(ri => ri.ProductId == p.Id)
-                    .Sum(ri => (int?)ri.Quantity) ?? 0
+                TotalStock = stockQuery.Sum(sb => (int?)sb.AvailableQuantity) ?? 0
             })
             .FirstOrDefaultAsync();
 
@@ -678,8 +651,6 @@ public class ProductService : IProductService
             IsActive = product.IsActive,
             CreatedAt = product.CreatedAt,
             UpdatedAt = product.UpdatedAt,
-            TotalSold = aggregates?.TotalSold ?? 0,
-            TotalRefunded = aggregates?.TotalRefunded ?? 0,
             Units = units
         };
     }
