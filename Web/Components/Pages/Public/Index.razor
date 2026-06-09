@@ -22,29 +22,31 @@
 
             <!-- Left: Branding Panel -->
             <div class="hidden lg:flex flex-col items-center justify-center bg-gradient-to-br from-purple-700 via-purple-800 to-purple-900 text-white p-12 relative overflow-hidden">
-                <!-- Decorative circles -->
+                <!-- Decorative glow + AI motif -->
                 <div class="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
                 <div class="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2"></div>
+                <i class="bi bi-stars absolute top-10 left-10 text-white/10 text-5xl"></i>
+                <i class="bi bi-cpu absolute bottom-12 right-10 text-white/10 text-6xl"></i>
 
                 <div class="relative z-10 text-center space-y-8">
                     <div class="inline-block p-5 rounded-2xl bg-white/10 backdrop-blur-sm">
                         <img src="/logo.png" alt="Logo" class="h-16 w-auto" />
                     </div>
                     <div>
-                        <p class="text-purple-200 text-sm mb-3">@Localizer["ByteMartTagline"]</p>
+                        <p class="text-purple-200 text-sm">@Localizer["ByteAITagline"]</p>
                     </div>
                     <div class="space-y-3 text-start max-w-xs mx-auto">
                         <div class="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-3 text-sm">
-                            <i class="bi bi-shop text-lg text-purple-200"></i>
-                            <span>@Localizer["PointOfSale"]</span>
+                            <i class="bi bi-cpu text-lg text-purple-200"></i>
+                            <span>@Localizer["AIAssistant"]</span>
                         </div>
                         <div class="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-3 text-sm">
-                            <i class="bi bi-box-seam text-lg text-purple-200"></i>
-                            <span>@Localizer["InventoryControl"]</span>
+                            <i class="bi bi-shield-check text-lg text-purple-200"></i>
+                            <span>@Localizer["IdentityAndAccess"]</span>
                         </div>
                         <div class="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-3 text-sm">
-                            <i class="bi bi-graph-up-arrow text-lg text-purple-200"></i>
-                            <span>@Localizer["SalesAnalytics"]</span>
+                            <i class="bi bi-clipboard-data text-lg text-purple-200"></i>
+                            <span>@Localizer["AuditAndInsights"]</span>
                         </div>
                     </div>
                 </div>
@@ -62,14 +64,14 @@
                 <!-- Icon -->
                 <div class="mb-6">
                     <div class="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center">
-                        <i class="bi bi-box-arrow-in-right text-2xl text-purple-600"></i>
+                        <i class="bi bi-stars text-2xl text-purple-600"></i>
                     </div>
                 </div>
 
                 <!-- Header -->
                 <div class="flex justify-between items-start mb-8">
                     <div>
-                        <h2 class="text-2xl font-bold text-gray-900 mb-1">@Localizer["SignIn"]</h2>
+                        <h2 class="text-2xl font-bold text-gray-900 mb-1">@Localizer["WelcomeBack"]</h2>
                         <p class="text-gray-500 text-sm">@Localizer["AccessYourAccount"]</p>
                     </div>
                     <LanguageSelector />
