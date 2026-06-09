@@ -332,48 +332,6 @@ public class UserService : IUserService
         return await MapToUserResponseAsync(user, roles.ToList());
     }
 
-    public async Task<List<Guid>> GetUserBranchIdsAsync(Guid userId, CancellationToken cancellationToken = default)
-    {
-        return await _dbContext.UserBranches
-            .Where(ub => ub.UserId == userId)
-            .Select(ub => ub.BranchId)
-            .ToListAsync(cancellationToken);
-    }
-
-    public async Task SetUserBranchesAsync(Guid userId, List<Guid> branchIds, CancellationToken cancellationToken = default)
-    {
-        // Verify the user exists at all (filtered by IsDeleted via query filter).
-        var userExists = await _userManager.Users.AnyAsync(u => u.Id == userId, cancellationToken);
-        if (!userExists)
-        {
-            throw new UserNotFoundException($"User with ID '{userId}' not found.");
-        }
-
-        var existing = await _dbContext.UserBranches
-            .Where(ub => ub.UserId == userId)
-            .ToListAsync(cancellationToken);
-
-        var existingIds = existing.Select(ub => ub.BranchId).ToHashSet();
-        var newIds = (branchIds ?? new List<Guid>()).ToHashSet();
-
-        var toRemove = existing.Where(ub => !newIds.Contains(ub.BranchId)).ToList();
-        if (toRemove.Count > 0)
-        {
-            _dbContext.UserBranches.RemoveRange(toRemove);
-        }
-
-        foreach (var branchId in newIds.Where(id => !existingIds.Contains(id)))
-        {
-            _dbContext.UserBranches.Add(new Domain.Entities.UserBranch
-            {
-                UserId = userId,
-                BranchId = branchId
-            });
-        }
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
-    }
-
     public async Task<IEnumerable<UserResponse>> GetActiveUsersAsync(CancellationToken cancellationToken = default)
     {
         var users = await _userManager.Users.Where(u => u.IsActive).ToListAsync(cancellationToken);

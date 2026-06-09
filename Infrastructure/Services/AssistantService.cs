@@ -163,18 +163,7 @@ internal class AssistantService : IAssistantService
             return Reply(request, ans);
         }
 
-        // Resolve the branch lock once (Branch Panel). A branch with no warehouses
-        // can't be scoped — refuse rather than leak company-wide data.
         IReadOnlyList<Guid>? branchWarehouseIds = null;
-        if (request.BranchId.HasValue)
-        {
-            branchWarehouseIds = await sp.GetRequiredService<IBranchService>()
-                .GetWarehouseIdsForBranchAsync(request.BranchId.Value, ct);
-            if (branchWarehouseIds.Count == 0)
-                // An out-of-branch refusal is an honest answer, not a no-answer.
-                return await Done(OutOfScopeMessage(request.Locale), new(), false, null, "{}");
-        }
-
         var ctx = new ToolContext(sp, userId, permissions, request.BranchId, branchWarehouseIds, request.Locale, ct);
 
         // Plan-first: classify → match a confirmed governed plan → execute it

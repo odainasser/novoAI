@@ -41,27 +41,11 @@
                                 </a>
                             </Authorized>
                         </AuthorizeView>
-                        <AuthorizeView Policy="Permission:warehouses.read">
+                        <AuthorizeView Policy="Permission:roles.read">
                             <Authorized>
-                                <a href="/admin/warehouses" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-medium backdrop-blur-sm transition-colors">
-                                    <i class="bi bi-building"></i>
-                                    @Localizer["Warehouses"]
-                                </a>
-                            </Authorized>
-                        </AuthorizeView>
-                        <AuthorizeView Policy="Permission:branches.read">
-                            <Authorized>
-                                <a href="/admin/branches" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-medium backdrop-blur-sm transition-colors">
-                                    <i class="bi bi-shop"></i>
-                                    @Localizer["Branches"]
-                                </a>
-                            </Authorized>
-                        </AuthorizeView>
-                        <AuthorizeView Policy="Permission:terminals.read">
-                            <Authorized>
-                                <a href="/admin/terminals" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-medium backdrop-blur-sm transition-colors">
-                                    <i class="bi bi-display"></i>
-                                    @Localizer["Terminals"]
+                                <a href="/admin/identity/roles" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-medium backdrop-blur-sm transition-colors">
+                                    <i class="bi bi-shield-lock"></i>
+                                    @Localizer["Roles"]
                                 </a>
                             </Authorized>
                         </AuthorizeView>
@@ -71,28 +55,7 @@
         </div>
 
         <!-- Summary Stat Cards -->
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-            <div class="dash-card p-4 flex items-center gap-3">
-                <span class="dash-chip w-10 h-10 text-lg"><i class="bi bi-building"></i></span>
-                <div class="min-w-0">
-                    <p class="text-2xl font-bold text-gray-900 leading-none">@summary.TotalWarehouses</p>
-                    <p class="text-xs text-gray-500 mt-1 truncate">@Localizer["TotalWarehouses"]</p>
-                </div>
-            </div>
-            <div class="dash-card p-4 flex items-center gap-3">
-                <span class="dash-chip w-10 h-10 text-lg"><i class="bi bi-shop"></i></span>
-                <div class="min-w-0">
-                    <p class="text-2xl font-bold text-gray-900 leading-none">@summary.TotalBranches</p>
-                    <p class="text-xs text-gray-500 mt-1 truncate">@Localizer["TotalBranches"]</p>
-                </div>
-            </div>
-            <div class="dash-card p-4 flex items-center gap-3">
-                <span class="dash-chip w-10 h-10 text-lg"><i class="bi bi-display"></i></span>
-                <div class="min-w-0">
-                    <p class="text-2xl font-bold text-gray-900 leading-none">@summary.TotalTerminals</p>
-                    <p class="text-xs text-gray-500 mt-1 truncate">@Localizer["TotalTerminals"]</p>
-                </div>
-            </div>
+        <div class="grid grid-cols-2 gap-4 mb-6">
             <div class="dash-card p-4 flex items-center gap-3">
                 <span class="dash-chip w-10 h-10 text-lg"><i class="bi bi-people"></i></span>
                 <div class="min-w-0">

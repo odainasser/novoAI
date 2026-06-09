@@ -151,8 +151,7 @@
                                 var permissions = auth.User.FindAll("permission");
                                 var hasIdentityPermissions = permissions.Any(p =>
                                     p.Value == "users.read" || p.Value == "roles.read");
-                                var hasFacilitiesPermissions = permissions.Any(p =>
-                                    p.Value == "branches.read" || p.Value == "warehouses.read" || p.Value == "terminals.read");
+                                var hasFacilitiesPermissions = false;
                                 var hasLookupsPermission = permissions.Any(p =>
                                     p.Value == "lookups.read");
                                 var hasAuditPermission = permissions.Any(p =>
@@ -250,58 +249,6 @@
                                                 <span class="sidebar-link-icon"><i class="bi bi-flag"></i></span>
                                                 <span class="sidebar-text">@Localizer["ReportedAnswers"]</span>
                                             </NavLink>
-                                        </div>
-                                    </div>
-                                }
-
-                                @if (hasFacilitiesPermissions)
-                                {
-                                    <div class="@GroupCss("facilities", "admin/facilities")">
-                                        <button type="button" @onclick='() => ToggleGroup("facilities", "admin/facilities")'
-                                                class="sidebar-link sidebar-group-toggle group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium relative overflow-hidden">
-                                            <span class="sidebar-link-indicator"></span>
-                                            <span class="sidebar-link-icon"><i class="bi bi-buildings"></i></span>
-                                            <span class="sidebar-text">@Localizer["Facilities"]</span>
-                                            <i class="bi bi-chevron-down sidebar-chevron"></i>
-                                            <span class="sidebar-tooltip">@Localizer["Facilities"]</span>
-                                        </button>
-                                        <div class="sidebar-children">
-                                            <AuthorizeView Policy="Permission:branches.read" Context="branchesAuth">
-                                                <Authorized Context="branchesAuth">
-                                                    <NavLink href="/admin/facilities/branches"
-                                                             @onclick="CloseSidebar"
-                                                             class="sidebar-link sidebar-link-sub group flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 relative overflow-hidden"
-                                                             ActiveClass="sidebar-link-active">
-                                                        <span class="sidebar-link-indicator"></span>
-                                                        <span class="sidebar-link-icon"><i class="bi bi-shop-window"></i></span>
-                                                        <span class="sidebar-text">@Localizer["Branches"]</span>
-                                                    </NavLink>
-                                                </Authorized>
-                                            </AuthorizeView>
-                                            <AuthorizeView Policy="Permission:warehouses.read" Context="warehousesAuth">
-                                                <Authorized Context="warehousesAuth">
-                                                    <NavLink href="/admin/facilities/warehouses"
-                                                             @onclick="CloseSidebar"
-                                                             class="sidebar-link sidebar-link-sub group flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 relative overflow-hidden"
-                                                             ActiveClass="sidebar-link-active">
-                                                        <span class="sidebar-link-indicator"></span>
-                                                        <span class="sidebar-link-icon"><i class="bi bi-houses"></i></span>
-                                                        <span class="sidebar-text">@Localizer["Warehouses"]</span>
-                                                    </NavLink>
-                                                </Authorized>
-                                            </AuthorizeView>
-                                            <AuthorizeView Policy="Permission:terminals.read" Context="terminalsAuth">
-                                                <Authorized Context="terminalsAuth">
-                                                    <NavLink href="/admin/facilities/terminals"
-                                                             @onclick="CloseSidebar"
-                                                             class="sidebar-link sidebar-link-sub group flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 relative overflow-hidden"
-                                                             ActiveClass="sidebar-link-active">
-                                                        <span class="sidebar-link-indicator"></span>
-                                                        <span class="sidebar-link-icon"><i class="bi bi-pc-display"></i></span>
-                                                        <span class="sidebar-text">@Localizer["Terminals"]</span>
-                                                    </NavLink>
-                                                </Authorized>
-                                            </AuthorizeView>
                                         </div>
                                     </div>
                                 }
@@ -489,21 +436,6 @@
                 }
             }
 
-            // BranchManager landing on /admin (e.g. via stale tab, bookmark, or
-            // notification deep-link) gets bounced to /branch. Administrators
-            // with the BranchManager role bypass this because the earlier block
-            // returns before we reach here when they're an Administrator.
-            if (user.Identity?.IsAuthenticated == true
-                && user.IsInRole(Roles.BranchManager)
-                && !user.IsInRole(Roles.Administrator))
-            {
-                if (!string.IsNullOrEmpty(relative) &&
-                    relative.StartsWith("admin", StringComparison.OrdinalIgnoreCase))
-                {
-                    Navigation.NavigateTo("/branch", forceLoad: true);
-                    return;
-                }
-            }
         }
         catch
         {

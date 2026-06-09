@@ -13,10 +13,4 @@ public interface IUserService
     Task<UserResponse> AssignRolesToUserAsync(Guid userId, AssignRolesRequest request, CancellationToken cancellationToken = default);
     Task<IEnumerable<UserResponse>> GetActiveUsersAsync(CancellationToken cancellationToken = default);
     Task<bool> ExistsByEmailAsync(string email, CancellationToken cancellationToken = default);
-
-    // Branch assignments — used by the user form when the target user holds
-    // the BranchManager role. UserBranches rows scope what data the user can
-    // see in the Branch Panel.
-    Task<List<Guid>> GetUserBranchIdsAsync(Guid userId, CancellationToken cancellationToken = default);
-    Task SetUserBranchesAsync(Guid userId, List<Guid> branchIds, CancellationToken cancellationToken = default);
 }

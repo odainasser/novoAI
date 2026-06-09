@@ -36,11 +36,7 @@ public class DatabaseSeeder
             var roleSeeder = new RoleSeeder(roleManager, roleSeederLogger);
             await roleSeeder.SeedAsync();
 
-            // 2. Seed Branches (Domain)
             var context = services.GetRequiredService<ApplicationDbContext>();
-            var branchSeederLogger = services.GetRequiredService<ILogger<BranchSeeder>>();
-            var branchSeeder = new BranchSeeder(context, branchSeederLogger);
-            await branchSeeder.SeedAsync();
 
             // 3. Seed Users (Identity)
             var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
@@ -58,19 +54,10 @@ public class DatabaseSeeder
             var rolePermissionSeeder = new RolePermissionSeeder(context, rolePermissionSeederLogger);
             await rolePermissionSeeder.SeedAsync();
 
-            // 6. Seed Lookups (Warehouse types, Transfer types, etc.)
+            // 6. Seed Lookups (Transfer types, etc.)
             var lookupSeederLogger = services.GetRequiredService<ILogger<LookupSeeder>>();
             var lookupSeeder = new LookupSeeder(context, lookupSeederLogger);
             await lookupSeeder.SeedAsync();
-
-            // 7. Seed Branch Store Warehouses (one per branch)
-            var warehouseSeederLogger = services.GetRequiredService<ILogger<WarehouseSeeder>>();
-            var warehouseSeeder = new WarehouseSeeder(context, warehouseSeederLogger);
-            await warehouseSeeder.SeedAsync();
-
-            // 7.6 Assign every active branch to the seeded BranchManager user
-            // via UserBranches. Branches are already seeded in step 2.
-            await userSeeder.AssignBranchManagerBranchesAsync();
 
             // The tool-calling assistant needs no seed data — its tools are
             // code-owned, and the model understands natural language directly.

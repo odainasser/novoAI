@@ -174,45 +174,5 @@ public static class UserEndpoints
         .Produces(StatusCodes.Status403Forbidden)
         .RequireAuthorization()
         .WithMetadata(new RequirePermissionAttribute(Permissions.UsersWrite));
-
-        // Branch assignments — used by the unified user form for users with
-        // the BranchManager role. The set is an authoritative replacement
-        // (PUT semantics): pass the full target list every time.
-        group.MapGet("/{id:guid}/branches", async (
-            Guid id,
-            [FromServices] IUserService userService,
-            CancellationToken cancellationToken) =>
-        {
-            var branchIds = await userService.GetUserBranchIdsAsync(id, cancellationToken);
-            return Results.Ok(branchIds);
-        })
-        .WithName("GetUserBranches")
-        .WithSummary("Get the list of branches assigned to a user")
-        .Produces<List<Guid>>(StatusCodes.Status200OK)
-        .Produces(StatusCodes.Status403Forbidden)
-        .RequireAuthorization()
-        .WithMetadata(new RequirePermissionAttribute(Permissions.UsersRead));
-
-        group.MapPut("/{id:guid}/branches", async (
-            Guid id,
-            [FromBody] AssignBranchesRequest request,
-            [FromServices] IUserService userService,
-            CancellationToken cancellationToken) =>
-        {
-            await userService.SetUserBranchesAsync(id, request.BranchIds ?? new List<Guid>(), cancellationToken);
-            return Results.NoContent();
-        })
-        .WithName("SetUserBranches")
-        .WithSummary("Replace the set of branches assigned to a user")
-        .Produces(StatusCodes.Status204NoContent)
-        .Produces(StatusCodes.Status404NotFound)
-        .Produces(StatusCodes.Status403Forbidden)
-        .RequireAuthorization()
-        .WithMetadata(new RequirePermissionAttribute(Permissions.UsersWrite));
     }
-}
-
-public class AssignBranchesRequest
-{
-    public List<Guid>? BranchIds { get; set; }
 }

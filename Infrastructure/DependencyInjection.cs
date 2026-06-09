@@ -155,9 +155,6 @@ public static class DependencyInjection
         services.AddScoped<ILookupService, LookupService>();
         services.AddScoped<IUserLogService, UserLogService>();
         services.AddScoped<IMediaService, MediaService>();
-        services.AddScoped<IBranchService, BranchService>();
-        services.AddScoped<IWarehouseService, WarehouseService>();
-        services.AddScoped<ITerminalService, TerminalService>();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<INotificationService, NotificationService>();
 

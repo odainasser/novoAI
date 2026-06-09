@@ -49,16 +49,6 @@ internal static class ToolDefinitions
                 return new ToolResult(new { roles });
             }));
 
-        tools.Add(new DelegateTool(
-            "get_my_branches",
-            "The branches assigned to the current user.",
-            exec: async (args, ctx) =>
-            {
-                if (ctx.UserGuid is null) return new ToolResult(null);
-                var mine = await ctx.Sp.GetRequiredService<IBranchService>().GetBranchesAssignedToUserAsync(ctx.UserGuid.Value);
-                return new ToolResult(new { items = mine });
-            }));
-
         tools.Add(SimpleListTool(
             "list_users", "List or search system users / staff.", Permissions.UsersRead,
             async (args, ctx) =>
@@ -78,30 +68,9 @@ internal static class ToolDefinitions
                 return new ToolResult(new { totalCount = page.TotalCount, items = page.Items });
             }));
 
-        // ── Facilities ────────────────────────────────────────────────
-        tools.Add(SimpleListTool(
-            "list_warehouses", "List the company's warehouses.", Permissions.WarehousesRead,
-            async (args, ctx) =>
-            {
-                var page = await ctx.Sp.GetRequiredService<IWarehouseService>().GetAllWarehousesAsync(
-                    1, ToolHelpers.ClampLimit(ToolArgs.Int(args, "limit")), ToolArgs.Str(args, "search"), null);
-                return new ToolResult(new { totalCount = page.TotalCount, items = page.Items });
-            },
-            crossBranch: true));
-
-        tools.Add(SimpleListTool(
-            "list_branches", "List the company's branches.", Permissions.BranchesRead,
-            async (args, ctx) =>
-            {
-                var page = await ctx.Sp.GetRequiredService<IBranchService>().GetAllBranchesAsync(
-                    1, ToolHelpers.ClampLimit(ToolArgs.Int(args, "limit")), ToolArgs.Str(args, "search"), null);
-                return new ToolResult(new { totalCount = page.TotalCount, items = page.Items });
-            },
-            crossBranch: true));
-
         tools.Add(new DelegateTool(
             "get_business_overview",
-            "A company-wide KPI summary (facilities and identity counts). Company-wide.",
+            "A company-wide KPI summary (user counts). Company-wide.",
             crossBranch: true,
             exec: async (args, ctx) =>
             {
@@ -127,11 +96,8 @@ internal static class ToolDefinitions
             ["get_my_profile"] = ("Identity", new[] { "User" }),
             ["get_my_permissions"] = ("Identity", new[] { "User" }),
             ["get_my_roles"] = ("Identity", new[] { "Role" }),
-            ["get_my_branches"] = ("Identity", new[] { "Branch" }),
             ["list_users"] = ("Administration", new[] { "User" }),
             ["list_roles"] = ("Administration", new[] { "Role" }),
-            ["list_warehouses"] = ("Warehouses", new[] { "Warehouse" }),
-            ["list_branches"] = ("Branches", new[] { "Branch" }),
             ["get_business_overview"] = ("Overview", new[] { "Dashboard" }),
         };
 

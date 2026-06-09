@@ -33,10 +33,6 @@ public class ApplicationDbContext
     public DbSet<Lookup> Lookups { get; set; }
     public DbSet<UserLog> UserLogs { get; set; }
     public DbSet<Media> Media { get; set; }
-    public DbSet<Domain.Entities.Branch> Branches { get; set; }
-    public DbSet<Domain.Entities.Warehouse> Warehouses { get; set; }
-    public DbSet<Domain.Entities.Terminal> Terminals { get; set; }
-    public DbSet<Domain.Entities.UserBranch> UserBranches { get; set; }
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
 
@@ -272,82 +268,6 @@ public class ApplicationDbContext
 
             entity.HasIndex(m => new { m.EntityType, m.EntityId });
             entity.HasQueryFilter(m => !m.IsDeleted);
-        });
-
-        // Configure Branch entity
-        builder.Entity<Domain.Entities.Branch>(entity =>
-        {
-            entity.ToTable("Branches");
-            entity.HasKey(m => m.Id);
-            entity.Property(m => m.NameEn).IsRequired().HasMaxLength(200);
-            entity.Property(m => m.NameAr).IsRequired().HasMaxLength(200);
-            entity.Property(m => m.DescriptionEn).HasMaxLength(1000);
-            entity.Property(m => m.DescriptionAr).HasMaxLength(1000);
-
-            entity.HasQueryFilter(m => !m.IsDeleted);
-        });
-
-        // Configure Warehouse entity
-        builder.Entity<Domain.Entities.Warehouse>(entity =>
-        {
-            entity.ToTable("Warehouses");
-            entity.HasKey(w => w.Id);
-            entity.Property(w => w.NameEn).IsRequired().HasMaxLength(200);
-            entity.Property(w => w.NameAr).IsRequired().HasMaxLength(200);
-            entity.Property(w => w.Address).HasMaxLength(500);
-            entity.Property(w => w.ContactPerson).HasMaxLength(200);
-            entity.Property(w => w.ContactPhone).HasMaxLength(50);
-            entity.Property(w => w.Email).HasMaxLength(256);
-
-            entity.HasOne(w => w.WarehouseType)
-                .WithMany()
-                .HasForeignKey(w => w.WarehouseTypeId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(w => w.Branch)
-                .WithMany()
-                .HasForeignKey(w => w.BranchId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasQueryFilter(w => !w.IsDeleted);
-
-            entity.HasIndex(w => w.NameEn);
-            entity.HasIndex(w => w.NameAr);
-            entity.HasIndex(w => w.WarehouseTypeId);
-            entity.HasIndex(w => w.BranchId);
-        });
-
-        // Configure Terminal entity
-        builder.Entity<Domain.Entities.Terminal>(entity =>
-        {
-            entity.ToTable("Devices");
-            entity.HasKey(d => d.Id);
-            entity.Property(d => d.NameEn).IsRequired().HasMaxLength(200);
-            entity.Property(d => d.NameAr).IsRequired().HasMaxLength(200);
-            entity.Property(d => d.ComputerIp).HasMaxLength(45);
-            entity.Property(d => d.PrinterIp).HasMaxLength(45);
-            entity.Property(d => d.PaymentMachineIp).HasMaxLength(45);
-
-            entity.HasOne(d => d.Branch)
-                .WithMany()
-                .HasForeignKey(d => d.BranchId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasQueryFilter(d => !d.IsDeleted);
-
-            entity.HasIndex(d => d.NameEn);
-            entity.HasIndex(d => d.NameAr);
-            entity.HasIndex(d => d.BranchId);
-        });
-
-        // Configure UserBranch junction table (branch-employee assignments)
-        builder.Entity<Domain.Entities.UserBranch>(entity =>
-        {
-            entity.ToTable("UserBranches");
-            entity.HasKey(ub => new { ub.UserId, ub.BranchId });
-
-            entity.HasIndex(ub => ub.UserId);
-            entity.HasIndex(ub => ub.BranchId);
         });
 
         // Configure RefreshToken entity

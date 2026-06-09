@@ -16,10 +16,6 @@ public class DashboardService : IDashboardService
 
     public async Task<DashboardSummaryDto> GetSummaryAsync()
     {
-        var totalWarehouses = await _context.Warehouses.CountAsync();
-        var totalBranches = await _context.Branches.CountAsync();
-        var totalTerminals = await _context.Terminals.CountAsync();
-
         var userStats = await _context.Users
             .GroupBy(u => 1)
             .Select(g => new
@@ -31,9 +27,6 @@ public class DashboardService : IDashboardService
 
         return new DashboardSummaryDto
         {
-            TotalWarehouses = totalWarehouses,
-            TotalBranches = totalBranches,
-            TotalTerminals = totalTerminals,
             TotalUsers = userStats?.Total ?? 0,
             ActiveUsers = userStats?.Active ?? 0
         };

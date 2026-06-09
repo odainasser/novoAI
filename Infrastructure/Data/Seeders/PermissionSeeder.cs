@@ -39,18 +39,6 @@ public class PermissionSeeder
             (Permissions.LookupsRead, "Read Lookups", "عرض القوائم", "View lookups information and list lookups", "عرض بيانات وقائمة القوائم", "Lookups"),
             (Permissions.LookupsWrite, "Write Lookups", "إدارة القوائم", "Create and update lookups", "إنشاء وتحديث القوائم", "Lookups"),
             (Permissions.LookupsDelete, "Delete Lookups", "حذف القوائم", "Delete lookups", "حذف القوائم", "Lookups"),
-            // Branch Permissions
-            (Permissions.BranchesRead, "Read Branches", "عرض المتاحف", "View branches information and list branches", "عرض بيانات وقائمة المتاحف", "Branches"),
-            (Permissions.BranchesWrite, "Write Branches", "إدارة المتاحف", "Create and update branches", "إنشاء وتحديث المتاحف", "Branches"),
-            (Permissions.BranchesDelete, "Delete Branches", "حذف المتاحف", "Delete branches", "حذف المتاحف", "Branches"),
-            // Warehouse Permissions
-            (Permissions.WarehousesRead, "Read Warehouses", "عرض المستودعات", "View warehouses information and list warehouses", "عرض بيانات وقائمة المستودعات", "Warehouses"),
-            (Permissions.WarehousesWrite, "Write Warehouses", "إدارة المستودعات", "Create and update warehouses", "إنشاء وتحديث المستودعات", "Warehouses"),
-            (Permissions.WarehousesDelete, "Delete Warehouses", "حذف المستودعات", "Delete warehouses", "حذف المستودعات", "Warehouses"),
-            // Terminal Permissions
-            (Permissions.TerminalsRead, "Read Terminals", "عرض الطرفيات", "View terminals information and list terminals", "عرض بيانات وقائمة الطرفيات", "Terminals"),
-            (Permissions.TerminalsWrite, "Write Terminals", "إدارة الطرفيات", "Create and update terminals", "إنشاء وتحديث الطرفيات", "Terminals"),
-            (Permissions.TerminalsDelete, "Delete Terminals", "حذف الطرفيات", "Delete terminals", "حذف الطرفيات", "Terminals"),
             // AI Assistant Keyword Permissions
             (Permissions.AssistantKeywordsRead, "Read Assistant Keywords", "عرض كلمات المساعد", "View assistant keyword dictionary, misses, and suggestions", "عرض قاموس كلمات المساعد والأسئلة غير المفهومة والاقتراحات", "Assistant"),
             (Permissions.AssistantKeywordsWrite, "Manage Assistant Keywords", "إدارة كلمات المساعد", "Create, edit, and delete assistant keyword triggers", "إنشاء وتعديل وحذف كلمات المساعد", "Assistant"),

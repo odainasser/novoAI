@@ -16,21 +16,6 @@ public static class Permissions
     public const string LookupsWrite = "lookups.write";
     public const string LookupsDelete = "lookups.delete";
 
-    // Branch Permissions
-    public const string BranchesRead = "branches.read";
-    public const string BranchesWrite = "branches.write";
-    public const string BranchesDelete = "branches.delete";
-
-    // Warehouse Permissions
-    public const string WarehousesRead = "warehouses.read";
-    public const string WarehousesWrite = "warehouses.write";
-    public const string WarehousesDelete = "warehouses.delete";
-
-    // Terminal Permissions
-    public const string TerminalsRead = "terminals.read";
-    public const string TerminalsWrite = "terminals.write";
-    public const string TerminalsDelete = "terminals.delete";
-
     // AI Assistant keyword-dictionary management
     public const string AssistantKeywordsRead = "assistant.keywords.read";
     public const string AssistantKeywordsWrite = "assistant.keywords.write";
@@ -42,9 +27,6 @@ public static class Permissions
         RolesRead, RolesWrite, RolesDelete,
         SystemAudit,
         LookupsRead, LookupsWrite, LookupsDelete,
-        BranchesRead, BranchesWrite, BranchesDelete,
-        WarehousesRead, WarehousesWrite, WarehousesDelete,
-        TerminalsRead, TerminalsWrite, TerminalsDelete,
         AssistantKeywordsRead, AssistantKeywordsWrite, AssistantKeywordsApprove
     };
 

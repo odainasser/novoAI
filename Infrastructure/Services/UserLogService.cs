@@ -115,33 +115,6 @@ public class UserLogService : IUserLogService
                         nameMap[(group.Key, l.Id.ToString())] = isArabic ? l.NameAr : l.NameEn;
                     break;
 
-                case "branch":
-                    var branches = await _context.Branches
-                        .Where(m => ids.Contains(m.Id))
-                        .Select(m => new { m.Id, m.NameAr, m.NameEn })
-                        .ToListAsync();
-                    foreach (var m in branches)
-                        nameMap[(group.Key, m.Id.ToString())] = isArabic ? m.NameAr : m.NameEn;
-                    break;
-
-                case "warehouse":
-                    var warehouses = await _context.Warehouses
-                        .Where(w => ids.Contains(w.Id))
-                        .Select(w => new { w.Id, w.NameAr, w.NameEn })
-                        .ToListAsync();
-                    foreach (var w in warehouses)
-                        nameMap[(group.Key, w.Id.ToString())] = isArabic ? w.NameAr : w.NameEn;
-                    break;
-
-                case "terminal":
-                    var terminals = await _context.Terminals
-                        .Where(t => ids.Contains(t.Id))
-                        .Select(t => new { t.Id, t.NameAr, t.NameEn })
-                        .ToListAsync();
-                    foreach (var t in terminals)
-                        nameMap[(group.Key, t.Id.ToString())] = isArabic ? t.NameAr : t.NameEn;
-                    break;
-
                 case "cashier":
                     var cashiers = await _context.Users
                         .Where(u => ids.Contains(u.Id))

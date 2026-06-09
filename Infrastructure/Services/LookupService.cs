@@ -207,9 +207,6 @@ public class LookupService : ILookupService
             if (await _context.Lookups.AnyAsync(l => l.ParentId == id))
                 throw new InvalidOperationException("Cannot delete lookup: it has child lookups. Delete or move them first.");
 
-            if (await _context.Warehouses.AnyAsync(w => w.WarehouseTypeId == id))
-                throw new InvalidOperationException("Cannot delete lookup: it is used as a warehouse type.");
-
             _context.Lookups.Remove(lookup);
             await _context.SaveChangesAsync();
 

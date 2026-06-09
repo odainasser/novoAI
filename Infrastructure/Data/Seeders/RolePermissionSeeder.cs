@@ -26,8 +26,6 @@ public class RolePermissionSeeder
         // Get roles from Domain entities
         var adminRole = await _context.DomainRoles
             .FirstOrDefaultAsync(r => r.Name == Roles.Administrator);
-        var branchManagerRole = await _context.DomainRoles
-            .FirstOrDefaultAsync(r => r.Name == Roles.BranchManager);
 
         // Create roles if they don't exist
         if (adminRole == null)
@@ -49,25 +47,6 @@ public class RolePermissionSeeder
             _context.Entry(adminRole).Property(r => r.IsSystemRole).IsModified = true;
         }
 
-        if (branchManagerRole == null)
-        {
-            branchManagerRole = new Role
-            {
-                Id = Guid.NewGuid(),
-                Name = Roles.BranchManager,
-                DescriptionEn = "Branch-scoped access to orders, inventory, requests, and shifts",
-                DescriptionAr = "\u0648\u0635\u0648\u0644 \u0645\u062d\u062f\u0648\u062f \u0628\u0627\u0644\u0641\u0631\u0639 \u0644\u0644\u0637\u0644\u0628\u0627\u062a \u0648\u0627\u0644\u0645\u062e\u0632\u0648\u0646",
-                IsSystemRole = true,
-                CreatedAt = DateTime.UtcNow
-            };
-            _context.DomainRoles.Add(branchManagerRole);
-        }
-        else if (!branchManagerRole.IsSystemRole)
-        {
-            branchManagerRole.IsSystemRole = true;
-            _context.Entry(branchManagerRole).Property(r => r.IsSystemRole).IsModified = true;
-        }
-
         await _context.SaveChangesAsync();
 
         // Get all permissions
@@ -75,18 +54,6 @@ public class RolePermissionSeeder
 
         // Administrator - All permissions
         await AssignPermissionsToRoleAsync(adminRole, allPermissions);
-
-        // BranchManager — read access to the facilities sections that remain.
-        var branchManagerPermissions = allPermissions
-            .Where(p => p.Code == Permissions.WarehousesRead ||
-                        p.Code == Permissions.BranchesRead)
-            .ToList();
-
-        _logger.LogInformation("Assigning {Count} permissions to BranchManager role: {Permissions}",
-            branchManagerPermissions.Count,
-            string.Join(", ", branchManagerPermissions.Select(p => p.Code)));
-
-        await AssignPermissionsToRoleAsync(branchManagerRole, branchManagerPermissions);
 
         await _context.SaveChangesAsync();
         _logger.LogInformation("Role-permission seeding completed");
