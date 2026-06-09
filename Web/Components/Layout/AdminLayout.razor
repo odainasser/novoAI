@@ -151,25 +151,88 @@
                                 var permissions = auth.User.FindAll("permission");
                                 var hasIdentityPermissions = permissions.Any(p =>
                                     p.Value == "users.read" || p.Value == "roles.read");
-                                var hasFacilitiesPermissions = false;
                                 var hasLookupsPermission = permissions.Any(p =>
                                     p.Value == "lookups.read");
                                 var hasAuditPermission = permissions.Any(p =>
                                     p.Value == "system.audit");
                                 var hasAssistantPermission = permissions.Any(p =>
                                     p.Value == "assistant.keywords.read");
-                                var hasSettingsPermissions = hasFacilitiesPermissions || hasLookupsPermission;
                             }
 
 
                             @* === ADMINISTRATION === *@
-                            @if (hasSettingsPermissions || hasIdentityPermissions || hasAuditPermission || hasAssistantPermission)
+                            @if (hasAssistantPermission || hasAuditPermission)
                             {
                                 <div class="sidebar-section-header mt-5 mb-1.5">
                                     <div class="mx-3 mb-2 border-t border-gray-100"></div>
                                     <p class="px-3 text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
                                         <i class="bi bi-gear text-[0.6rem]"></i>
                                         @Localizer["Administration"]
+                                    </p>
+                                </div>
+
+                                @if (hasAssistantPermission)
+                                {
+                                    <div class="@GroupCss("assistant", "admin/assistant")">
+                                        <button type="button" @onclick='() => ToggleGroup("assistant", "admin/assistant")'
+                                                class="sidebar-link sidebar-group-toggle group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium relative overflow-hidden">
+                                            <span class="sidebar-link-indicator"></span>
+                                            <span class="sidebar-link-icon"><i class="bi bi-cpu"></i></span>
+                                            <span class="sidebar-text">@Localizer["AIAssistant"]</span>
+                                            <i class="bi bi-chevron-down sidebar-chevron"></i>
+                                            <span class="sidebar-tooltip">@Localizer["AIAssistant"]</span>
+                                        </button>
+                                        <div class="sidebar-children">
+                                            <NavLink href="/admin/assistant/plans"
+                                                     @onclick="CloseSidebar"
+                                                     class="sidebar-link sidebar-link-sub group flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 relative overflow-hidden"
+                                                     ActiveClass="sidebar-link-active">
+                                                <span class="sidebar-link-indicator"></span>
+                                                <span class="sidebar-link-icon"><i class="bi bi-chat-square-text"></i></span>
+                                                <span class="sidebar-text">@Localizer["PlansReview"]</span>
+                                            </NavLink>
+                                            <NavLink href="/admin/assistant/no-answers"
+                                                     @onclick="CloseSidebar"
+                                                     class="sidebar-link sidebar-link-sub group flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 relative overflow-hidden"
+                                                     ActiveClass="sidebar-link-active">
+                                                <span class="sidebar-link-indicator"></span>
+                                                <span class="sidebar-link-icon"><i class="bi bi-slash-circle"></i></span>
+                                                <span class="sidebar-text">@Localizer["NoAnswersQueue"]</span>
+                                            </NavLink>
+                                            <NavLink href="/admin/assistant/reported"
+                                                     @onclick="CloseSidebar"
+                                                     class="sidebar-link sidebar-link-sub group flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 relative overflow-hidden"
+                                                     ActiveClass="sidebar-link-active">
+                                                <span class="sidebar-link-indicator"></span>
+                                                <span class="sidebar-link-icon"><i class="bi bi-flag"></i></span>
+                                                <span class="sidebar-text">@Localizer["ReportedAnswers"]</span>
+                                            </NavLink>
+                                        </div>
+                                    </div>
+                                }
+
+                                @if (hasAuditPermission)
+                                {
+                                    <NavLink href="/admin/logs"
+                                             @onclick="CloseSidebar"
+                                             class="sidebar-link group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium relative overflow-hidden"
+                                             ActiveClass="sidebar-link-active">
+                                        <span class="sidebar-link-indicator"></span>
+                                        <span class="sidebar-link-icon"><i class="bi bi-file-earmark-text"></i></span>
+                                        <span class="sidebar-text">@Localizer["AuditLogs"]</span>
+                                        <span class="sidebar-tooltip">@Localizer["AuditLogs"]</span>
+                                    </NavLink>
+                                }
+                            }
+
+                            @* === SETTINGS === *@
+                            @if (hasIdentityPermissions || hasLookupsPermission)
+                            {
+                                <div class="sidebar-section-header mt-5 mb-1.5">
+                                    <div class="mx-3 mb-2 border-t border-gray-100"></div>
+                                    <p class="px-3 text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                        <i class="bi bi-sliders text-[0.6rem]"></i>
+                                        @Localizer["Settings"]
                                     </p>
                                 </div>
 
@@ -213,46 +276,6 @@
                                     </div>
                                 }
 
-                                @if (hasAssistantPermission)
-                                {
-                                    <div class="@GroupCss("assistant", "admin/assistant")">
-                                        <button type="button" @onclick='() => ToggleGroup("assistant", "admin/assistant")'
-                                                class="sidebar-link sidebar-group-toggle group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium relative overflow-hidden">
-                                            <span class="sidebar-link-indicator"></span>
-                                            <span class="sidebar-link-icon"><i class="bi bi-cpu"></i></span>
-                                            <span class="sidebar-text">@Localizer["AIAssistant"]</span>
-                                            <i class="bi bi-chevron-down sidebar-chevron"></i>
-                                            <span class="sidebar-tooltip">@Localizer["AIAssistant"]</span>
-                                        </button>
-                                        <div class="sidebar-children">
-                                            <NavLink href="/admin/assistant/plans"
-                                                     @onclick="CloseSidebar"
-                                                     class="sidebar-link sidebar-link-sub group flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 relative overflow-hidden"
-                                                     ActiveClass="sidebar-link-active">
-                                                <span class="sidebar-link-indicator"></span>
-                                                <span class="sidebar-link-icon"><i class="bi bi-chat-square-text"></i></span>
-                                                <span class="sidebar-text">@Localizer["PlansReview"]</span>
-                                            </NavLink>
-                                            <NavLink href="/admin/assistant/no-answers"
-                                                     @onclick="CloseSidebar"
-                                                     class="sidebar-link sidebar-link-sub group flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 relative overflow-hidden"
-                                                     ActiveClass="sidebar-link-active">
-                                                <span class="sidebar-link-indicator"></span>
-                                                <span class="sidebar-link-icon"><i class="bi bi-slash-circle"></i></span>
-                                                <span class="sidebar-text">@Localizer["NoAnswersQueue"]</span>
-                                            </NavLink>
-                                            <NavLink href="/admin/assistant/reported"
-                                                     @onclick="CloseSidebar"
-                                                     class="sidebar-link sidebar-link-sub group flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 relative overflow-hidden"
-                                                     ActiveClass="sidebar-link-active">
-                                                <span class="sidebar-link-indicator"></span>
-                                                <span class="sidebar-link-icon"><i class="bi bi-flag"></i></span>
-                                                <span class="sidebar-text">@Localizer["ReportedAnswers"]</span>
-                                            </NavLink>
-                                        </div>
-                                    </div>
-                                }
-
                                 @if (hasLookupsPermission)
                                 {
                                     <NavLink href="/admin/lookups"
@@ -263,19 +286,6 @@
                                         <span class="sidebar-link-icon"><i class="bi bi-card-list"></i></span>
                                         <span class="sidebar-text">@Localizer["Lookups"]</span>
                                         <span class="sidebar-tooltip">@Localizer["Lookups"]</span>
-                                    </NavLink>
-                                }
-
-                                @if (hasAuditPermission)
-                                {
-                                    <NavLink href="/admin/logs"
-                                             @onclick="CloseSidebar"
-                                             class="sidebar-link group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium relative overflow-hidden"
-                                             ActiveClass="sidebar-link-active">
-                                        <span class="sidebar-link-indicator"></span>
-                                        <span class="sidebar-link-icon"><i class="bi bi-file-earmark-text"></i></span>
-                                        <span class="sidebar-text">@Localizer["AuditLogs"]</span>
-                                        <span class="sidebar-tooltip">@Localizer["AuditLogs"]</span>
                                     </NavLink>
                                 }
                             }
