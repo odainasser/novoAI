@@ -85,39 +85,6 @@ public class UserLogService : IUserLogService
 
             switch (group.Key.ToLowerInvariant())
             {
-                case "product":
-                    var products = await _context.Products
-                        .Where(p => ids.Contains(p.Id))
-                        .Select(p => new { p.Id, p.NameAr, p.NameEn })
-                        .ToListAsync();
-                    foreach (var p in products)
-                        nameMap[(group.Key, p.Id.ToString())] = isArabic ? p.NameAr : p.NameEn;
-                    break;
-
-                case "unit":
-                    var units = await _context.Units
-                        .Include(u => u.Product)
-                        .Include(u => u.UnitOfMeasure)
-                        .Where(u => ids.Contains(u.Id))
-                        .Select(u => new { u.Id, u.Barcode, u.Quantity, ProductNameAr = u.Product != null ? u.Product.NameAr : string.Empty, ProductNameEn = u.Product != null ? u.Product.NameEn : string.Empty, UomNameAr = u.UnitOfMeasure != null ? u.UnitOfMeasure.NameAr : string.Empty, UomNameEn = u.UnitOfMeasure != null ? u.UnitOfMeasure.NameEn : string.Empty })
-                        .ToListAsync();
-                    foreach (var u in units)
-                    {
-                        var pName = isArabic ? u.ProductNameAr : u.ProductNameEn;
-                        var uomName = isArabic ? u.UomNameAr : u.UomNameEn;
-                        nameMap[(group.Key, u.Id.ToString())] = $"{pName} ({uomName}, ×{u.Quantity})";
-                    }
-                    break;
-
-                case "category":
-                    var categories = await _context.Categories
-                        .Where(c => ids.Contains(c.Id))
-                        .Select(c => new { c.Id, c.NameAr, c.NameEn })
-                        .ToListAsync();
-                    foreach (var c in categories)
-                        nameMap[(group.Key, c.Id.ToString())] = isArabic ? c.NameAr : c.NameEn;
-                    break;
-
                 case "user":
                     var users = await _context.Users
                         .Where(u => ids.Contains(u.Id))
@@ -146,15 +113,6 @@ public class UserLogService : IUserLogService
                         .ToListAsync();
                     foreach (var l in lookups)
                         nameMap[(group.Key, l.Id.ToString())] = isArabic ? l.NameAr : l.NameEn;
-                    break;
-
-                case "supplier":
-                    var suppliers = await _context.Suppliers
-                        .Where(s => ids.Contains(s.Id))
-                        .Select(s => new { s.Id, s.NameAr, s.NameEn })
-                        .ToListAsync();
-                    foreach (var s in suppliers)
-                        nameMap[(group.Key, s.Id.ToString())] = isArabic ? s.NameAr : s.NameEn;
                     break;
 
                 case "branch":
@@ -196,45 +154,6 @@ public class UserLogService : IUserLogService
                     }
                     break;
 
-                case "goodsreceivingnote":
-                    var grns = await _context.GoodsReceivingNotes
-                        .Where(g => ids.Contains(g.Id))
-                        .Select(g => new { g.Id, g.GRNNumber })
-                        .ToListAsync();
-                    foreach (var g in grns)
-                        nameMap[(group.Key, g.Id.ToString())] = g.GRNNumber;
-                    break;
-
-                case "stockadjustment":
-                    var adjustments = await _context.StockAdjustments
-                        .Where(a => ids.Contains(a.Id))
-                        .Select(a => new { a.Id, a.AdjustmentNumber })
-                        .ToListAsync();
-                    foreach (var a in adjustments)
-                        nameMap[(group.Key, a.Id.ToString())] = a.AdjustmentNumber;
-                    break;
-
-                case "stocktransfer":
-                    var transfers = await _context.StockTransfers
-                        .Where(t => ids.Contains(t.Id))
-                        .Select(t => new { t.Id, t.TransferNumber })
-                        .ToListAsync();
-                    foreach (var t in transfers)
-                        nameMap[(group.Key, t.Id.ToString())] = t.TransferNumber;
-                    break;
-
-                case "request":
-                    var requests = await _context.Requests
-                        .Where(r => ids.Contains(r.Id))
-                        .Select(r => new { r.Id, r.Type, r.Status, r.ProductName })
-                        .ToListAsync();
-                    foreach (var r in requests)
-                    {
-                        nameMap[(group.Key, r.Id.ToString())] = string.IsNullOrWhiteSpace(r.ProductName)
-                            ? $"{r.Type}"
-                            : $"{r.Type} - {r.ProductName}";
-                    }
-                    break;
             }
         }
 

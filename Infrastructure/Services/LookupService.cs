@@ -210,12 +210,6 @@ public class LookupService : ILookupService
             if (await _context.Warehouses.AnyAsync(w => w.WarehouseTypeId == id))
                 throw new InvalidOperationException("Cannot delete lookup: it is used as a warehouse type.");
 
-            if (await _context.Units.AnyAsync(u => u.UnitOfMeasureId == id))
-                throw new InvalidOperationException("Cannot delete lookup: it is used as a unit of measure.");
-
-            if (await _context.Set<UnitUnitType>().AnyAsync(uut => uut.UnitTypeId == id))
-                throw new InvalidOperationException("Cannot delete lookup: it is used as a unit type.");
-
             _context.Lookups.Remove(lookup);
             await _context.SaveChangesAsync();
 

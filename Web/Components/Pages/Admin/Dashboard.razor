@@ -4,15 +4,7 @@
 @using Web.Authorization
 @using Web.Components.Common
 @using Web.Models.Dashboard
-@using Web.Models.Enums
-@using System.Globalization
 @inject IDashboardClientService DashboardService
-@inject ILookupService LookupService
-@inject Web.Services.IRequestService RequestService
-@inject NavigationManager Navigation
-@using Web.Models.UserLogs
-@using Web.Models.Lookups
-@using Web.Models.Requests
 @attribute [Authorize]
 
 <PageTitle>@Localizer["Dashboard"]</PageTitle>
@@ -41,27 +33,35 @@
                         </div>
                     </div>
                     <div class="flex flex-wrap items-center gap-2 mt-4">
-                        <AuthorizeView Policy="Permission:products.read">
+                        <AuthorizeView Policy="Permission:users.read">
                             <Authorized>
-                                <a href="/admin/catalog/products" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-medium backdrop-blur-sm transition-colors">
-                                    <i class="bi bi-box2"></i>
-                                    @Localizer["Products"]
+                                <a href="/admin/users" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-medium backdrop-blur-sm transition-colors">
+                                    <i class="bi bi-people"></i>
+                                    @Localizer["Users"]
                                 </a>
                             </Authorized>
                         </AuthorizeView>
-                        <AuthorizeView Policy="Permission:requests.read">
+                        <AuthorizeView Policy="Permission:warehouses.read">
                             <Authorized>
-                                <a href="/admin/requests" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-medium backdrop-blur-sm transition-colors">
-                                    <i class="bi bi-send"></i>
-                                    @Localizer["Requests"]
+                                <a href="/admin/warehouses" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-medium backdrop-blur-sm transition-colors">
+                                    <i class="bi bi-building"></i>
+                                    @Localizer["Warehouses"]
                                 </a>
                             </Authorized>
                         </AuthorizeView>
-                        <AuthorizeView Policy="Permission:inventory.read">
+                        <AuthorizeView Policy="Permission:branches.read">
                             <Authorized>
-                                <a href="/admin/inventory" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-medium backdrop-blur-sm transition-colors">
-                                    <i class="bi bi-stack"></i>
-                                    @Localizer["Inventory"]
+                                <a href="/admin/branches" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-medium backdrop-blur-sm transition-colors">
+                                    <i class="bi bi-shop"></i>
+                                    @Localizer["Branches"]
+                                </a>
+                            </Authorized>
+                        </AuthorizeView>
+                        <AuthorizeView Policy="Permission:terminals.read">
+                            <Authorized>
+                                <a href="/admin/terminals" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-medium backdrop-blur-sm transition-colors">
+                                    <i class="bi bi-display"></i>
+                                    @Localizer["Terminals"]
                                 </a>
                             </Authorized>
                         </AuthorizeView>
@@ -70,360 +70,57 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Main Content Column -->
-            <div class="lg:col-span-2 space-y-6">
-                <!-- Inventory Overview -->
-                <AuthorizeView Policy="Permission:products.read">
-                    <Authorized>
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                            <div class="p-5 border-b border-gray-100 flex items-center justify-between">
-                                <h3 class="font-semibold text-gray-900 flex items-center gap-2">
-                                    <span class="dash-chip w-7 h-7 text-sm"><i class="bi bi-stack"></i></span>
-                                    @Localizer["InventoryOverview"]
-                                </h3>
-                                <a href="/admin/inventory/balances" class="text-sm bf-text-info bf-hover-text-info-strong font-medium flex items-center gap-1">
-                                    @Localizer["ViewStock"]
-                                    <i class="bi bi-arrow-right rtl:rotate-180"></i>
-                                </a>
-                            </div>
-                            <div class="p-5">
-                                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
-                                    <div class="text-center p-3 bf-bg-info-50 rounded-lg">
-                                        <p class="text-xl font-bold bf-text-info">@summary.TotalProducts</p>
-                                        <p class="text-xs text-gray-500 mt-1">@Localizer["TotalProducts"]</p>
-                                    </div>
-                                    <div class="text-center p-3 bf-bg-info-50 rounded-lg">
-                                        <p class="text-xl font-bold bf-text-info">@summary.TotalCategories</p>
-                                        <p class="text-xs text-gray-500 mt-1">@Localizer["Categories"]</p>
-                                    </div>
-                                    <div class="text-center p-3 bf-bg-info-50 rounded-lg">
-                                        <p class="text-xl font-bold bf-text-info">@summary.TotalUnits</p>
-                                        <p class="text-xs text-gray-500 mt-1">@Localizer["Units"]</p>
-                                    </div>
-                                    <div class="text-center p-3 bf-bg-info-50 rounded-lg">
-                                        <p class="text-xl font-bold bf-text-info">@summary.TotalSuppliers</p>
-                                        <p class="text-xs text-gray-500 mt-1">@Localizer["Suppliers"]</p>
-                                    </div>
-                                    <div class="text-center p-3 bf-bg-info-50 rounded-lg">
-                                        <p class="text-xl font-bold bf-text-info">@summary.TotalWarehouses</p>
-                                        <p class="text-xs text-gray-500 mt-1">@Localizer["Warehouses"]</p>
-                                    </div>
-                                    <a href="/admin/inventory/balances?filter=lowstock" class="text-center p-3 bf-bg-warning-50 border bf-border-warning rounded-lg bf-hover-bg-warning-100 transition-colors">
-                                        <p class="text-xl font-bold bf-text-warning">@summary.LowStockProducts</p>
-                                        <p class="text-xs bf-text-warning mt-1">@Localizer["LowStock"]</p>
-                                    </a>
-                                    <a href="/admin/inventory/balances?filter=outofstock" class="text-center p-3 bf-bg-danger-50 border bf-border-danger rounded-lg bf-hover-bg-danger-100 transition-colors">
-                                        <p class="text-xl font-bold bf-text-danger">@summary.OutOfStockItems</p>
-                                        <p class="text-xs bf-text-danger mt-1">@Localizer["OutOfStock"]</p>
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </Authorized>
-                </AuthorizeView>
-
-                <!-- Inventory Analytics Tabbed Panel -->
-                <AuthorizeView Policy="Permission:inventory.read">
-                    <Authorized>
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col dashboard-panel">
-                            <div class="px-5 pt-4 pb-0">
-                                <div class="flex items-center justify-between mb-3">
-                                    <h3 class="font-semibold text-gray-900 flex items-center gap-2">
-                                        <span class="dash-chip w-7 h-7 text-sm"><i class="bi bi-stack"></i></span>
-                                        @Localizer["InventoryAnalytics"]
-                                    </h3>
-                                </div>
-                                <div class="inline-flex p-1 bg-gray-100 rounded-lg gap-1">
-                                    <button @onclick="SetInventoryTabStock"
-                                            class="@(inventoryTab == "stock" ? "bg-white bf-text-info shadow-sm" : "text-gray-500 hover:text-gray-700") px-4 py-2 text-xs font-medium rounded-md transition-all duration-200 flex items-center gap-1.5 cursor-pointer">
-                                        <i class="bi bi-stack"></i>
-                                        @Localizer["CurrentStockByWarehouse"]
-                                    </button>
-                                    <button @onclick="SetInventoryTabMovement"
-                                            class="@(inventoryTab == "movement" ? "bg-white bf-text-info shadow-sm" : "text-gray-500 hover:text-gray-700") px-4 py-2 text-xs font-medium rounded-md transition-all duration-200 flex items-center gap-1.5 cursor-pointer">
-                                        <i class="bi bi-arrow-down-up"></i>
-                                        @Localizer["StockMovementByWarehouse"]
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="border-t border-gray-100 mt-3"></div>
-
-                            <div class="p-5 flex-1 @(inventoryTab == "stock" ? "" : "hidden")">
-                                    @if (!isLoadingStock)
-                                    {
-                                        <div class="flex items-center gap-2 flex-wrap mb-4 dashboard-toolbar">
-                                            @if (stockTypeList.Any())
-                                            {
-                                                <div class="relative">
-                                                    <i class="bi bi-buildings absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                                                    <select class="text-xs border border-gray-200 rounded-lg pl-7 pr-8 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 appearance-none cursor-pointer"
-                                                            @onchange="OnStockTypeFilterChanged">
-                                                        <option value="">@Localizer["AllWarehouseTypes"]</option>
-                                                        @foreach (var t in stockTypeList)
-                                                        {
-                                                            <option value="@t.TypeId" selected="@(stockSelectedTypeId == t.TypeId)">@(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar" && !string.IsNullOrEmpty(t.TypeNameAr) ? t.TypeNameAr : t.TypeName)</option>
-                                                        }
-                                                    </select>
-                                                    <i class="bi bi-chevron-down absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                                                </div>
-                                            }
-                                            @if (stockProductList.Any())
-                                            {
-                                                <div class="relative">
-                                                    <i class="bi bi-box2 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                                                    <select class="text-xs border border-gray-200 rounded-lg pl-7 pr-8 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 appearance-none cursor-pointer"
-                                                            @onchange="OnStockProductFilterChanged">
-                                                        <option value="">@Localizer["AllProducts"]</option>
-                                                        @foreach (var p in stockProductList)
-                                                        {
-                                                            <option value="@p.ProductId" selected="@(stockSelectedProductId == p.ProductId)">@(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar" && !string.IsNullOrEmpty(p.ProductNameAr) ? p.ProductNameAr : p.ProductName)</option>
-                                                        }
-                                                    </select>
-                                                    <i class="bi bi-chevron-down absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                                                </div>
-                                            }
-                                            <div class="relative">
-                                                <i class="bi bi-funnel absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                                                <select class="text-xs border border-gray-200 rounded-lg pl-7 pr-8 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 appearance-none cursor-pointer"
-                                                        @bind="stockStockStatus">
-                                                    <option value="">@Localizer["AllStockStatus"]</option>
-                                                    <option value="instock">@Localizer["InStock"]</option>
-                                                    <option value="lowstock">@Localizer["LowStock"]</option>
-                                                    <option value="outofstock">@Localizer["OutOfStock"]</option>
-                                                </select>
-                                                <i class="bi bi-chevron-down absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                                            </div>
-                                            @if (stockSelectedProductId.HasValue || stockSelectedTypeId.HasValue || !string.IsNullOrEmpty(stockStockStatus))
-                                            {
-                                                <button @onclick="OnResetStockFilters"
-                                                        class="text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white bf-text-danger bf-hover-bg-danger-50 transition-colors cursor-pointer flex items-center gap-1"
-                                                        title="@Localizer["ResetFilters"]">
-                                                    <i class="bi bi-x-circle text-xs"></i>
-                                                    @Localizer["ResetFilters"]
-                                                </button>
-                                            }
-                                        </div>
-                                    }
-                                    @if (isLoadingStock)
-                                    {
-                                        <div class="flex items-center justify-center dashboard-chart-area">
-                                            <Spinner Size="Spinner.SpinnerSize.Md" />
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        <div class="dashboard-chart-frame">
-                                            <BarChart Items="GetStockBarChartItems()"
-                                                      LegendItems="GetStockBarChartLegend()"
-                                                      Height="200"
-                                                      EmptyText="@Localizer["NoStockData"]" />
-                                        </div>
-                                    }
-                            </div>
-                            <div class="p-5 flex-1 @(inventoryTab == "movement" ? "" : "hidden")">
-                                    @if (!isLoadingMovement)
-                                    {
-                                        <div class="flex items-center gap-2 flex-wrap mb-4 dashboard-toolbar">
-                                            <div class="flex items-center gap-1">
-                                                <label class="text-xs text-gray-500">@Localizer["FromDate"]</label>
-                                                <input type="date" value="@movementFromDate?.ToString("yyyy-MM-dd")"
-                                                       max="@(movementToDate?.ToString("yyyy-MM-dd") ?? DateTime.Today.ToString("yyyy-MM-dd"))"
-                                                       @onchange="OnMovementFromDateChanged"
-                                                       class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 cursor-pointer" />
-                                            </div>
-                                            <div class="flex items-center gap-1">
-                                                <label class="text-xs text-gray-500">@Localizer["ToDate"]</label>
-                                                <input type="date" value="@movementToDate?.ToString("yyyy-MM-dd")"
-                                                       min="@movementFromDate?.ToString("yyyy-MM-dd")"
-                                                       max="@DateTime.Today.ToString("yyyy-MM-dd")"
-                                                       @onchange="OnMovementToDateChanged"
-                                                       class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 cursor-pointer" />
-                                            </div>
-                                            @if (movementTypeList.Any())
-                                            {
-                                                <div class="relative">
-                                                    <i class="bi bi-buildings absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                                                    <select class="text-xs border border-gray-200 rounded-lg pl-7 pr-8 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 appearance-none cursor-pointer"
-                                                            @onchange="OnMovementTypeFilterChanged">
-                                                        <option value="">@Localizer["AllWarehouseTypes"]</option>
-                                                        @foreach (var t in movementTypeList)
-                                                        {
-                                                            <option value="@t.TypeId" selected="@(movementSelectedTypeId == t.TypeId)">@(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar" && !string.IsNullOrEmpty(t.TypeNameAr) ? t.TypeNameAr : t.TypeName)</option>
-                                                        }
-                                                    </select>
-                                                    <i class="bi bi-chevron-down absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                                                </div>
-                                            }
-                                            @if (movementProductList.Any())
-                                            {
-                                                <div class="relative">
-                                                    <i class="bi bi-box2 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                                                    <select class="text-xs border border-gray-200 rounded-lg pl-7 pr-8 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 appearance-none cursor-pointer"
-                                                            @onchange="OnMovementProductFilterChanged">
-                                                        <option value="">@Localizer["AllProducts"]</option>
-                                                        @foreach (var p in movementProductList)
-                                                        {
-                                                            <option value="@p.ProductId" selected="@(movementSelectedProductId == p.ProductId)">@(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar" && !string.IsNullOrEmpty(p.ProductNameAr) ? p.ProductNameAr : p.ProductName)</option>
-                                                        }
-                                                    </select>
-                                                    <i class="bi bi-chevron-down absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                                                </div>
-                                            }
-                                            @if (movementSelectedProductId.HasValue || movementSelectedTypeId.HasValue || movementFromDate.HasValue || movementToDate.HasValue)
-                                            {
-                                                <button @onclick="OnResetMovementFilters"
-                                                        class="text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white bf-text-danger bf-hover-bg-danger-50 transition-colors cursor-pointer flex items-center gap-1"
-                                                        title="@Localizer["ResetFilters"]">
-                                                    <i class="bi bi-x-circle text-xs"></i>
-                                                    @Localizer["ResetFilters"]
-                                                </button>
-                                            }
-                                        </div>
-                                    }
-                                    @if (isLoadingMovement)
-                                    {
-                                        <div class="flex items-center justify-center dashboard-chart-area">
-                                            <Spinner Size="Spinner.SpinnerSize.Md" />
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        <div class="dashboard-chart-frame">
-                                            <BarChart Items="GetMovementBarChartItems()"
-                                                      LegendItems="GetMovementBarChartLegend()"
-                                                      Height="200"
-                                                      EmptyText="@Localizer["NoStockData"]" />
-                                        </div>
-                                    }
-                            </div>
-                        </div>
-                    </Authorized>
-                </AuthorizeView>
+        <!-- Summary Stat Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+            <div class="dash-card p-4 flex items-center gap-3">
+                <span class="dash-chip w-10 h-10 text-lg"><i class="bi bi-building"></i></span>
+                <div class="min-w-0">
+                    <p class="text-2xl font-bold text-gray-900 leading-none">@summary.TotalWarehouses</p>
+                    <p class="text-xs text-gray-500 mt-1 truncate">@Localizer["TotalWarehouses"]</p>
+                </div>
             </div>
-
-            <!-- Sidebar Column -->
-            <div class="space-y-6">
-                <!-- Pending Requests Widget -->
-                <AuthorizeView Policy="Permission:requests.read">
-                    <Authorized>
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-                            <div class="p-4 border-b border-gray-100 flex justify-between items-center">
-                                <h3 class="font-semibold text-gray-900 flex items-center gap-2">
-                                    <span class="dash-chip w-7 h-7 text-sm"><i class="bi bi-send-fill"></i></span>
-                                    @Localizer["PendingRequests"]
-                                </h3>
-                                <a href="/admin/requests" class="text-sm bf-text-info bf-hover-text-info-strong font-medium flex items-center gap-1">
-                                    @Localizer["ViewAll"]
-                                    <i class="bi bi-arrow-right rtl:rotate-180"></i>
-                                </a>
-                            </div>
-                            <div class="p-0">
-                                @if (isLoadingRequests)
-                                {
-                                    <Spinner Size="Spinner.SpinnerSize.Md" Centered="true" />
-                                }
-                                else if (!pendingRequests.Any())
-                                {
-                                    <div class="p-8 text-center text-gray-400 text-sm">@Localizer["NoPendingRequests"]</div>
-                                }
-                                else
-                                {
-                                    <div class="relative">
-                                        @{ var reqIndex = 0; }
-                                        @foreach (var req in pendingRequests.Take(5))
-                                        {
-                                            var isFirstReq = reqIndex == 0;
-                                            var isLastReq = reqIndex == Math.Min(pendingRequests.Count, 5) - 1;
-                                            reqIndex++;
-                                            <a href="/admin/requests" class="group dash-row flex gap-3 px-4 py-3 no-underline cursor-pointer relative">
-                                                @* Timeline connector *@
-                                                <div class="relative flex flex-col items-center">
-                                                    @if (isFirstReq)
-                                                    {
-                                                        <span class="relative flex h-2.5 w-2.5 mt-1.5">
-                                                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-bf-primary opacity-75"></span>
-                                                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-bf-primary"></span>
-                                                        </span>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span class="relative flex h-2.5 w-2.5 mt-1.5">
-                                                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-bf-primary"></span>
-                                                        </span>
-                                                    }
-                                                    @if (!isLastReq)
-                                                    {
-                                                        <div class="w-px grow bg-gray-200 mt-1"></div>
-                                                    }
-                                                </div>
-                                                @* Content *@
-                                                <div class="grow min-w-0 pb-1">
-                                                    <div class="flex items-baseline justify-between gap-2">
-                                                        <p class="text-sm text-gray-700 truncate leading-snug">
-                                                            <span class="font-semibold text-gray-900">@req.RequestedByName</span>
-                                                            <span class="text-gray-500">@Localizer["Requested"].ToString().ToLower()</span>
-                                                            <span class="font-medium text-gray-800">@Localizer[$"RequestType{req.Type}"]</span>
-                                                        </p>
-                                                        <span class="text-[11px] text-gray-400 whitespace-nowrap shrink-0">@FormatRelativeTime(req.CreatedAt)</span>
-                                                    </div>
-                                                    @if (!string.IsNullOrEmpty(req.ProductName))
-                                                    {
-                                                        <p class="text-xs text-gray-400 mt-0.5 truncate">@req.ProductName</p>
-                                                    }
-                                                </div>
-                                            </a>
-                                        }
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    </Authorized>
-                </AuthorizeView>
-
-                <!-- Activity Feed -->
-                <AuthorizeView Policy="Permission:system.audit">
-                    <Authorized>
-                        <LogsFeed Inline="true" Count="5" Title="@Localizer["RecentActivity"]" ViewAllText="@Localizer["ViewAll"]" ViewAllUrl="/admin/logs" EmptyText="@Localizer["NoRecentActivity"]" />
-                    </Authorized>
-                </AuthorizeView>
-
+            <div class="dash-card p-4 flex items-center gap-3">
+                <span class="dash-chip w-10 h-10 text-lg"><i class="bi bi-shop"></i></span>
+                <div class="min-w-0">
+                    <p class="text-2xl font-bold text-gray-900 leading-none">@summary.TotalBranches</p>
+                    <p class="text-xs text-gray-500 mt-1 truncate">@Localizer["TotalBranches"]</p>
+                </div>
+            </div>
+            <div class="dash-card p-4 flex items-center gap-3">
+                <span class="dash-chip w-10 h-10 text-lg"><i class="bi bi-display"></i></span>
+                <div class="min-w-0">
+                    <p class="text-2xl font-bold text-gray-900 leading-none">@summary.TotalTerminals</p>
+                    <p class="text-xs text-gray-500 mt-1 truncate">@Localizer["TotalTerminals"]</p>
+                </div>
+            </div>
+            <div class="dash-card p-4 flex items-center gap-3">
+                <span class="dash-chip w-10 h-10 text-lg"><i class="bi bi-people"></i></span>
+                <div class="min-w-0">
+                    <p class="text-2xl font-bold text-gray-900 leading-none">@summary.TotalUsers</p>
+                    <p class="text-xs text-gray-500 mt-1 truncate">@Localizer["TotalUsers"]</p>
+                </div>
+            </div>
+            <div class="dash-card p-4 flex items-center gap-3">
+                <span class="dash-chip w-10 h-10 text-lg"><i class="bi bi-person-check"></i></span>
+                <div class="min-w-0">
+                    <p class="text-2xl font-bold text-gray-900 leading-none">@summary.ActiveUsers</p>
+                    <p class="text-xs text-gray-500 mt-1 truncate">@Localizer["ActiveUsers"]</p>
+                </div>
             </div>
         </div>
+
+        <!-- Activity Feed -->
+        <AuthorizeView Policy="Permission:system.audit">
+            <Authorized>
+                <LogsFeed Inline="true" Count="5" Title="@Localizer["RecentActivity"]" ViewAllText="@Localizer["ViewAll"]" ViewAllUrl="/admin/logs" EmptyText="@Localizer["NoRecentActivity"]" />
+            </Authorized>
+        </AuthorizeView>
     }
 </div>
 
 @code {
     private bool isLoading = true;
-    private bool isLoadingStock = true;
-    private string inventoryTab = "stock";
-
-    private void SetInventoryTabStock() => inventoryTab = "stock";
-    private void SetInventoryTabMovement() => inventoryTab = "movement";
-
     private DashboardSummaryDto summary = new();
-
-    // Stock chart state (Available only)
-    private List<WarehouseStockDto> warehouseStockData = new();
-    private List<ProductStockDto> stockProductList = new();
-    private List<(Guid TypeId, string TypeName, string TypeNameAr)> stockTypeList = new();
-    private Guid? stockSelectedProductId = null;
-    private Guid? stockSelectedTypeId = null;
-    private string stockStockStatus = string.Empty;
-
-    // Pending requests widget state
-    private bool isLoadingRequests = true;
-    private List<RequestDto> pendingRequests = new();
-
-    // Movement chart state (Received, Transferred In/Out)
-    private bool isLoadingMovement = true;
-    private List<WarehouseStockDto> movementData = new();
-    private List<ProductStockDto> movementProductList = new();
-    private List<(Guid TypeId, string TypeName, string TypeNameAr)> movementTypeList = new();
-    private Guid? movementSelectedProductId = null;
-    private Guid? movementSelectedTypeId = null;
-    private DateTime? movementFromDate = null;
-    private DateTime? movementToDate = null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -439,357 +136,5 @@
         }
 
         isLoading = false;
-
-        // Load warehouse data after main dashboard to avoid blocking the page
-        _ = LoadWarehouseStockAsync();
-        _ = LoadMovementDataAsync();
-        _ = LoadPendingRequestsAsync();
-    }
-
-    private async Task LoadPendingRequestsAsync()
-    {
-        try
-        {
-            var result = await RequestService.GetAllRequestsAsync(1, 50, null, null, Web.Models.Enums.RequestStatus.Pending);
-            pendingRequests = result.Items.ToList();
-        }
-        catch
-        {
-            pendingRequests = new();
-        }
-        finally
-        {
-            isLoadingRequests = false;
-            StateHasChanged();
-        }
-    }
-
-    private static string GetRequestTypeIcon(Web.Models.Enums.RequestType type) => type switch
-    {
-        Web.Models.Enums.RequestType.SetUnitPrice or Web.Models.Enums.RequestType.ChangePrice => "bi-tag",
-        Web.Models.Enums.RequestType.ActivateProduct or Web.Models.Enums.RequestType.AddProduct or Web.Models.Enums.RequestType.UpdateProduct => "bi-box-seam",
-        Web.Models.Enums.RequestType.ActivateUnit or Web.Models.Enums.RequestType.AddUnit or Web.Models.Enums.RequestType.UpdateUnit => "bi-upc-scan",
-        Web.Models.Enums.RequestType.DeleteProduct or Web.Models.Enums.RequestType.DeleteUnit => "bi-trash",
-        Web.Models.Enums.RequestType.SetLogisticsDetails => "bi-truck",
-        Web.Models.Enums.RequestType.AddGRN => "bi-box-arrow-in-down",
-        Web.Models.Enums.RequestType.AddStockAdjustment => "bi-sliders",
-        Web.Models.Enums.RequestType.AddStockTransfer => "bi-arrow-left-right",
-        _ => "bi-file-earmark-text"
-    };
-
-    private static string GetRequestTypeColorClass(Web.Models.Enums.RequestType type) => type switch
-    {
-        Web.Models.Enums.RequestType.ActivateProduct or Web.Models.Enums.RequestType.ActivateUnit => "bf-bg-success-100 bf-text-success",
-        Web.Models.Enums.RequestType.DeleteProduct or Web.Models.Enums.RequestType.DeleteUnit => "bf-bg-danger-100 bf-text-danger",
-        _ => "bf-bg-info-100 bf-text-info"
-    };
-
-    private string FormatRelativeTime(DateTime utcTime)
-    {
-        var diff = DateTime.UtcNow - utcTime;
-        if (diff.TotalMinutes < 1) return Localizer["JustNow"];
-        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}{Localizer["MinAgo"]}";
-        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}{Localizer["HrAgo"]}";
-        if (diff.TotalDays < 7) return $"{(int)diff.TotalDays}{Localizer["DayAgo"]}";
-        return utcTime.ToLocal().ToString("MMM dd");
-    }
-
-    private async Task LoadWarehouseStockAsync()
-    {
-        try
-        {
-            warehouseStockData = await DashboardService.GetWarehouseCurrentStockAsync();
-
-            stockProductList = warehouseStockData
-                .SelectMany(w => w.Products)
-                .GroupBy(p => p.ProductId)
-                .Select(g => g.First())
-                .OrderBy(p => p.ProductName)
-                .ToList();
-
-            var allWarehouseTypes = await LookupService.GetLookupsByParentAsync("WAREHOUSE_TYPE");
-            stockTypeList = allWarehouseTypes
-                .Select(t => (TypeId: t.Id, TypeName: t.NameEn, TypeNameAr: t.NameAr))
-                .OrderBy(t => t.TypeName)
-                .ToList();
-        }
-        catch
-        {
-            warehouseStockData = new();
-            stockProductList = new();
-            stockTypeList = new();
-        }
-        finally
-        {
-            isLoadingStock = false;
-            StateHasChanged();
-        }
-    }
-
-    private void OnStockProductFilterChanged(ChangeEventArgs e)
-    {
-        var val = e.Value?.ToString();
-        stockSelectedProductId = string.IsNullOrEmpty(val) ? null : Guid.Parse(val);
-    }
-
-    private void OnStockTypeFilterChanged(ChangeEventArgs e)
-    {
-        var val = e.Value?.ToString();
-        stockSelectedTypeId = string.IsNullOrEmpty(val) ? null : Guid.Parse(val);
-    }
-
-    private void OnResetStockFilters()
-    {
-        stockSelectedProductId = null;
-        stockSelectedTypeId = null;
-        stockStockStatus = string.Empty;
-    }
-
-    private List<BarChart.BarChartItem> GetStockBarChartItems()
-    {
-        var isAr = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
-
-        var filtered = warehouseStockData
-            .Where(w => !stockSelectedTypeId.HasValue || w.WarehouseTypeId == stockSelectedTypeId.Value);
-
-        return filtered.Select(w =>
-        {
-            string warehouseName = isAr && !string.IsNullOrEmpty(w.WarehouseNameAr) ? w.WarehouseNameAr : w.WarehouseName;
-            var isBranch = w.WarehouseTypeCode == "MW";
-            string? branchName = isBranch
-                ? (isAr && !string.IsNullOrEmpty(w.BranchNameAr) ? w.BranchNameAr : w.BranchNameEn)
-                : null;
-            var label = branchName != null ? $"{warehouseName} ({branchName})" : warehouseName;
-            var typeName = isAr && !string.IsNullOrEmpty(w.WarehouseTypeNameAr) ? w.WarehouseTypeNameAr : w.WarehouseTypeName;
-
-            // Apply stock status filter on products within this warehouse. Boundaries match
-            // the dashboard summary tiles and the /admin/inventory/balances filter:
-            //   - outofstock: AvailableQuantity <= 0
-            //   - lowstock:   0 < AvailableQuantity <= LowStockThreshold
-            //   - instock:    AvailableQuantity >  LowStockThreshold
-            var products = w.Products.AsEnumerable();
-            if (!string.IsNullOrEmpty(stockStockStatus))
-            {
-                products = stockStockStatus switch
-                {
-                    "outofstock" => products.Where(p => p.AvailableQuantity <= 0),
-                    "lowstock" => products.Where(p => p.AvailableQuantity > 0 && p.AvailableQuantity <= p.LowStockThreshold),
-                    "instock" => products.Where(p => p.AvailableQuantity > p.LowStockThreshold),
-                    _ => products
-                };
-            }
-            var filteredProducts = products.ToList();
-
-            // For outofstock/lowstock show product count, otherwise show sum of available
-            int chartValue;
-            string valueLabel;
-            bool isCountMode = stockStockStatus == "outofstock" || stockStockStatus == "lowstock";
-            if (isCountMode)
-            {
-                if (stockSelectedProductId.HasValue)
-                    chartValue = filteredProducts.Any(p => p.ProductId == stockSelectedProductId.Value) ? 1 : 0;
-                else
-                    chartValue = filteredProducts.Count;
-                valueLabel = isCountMode ? Localizer["Products"] : Localizer["Available"];
-            }
-            else
-            {
-                if (stockSelectedProductId.HasValue)
-                {
-                    var p = filteredProducts.FirstOrDefault(p => p.ProductId == stockSelectedProductId.Value);
-                    chartValue = p?.AvailableQuantity ?? 0;
-                }
-                else
-                {
-                    chartValue = filteredProducts.Sum(p => p.AvailableQuantity);
-                }
-                valueLabel = Localizer["Available"];
-            }
-
-            return new { Label = label, TypeName = typeName, ChartValue = chartValue, ValueLabel = valueLabel, IsCountMode = isCountMode };
-        })
-        .Where(v => v.ChartValue > 0)
-        .Select(v =>
-        {
-            var tooltip = $"<div class='chart-tooltip-row'><strong>{v.Label}</strong><br/>"
-                        + $"<span class='chart-dot-primary'>● </span>{v.ValueLabel}: {v.ChartValue}<br/>"
-                        + $"<span class='chart-dot-muted'>● </span>{Localizer["WarehouseType"]}: {v.TypeName}</div>";
-
-            var barColor = v.IsCountMode && stockStockStatus == "outofstock" ? "bf-bg-danger-500"
-                         : v.IsCountMode && stockStockStatus == "lowstock"   ? "bf-bg-warning-500"
-                         : "bf-bg-info-600";
-            var textColor = v.IsCountMode && stockStockStatus == "outofstock" ? "bf-text-danger"
-                          : v.IsCountMode && stockStockStatus == "lowstock"   ? "bf-text-warning"
-                          : "bf-text-info";
-
-            return new BarChart.BarChartItem
-            {
-                Label = v.Label,
-                Tooltip = tooltip,
-                Bars = new List<BarChart.BarChartBar>
-                {
-                    new() { Value = v.ChartValue, BgCssClass = barColor, TextCssClass = textColor }
-                }
-            };
-        })
-        .ToList();
-    }
-
-    private List<BarChart.BarChartLegend> GetStockBarChartLegend()
-    {
-        if (stockStockStatus == "outofstock")
-            return new List<BarChart.BarChartLegend> { new() { Label = Localizer["OutOfStock"], BgCssClass = "bf-bg-danger-500" } };
-        if (stockStockStatus == "lowstock")
-            return new List<BarChart.BarChartLegend> { new() { Label = Localizer["LowStock"], BgCssClass = "bf-bg-warning-500" } };
-        return new List<BarChart.BarChartLegend> { new() { Label = Localizer["Available"], BgCssClass = "bf-bg-info-600" } };
-    }
-
-    // === Movement Chart Methods ===
-
-    private async Task LoadMovementDataAsync()
-    {
-        try
-        {
-            movementData = await DashboardService.GetWarehouseCurrentStockAsync(movementFromDate, movementToDate);
-
-            movementProductList = movementData
-                .SelectMany(w => w.Products)
-                .Where(p => p.ReceivedQuantity > 0 || p.TransferredInQuantity > 0 || p.TransferredOutQuantity > 0)
-                .GroupBy(p => p.ProductId)
-                .Select(g => g.First())
-                .OrderBy(p => p.ProductName)
-                .ToList();
-
-            var allWarehouseTypes = await LookupService.GetLookupsByParentAsync("WAREHOUSE_TYPE");
-            movementTypeList = allWarehouseTypes
-                .Select(t => (TypeId: t.Id, TypeName: t.NameEn, TypeNameAr: t.NameAr))
-                .OrderBy(t => t.TypeName)
-                .ToList();
-        }
-        catch
-        {
-            movementData = new();
-            movementProductList = new();
-            movementTypeList = new();
-        }
-        finally
-        {
-            isLoadingMovement = false;
-            StateHasChanged();
-        }
-    }
-
-    private void OnMovementProductFilterChanged(ChangeEventArgs e)
-    {
-        var val = e.Value?.ToString();
-        movementSelectedProductId = string.IsNullOrEmpty(val) ? null : Guid.Parse(val);
-    }
-
-    private void OnMovementTypeFilterChanged(ChangeEventArgs e)
-    {
-        var val = e.Value?.ToString();
-        movementSelectedTypeId = string.IsNullOrEmpty(val) ? null : Guid.Parse(val);
-    }
-
-    private async Task OnMovementFromDateChanged(ChangeEventArgs e)
-    {
-        var val = e.Value?.ToString();
-        movementFromDate = string.IsNullOrEmpty(val) ? null : DateTime.Parse(val);
-        isLoadingMovement = true;
-        StateHasChanged();
-        await LoadMovementDataAsync();
-    }
-
-    private async Task OnMovementToDateChanged(ChangeEventArgs e)
-    {
-        var val = e.Value?.ToString();
-        movementToDate = string.IsNullOrEmpty(val) ? null : DateTime.Parse(val);
-        isLoadingMovement = true;
-        StateHasChanged();
-        await LoadMovementDataAsync();
-    }
-
-    private async Task OnResetMovementFilters()
-    {
-        movementFromDate = null;
-        movementToDate = null;
-        movementSelectedProductId = null;
-        movementSelectedTypeId = null;
-        isLoadingMovement = true;
-        StateHasChanged();
-        await LoadMovementDataAsync();
-    }
-
-    private List<BarChart.BarChartItem> GetMovementBarChartItems()
-    {
-        var isAr = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
-
-        var filtered = movementData
-            .Where(w => !movementSelectedTypeId.HasValue || w.WarehouseTypeId == movementSelectedTypeId.Value);
-
-        return filtered.Select(w =>
-        {
-            var isBranch = w.WarehouseTypeCode == "MW";
-            var isCW = w.WarehouseTypeCode == "CW";
-            string warehouseName = isAr && !string.IsNullOrEmpty(w.WarehouseNameAr) ? w.WarehouseNameAr : w.WarehouseName;
-            string? branchName = isBranch
-                ? (isAr && !string.IsNullOrEmpty(w.BranchNameAr) ? w.BranchNameAr : w.BranchNameEn)
-                : null;
-            var label = branchName != null ? $"{warehouseName} ({branchName})" : warehouseName;
-            var typeName = isAr && !string.IsNullOrEmpty(w.WarehouseTypeNameAr) ? w.WarehouseTypeNameAr : w.WarehouseTypeName;
-
-            int received, transferredIn, transferredOut;
-            if (movementSelectedProductId.HasValue)
-            {
-                var p = w.Products.FirstOrDefault(p => p.ProductId == movementSelectedProductId.Value);
-                received = isCW ? (p?.ReceivedQuantity ?? 0) : 0;
-                transferredIn = p?.TransferredInQuantity ?? 0;
-                transferredOut = p?.TransferredOutQuantity ?? 0;
-            }
-            else
-            {
-                received = isCW ? w.Products.Sum(p => p.ReceivedQuantity) : 0;
-                transferredIn = w.Products.Sum(p => p.TransferredInQuantity);
-                transferredOut = w.Products.Sum(p => p.TransferredOutQuantity);
-            }
-
-            return new { Label = label, TypeName = typeName, IsCW = isCW, Received = received, TransferredIn = transferredIn, TransferredOut = transferredOut };
-        })
-        .Where(v => v.Received > 0 || v.TransferredIn > 0 || v.TransferredOut > 0)
-        .Select(v =>
-        {
-            var tooltip = $"<div class='chart-tooltip-row'><strong>{v.Label}</strong><br/>";
-            if (v.IsCW)
-                tooltip += $"<span class='chart-dot-light'>● </span>{Localizer["Received"]}: {v.Received}<br/>";
-            tooltip += $"<span class='chart-dot-light'>● </span>{Localizer["TransferredIn"]}: {v.TransferredIn}<br/>"
-                    + $"<span class='chart-dot-dark'>● </span>{Localizer["TransferredOut"]}: {v.TransferredOut}<br/>"
-                    + $"<span class='chart-dot-muted'>● </span>{Localizer["WarehouseType"]}: {v.TypeName}</div>";
-
-            var bars = new List<BarChart.BarChartBar>();
-            if (v.Received > 0)
-                bars.Add(new() { Value = v.Received, BgCssClass = "bf-bg-success-500", TextCssClass = "bf-text-success" });
-            if (v.TransferredIn > 0)
-                bars.Add(new() { Value = v.TransferredIn, BgCssClass = "bf-bg-info-600", TextCssClass = "bf-text-info" });
-            if (v.TransferredOut > 0)
-                bars.Add(new() { Value = v.TransferredOut, BgCssClass = "bf-bg-danger-500", TextCssClass = "bf-text-danger" });
-
-            return new BarChart.BarChartItem
-            {
-                Label = v.Label,
-                Tooltip = tooltip,
-                Bars = bars
-            };
-        })
-        .ToList();
-    }
-
-    private List<BarChart.BarChartLegend> GetMovementBarChartLegend()
-    {
-        return new List<BarChart.BarChartLegend>
-        {
-            new() { Label = Localizer["Received"], BgCssClass = "bf-bg-success-500" },
-            new() { Label = Localizer["TransferredIn"], BgCssClass = "bf-bg-info-600" },
-            new() { Label = Localizer["TransferredOut"], BgCssClass = "bf-bg-danger-500" }
-        };
     }
 }

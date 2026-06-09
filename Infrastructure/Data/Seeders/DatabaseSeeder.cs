@@ -72,16 +72,6 @@ public class DatabaseSeeder
             // via UserBranches. Branches are already seeded in step 2.
             await userSeeder.AssignBranchManagerBranchesAsync();
 
-            // 8. Seed Suppliers (must be before catalog so unit supplier barcodes can reference them)
-            var supplierSeederLogger = services.GetRequiredService<ILogger<SupplierSeeder>>();
-            var supplierSeeder = new SupplierSeeder(context, supplierSeederLogger);
-            await supplierSeeder.SeedAsync();
-
-            // 9. Seed Catalog (categories, gift products, units, stock balances)
-            var catalogSeederLogger = services.GetRequiredService<ILogger<CatalogSeeder>>();
-            var catalogSeeder = new CatalogSeeder(context, catalogSeederLogger);
-            await catalogSeeder.SeedAsync();
-
             // The tool-calling assistant needs no seed data — its tools are
             // code-owned, and the model understands natural language directly.
 

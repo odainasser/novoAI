@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Mail;
 using Application.Common.Interfaces;
 using Domain.Enums;
@@ -22,10 +22,10 @@ public class EmailService : IEmailService
     public async Task<bool> SendEmailConfirmationAsync(string email, string confirmationLink)
     {
         const string systemNameEn = "SMA Retail System";
-        const string systemNameAr = "نظام هيئة الشارقة للمتاحف للبيع بالتجزئة";
+        const string systemNameAr = "Ù†Ø¸Ø§Ù… Ù‡ÙŠØ¦Ø© Ø§Ù„Ø´Ø§Ø±Ù‚Ø© Ù„Ù„Ù…ØªØ§Ø­Ù Ù„Ù„Ø¨ÙŠØ¹ Ø¨Ø§Ù„ØªØ¬Ø²Ø¦Ø©";
         const string accentColor = "#b91c1c";
 
-        var subject = $"تأكيد البريد الإلكتروني | Confirm Your Email - {systemNameEn}";
+        var subject = $"ØªØ£ÙƒÙŠØ¯ Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ | Confirm Your Email - {systemNameEn}";
         var safeLink = WebUtility.HtmlEncode(confirmationLink);
 
         var body = $@"
@@ -35,20 +35,20 @@ public class EmailService : IEmailService
 
                     <!-- Arabic section -->
                     <div dir='rtl' style='text-align:right;'>
-                        <h2 style='color: {accentColor}; margin-bottom: 4px;'>تأكيد البريد الإلكتروني</h2>
+                        <h2 style='color: {accentColor}; margin-bottom: 4px;'>ØªØ£ÙƒÙŠØ¯ Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ</h2>
                         <p style='color:#6b7280;margin-top:0;font-size:13px'>{systemNameAr}</p>
-                        <p>شكراً لتسجيلك معنا.</p>
-                        <p>يرجى تأكيد عنوان بريدك الإلكتروني بالضغط على الزر أدناه:</p>
+                        <p>Ø´ÙƒØ±Ø§Ù‹ Ù„ØªØ³Ø¬ÙŠÙ„Ùƒ Ù…Ø¹Ù†Ø§.</p>
+                        <p>ÙŠØ±Ø¬Ù‰ ØªØ£ÙƒÙŠØ¯ Ø¹Ù†ÙˆØ§Ù† Ø¨Ø±ÙŠØ¯Ùƒ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ Ø¨Ø§Ù„Ø¶ØºØ· Ø¹Ù„Ù‰ Ø§Ù„Ø²Ø± Ø£Ø¯Ù†Ø§Ù‡:</p>
                         <div style='margin: 24px 0;'>
                             <a href='{confirmationLink}'
                                style='display: inline-block; padding: 12px 30px; background-color: {accentColor}; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;'>
-                                تأكيد البريد الإلكتروني
+                                ØªØ£ÙƒÙŠØ¯ Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ
                             </a>
                         </div>
-                        <p style='color: #666; font-size: 14px'>إذا لم يعمل الزر، انسخ الرابط التالي والصقه في المتصفح:</p>
+                        <p style='color: #666; font-size: 14px'>Ø¥Ø°Ø§ Ù„Ù… ÙŠØ¹Ù…Ù„ Ø§Ù„Ø²Ø±ØŒ Ø§Ù†Ø³Ø® Ø§Ù„Ø±Ø§Ø¨Ø· Ø§Ù„ØªØ§Ù„ÙŠ ÙˆØ§Ù„ØµÙ‚Ù‡ ÙÙŠ Ø§Ù„Ù…ØªØµÙØ­:</p>
                         <p style='word-break: break-all; color: {accentColor}; font-size: 12px;' dir='ltr'>{safeLink}</p>
-                        <p style='color: #666; margin-top: 16px'>إذا لم تقم بإنشاء حساب، يرجى تجاهل هذه الرسالة.</p>
-                        <p style='color:#666;margin-top:24px'>مع أطيب التحيات،<br/>فريق {systemNameAr}</p>
+                        <p style='color: #666; margin-top: 16px'>Ø¥Ø°Ø§ Ù„Ù… ØªÙ‚Ù… Ø¨Ø¥Ù†Ø´Ø§Ø¡ Ø­Ø³Ø§Ø¨ØŒ ÙŠØ±Ø¬Ù‰ ØªØ¬Ø§Ù‡Ù„ Ù‡Ø°Ù‡ Ø§Ù„Ø±Ø³Ø§Ù„Ø©.</p>
+                        <p style='color:#666;margin-top:24px'>Ù…Ø¹ Ø£Ø·ÙŠØ¨ Ø§Ù„ØªØ­ÙŠØ§ØªØŒ<br/>ÙØ±ÙŠÙ‚ {systemNameAr}</p>
                     </div>
 
                     <hr style='margin:32px 0;border:none;border-top:1px solid #e5e7eb' />
@@ -82,10 +82,10 @@ public class EmailService : IEmailService
     public async Task<bool> SendPasswordResetAsync(string email, string resetLink)
     {
         const string systemNameEn = "SMA Retail System";
-        const string systemNameAr = "نظام هيئة الشارقة للمتاحف للبيع بالتجزئة";
+        const string systemNameAr = "Ù†Ø¸Ø§Ù… Ù‡ÙŠØ¦Ø© Ø§Ù„Ø´Ø§Ø±Ù‚Ø© Ù„Ù„Ù…ØªØ§Ø­Ù Ù„Ù„Ø¨ÙŠØ¹ Ø¨Ø§Ù„ØªØ¬Ø²Ø¦Ø©";
         const string accentColor = "#b91c1c";
 
-        var subject = $"إعادة تعيين كلمة المرور | Password Reset - {systemNameEn}";
+        var subject = $"Ø¥Ø¹Ø§Ø¯Ø© ØªØ¹ÙŠÙŠÙ† ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± | Password Reset - {systemNameEn}";
         var safeLink = WebUtility.HtmlEncode(resetLink);
 
         var body = $@"
@@ -95,21 +95,21 @@ public class EmailService : IEmailService
 
                     <!-- Arabic section -->
                     <div dir='rtl' style='text-align:right;'>
-                        <h2 style='color: {accentColor}; margin-bottom: 4px;'>طلب إعادة تعيين كلمة المرور</h2>
+                        <h2 style='color: {accentColor}; margin-bottom: 4px;'>Ø·Ù„Ø¨ Ø¥Ø¹Ø§Ø¯Ø© ØªØ¹ÙŠÙŠÙ† ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ±</h2>
                         <p style='color:#6b7280;margin-top:0;font-size:13px'>{systemNameAr}</p>
-                        <p>لقد تلقينا طلباً لإعادة تعيين كلمة المرور الخاصة بك.</p>
-                        <p>اضغط على الزر أدناه لإعادة تعيين كلمة المرور:</p>
+                        <p>Ù„Ù‚Ø¯ ØªÙ„Ù‚ÙŠÙ†Ø§ Ø·Ù„Ø¨Ø§Ù‹ Ù„Ø¥Ø¹Ø§Ø¯Ø© ØªØ¹ÙŠÙŠÙ† ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± Ø§Ù„Ø®Ø§ØµØ© Ø¨Ùƒ.</p>
+                        <p>Ø§Ø¶ØºØ· Ø¹Ù„Ù‰ Ø§Ù„Ø²Ø± Ø£Ø¯Ù†Ø§Ù‡ Ù„Ø¥Ø¹Ø§Ø¯Ø© ØªØ¹ÙŠÙŠÙ† ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ±:</p>
                         <div style='margin: 24px 0;'>
                             <a href='{resetLink}'
                                style='display: inline-block; padding: 12px 30px; background-color: {accentColor}; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;'>
-                                إعادة تعيين كلمة المرور
+                                Ø¥Ø¹Ø§Ø¯Ø© ØªØ¹ÙŠÙŠÙ† ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ±
                             </a>
                         </div>
-                        <p style='color: #666; font-size: 14px'>إذا لم يعمل الزر، انسخ الرابط التالي والصقه في المتصفح:</p>
+                        <p style='color: #666; font-size: 14px'>Ø¥Ø°Ø§ Ù„Ù… ÙŠØ¹Ù…Ù„ Ø§Ù„Ø²Ø±ØŒ Ø§Ù†Ø³Ø® Ø§Ù„Ø±Ø§Ø¨Ø· Ø§Ù„ØªØ§Ù„ÙŠ ÙˆØ§Ù„ØµÙ‚Ù‡ ÙÙŠ Ø§Ù„Ù…ØªØµÙØ­:</p>
                         <p style='word-break: break-all; color: {accentColor}; font-size: 12px;' dir='ltr'>{safeLink}</p>
-                        <p style='color: {accentColor}; margin-top: 16px;'><strong>تنتهي صلاحية هذا الرابط خلال 24 ساعة.</strong></p>
-                        <p style='color: #666; margin-top: 16px'>إذا لم تطلب إعادة تعيين كلمة المرور، يرجى تجاهل هذه الرسالة أو التواصل مع الدعم.</p>
-                        <p style='color:#666;margin-top:24px'>مع أطيب التحيات،<br/>فريق {systemNameAr}</p>
+                        <p style='color: {accentColor}; margin-top: 16px;'><strong>ØªÙ†ØªÙ‡ÙŠ ØµÙ„Ø§Ø­ÙŠØ© Ù‡Ø°Ø§ Ø§Ù„Ø±Ø§Ø¨Ø· Ø®Ù„Ø§Ù„ 24 Ø³Ø§Ø¹Ø©.</strong></p>
+                        <p style='color: #666; margin-top: 16px'>Ø¥Ø°Ø§ Ù„Ù… ØªØ·Ù„Ø¨ Ø¥Ø¹Ø§Ø¯Ø© ØªØ¹ÙŠÙŠÙ† ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ±ØŒ ÙŠØ±Ø¬Ù‰ ØªØ¬Ø§Ù‡Ù„ Ù‡Ø°Ù‡ Ø§Ù„Ø±Ø³Ø§Ù„Ø© Ø£Ùˆ Ø§Ù„ØªÙˆØ§ØµÙ„ Ù…Ø¹ Ø§Ù„Ø¯Ø¹Ù….</p>
+                        <p style='color:#666;margin-top:24px'>Ù…Ø¹ Ø£Ø·ÙŠØ¨ Ø§Ù„ØªØ­ÙŠØ§ØªØŒ<br/>ÙØ±ÙŠÙ‚ {systemNameAr}</p>
                     </div>
 
                     <hr style='margin:32px 0;border:none;border-top:1px solid #e5e7eb' />
@@ -144,10 +144,10 @@ public class EmailService : IEmailService
     public async Task<bool> SendWelcomePasswordSetupAsync(string email, string resetLink)
     {
         const string systemNameEn = "SMA Retail System";
-        const string systemNameAr = "نظام هيئة الشارقة للمتاحف للبيع بالتجزئة";
+        const string systemNameAr = "Ù†Ø¸Ø§Ù… Ù‡ÙŠØ¦Ø© Ø§Ù„Ø´Ø§Ø±Ù‚Ø© Ù„Ù„Ù…ØªØ§Ø­Ù Ù„Ù„Ø¨ÙŠØ¹ Ø¨Ø§Ù„ØªØ¬Ø²Ø¦Ø©";
         const string accentColor = "#b91c1c";
 
-        var subject = $"مرحباً - قم بتعيين كلمة المرور | Welcome - Set Your Password - {systemNameEn}";
+        var subject = $"Ù…Ø±Ø­Ø¨Ø§Ù‹ - Ù‚Ù… Ø¨ØªØ¹ÙŠÙŠÙ† ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± | Welcome - Set Your Password - {systemNameEn}";
         var safeLink = WebUtility.HtmlEncode(resetLink);
 
         var body = $@"
@@ -157,21 +157,21 @@ public class EmailService : IEmailService
 
                     <!-- Arabic section -->
                     <div dir='rtl' style='text-align:right;'>
-                        <h2 style='color: {accentColor}; margin-bottom: 4px;'>مرحباً</h2>
+                        <h2 style='color: {accentColor}; margin-bottom: 4px;'>Ù…Ø±Ø­Ø¨Ø§Ù‹</h2>
                         <p style='color:#6b7280;margin-top:0;font-size:13px'>{systemNameAr}</p>
-                        <p>تم إنشاء حساب لك.</p>
-                        <p>يرجى تعيين كلمة المرور الخاصة بك بالضغط على الزر أدناه:</p>
+                        <p>ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ø­Ø³Ø§Ø¨ Ù„Ùƒ.</p>
+                        <p>ÙŠØ±Ø¬Ù‰ ØªØ¹ÙŠÙŠÙ† ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± Ø§Ù„Ø®Ø§ØµØ© Ø¨Ùƒ Ø¨Ø§Ù„Ø¶ØºØ· Ø¹Ù„Ù‰ Ø§Ù„Ø²Ø± Ø£Ø¯Ù†Ø§Ù‡:</p>
                         <div style='margin: 24px 0;'>
                             <a href='{resetLink}'
                                style='display: inline-block; padding: 12px 30px; background-color: {accentColor}; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;'>
-                                تعيين كلمة المرور
+                                ØªØ¹ÙŠÙŠÙ† ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ±
                             </a>
                         </div>
-                        <p style='color: #666; font-size: 14px'>إذا لم يعمل الزر، انسخ الرابط التالي والصقه في المتصفح:</p>
+                        <p style='color: #666; font-size: 14px'>Ø¥Ø°Ø§ Ù„Ù… ÙŠØ¹Ù…Ù„ Ø§Ù„Ø²Ø±ØŒ Ø§Ù†Ø³Ø® Ø§Ù„Ø±Ø§Ø¨Ø· Ø§Ù„ØªØ§Ù„ÙŠ ÙˆØ§Ù„ØµÙ‚Ù‡ ÙÙŠ Ø§Ù„Ù…ØªØµÙØ­:</p>
                         <p style='word-break: break-all; color: {accentColor}; font-size: 12px;' dir='ltr'>{safeLink}</p>
-                        <p style='color: #b91c1c; margin-top: 16px;'><strong>تنتهي صلاحية هذا الرابط خلال 24 ساعة.</strong></p>
-                        <p style='color: #666; margin-top: 16px'>إذا لم تكن تتوقع هذه الرسالة، يرجى التواصل مع المسؤول.</p>
-                        <p style='color:#666;margin-top:24px'>مع أطيب التحيات،<br/>فريق {systemNameAr}</p>
+                        <p style='color: #b91c1c; margin-top: 16px;'><strong>ØªÙ†ØªÙ‡ÙŠ ØµÙ„Ø§Ø­ÙŠØ© Ù‡Ø°Ø§ Ø§Ù„Ø±Ø§Ø¨Ø· Ø®Ù„Ø§Ù„ 24 Ø³Ø§Ø¹Ø©.</strong></p>
+                        <p style='color: #666; margin-top: 16px'>Ø¥Ø°Ø§ Ù„Ù… ØªÙƒÙ† ØªØªÙˆÙ‚Ø¹ Ù‡Ø°Ù‡ Ø§Ù„Ø±Ø³Ø§Ù„Ø©ØŒ ÙŠØ±Ø¬Ù‰ Ø§Ù„ØªÙˆØ§ØµÙ„ Ù…Ø¹ Ø§Ù„Ù…Ø³Ø¤ÙˆÙ„.</p>
+                        <p style='color:#666;margin-top:24px'>Ù…Ø¹ Ø£Ø·ÙŠØ¨ Ø§Ù„ØªØ­ÙŠØ§ØªØŒ<br/>ÙØ±ÙŠÙ‚ {systemNameAr}</p>
                     </div>
 
                     <hr style='margin:32px 0;border:none;border-top:1px solid #e5e7eb' />
@@ -203,266 +203,6 @@ public class EmailService : IEmailService
         return await SendEmailAsync(email, subject, body);
     }
 
-    public async Task<bool> SendLowStockAlertAsync(
-        IEnumerable<string> recipients,
-        IEnumerable<LowStockAlertItem> items,
-        string? triggeredByEmail = null,
-        string? warehouseNameEn = null,
-        string? warehouseNameAr = null)
-    {
-        const string systemNameEn = "SMA Retail System";
-        const string systemNameAr = "نظام هيئة الشارقة للمتاحف للبيع بالتجزئة";
-
-        var itemList = items?.ToList() ?? new List<LowStockAlertItem>();
-        var recipientList = (recipients ?? Enumerable.Empty<string>())
-            .Where(r => !string.IsNullOrWhiteSpace(r))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        if (itemList.Count == 0 || recipientList.Count == 0)
-        {
-            return false;
-        }
-
-        var storeSuffixEn = string.IsNullOrWhiteSpace(warehouseNameEn) ? string.Empty : $" at {warehouseNameEn}";
-        var storeSuffixAr = string.IsNullOrWhiteSpace(warehouseNameAr) ? string.Empty : $" في {warehouseNameAr}";
-        var subject = itemList.Count == 1
-            ? $"تنبيه انخفاض المخزون: {itemList[0].ProductNameAr}{storeSuffixAr} | Low stock alert: {itemList[0].ProductNameEn}{storeSuffixEn} - {systemNameEn}"
-            : $"تنبيه انخفاض المخزون: {itemList.Count} منتجات{storeSuffixAr} | Low stock alert: {itemList.Count} products{storeSuffixEn} - {systemNameEn}";
-
-        // Flatten: one row per low unit so the unit (UoM) is shown explicitly per line.
-        var flatRows = itemList.SelectMany(i => i.Units.Select(u => new
-        {
-            ProductNameEn = i.ProductNameEn,
-            ProductNameAr = string.IsNullOrWhiteSpace(i.ProductNameAr) ? i.ProductNameEn : i.ProductNameAr,
-            ProductCode = i.ProductCode,
-            UnitNameEn = u.UnitNameEn,
-            UnitNameAr = string.IsNullOrWhiteSpace(u.UnitNameAr) ? u.UnitNameEn : u.UnitNameAr,
-            Barcode = u.Barcode,
-            Remaining = u.RemainingQuantity,
-            Threshold = u.LowStockThreshold
-        })).ToList();
-
-        var rowsEn = string.Join("", flatRows.Select(r => $@"
-                        <tr>
-                            <td style='padding:8px;border:1px solid #e5e7eb'>{WebUtility.HtmlEncode(r.ProductNameEn)}</td>
-                            <td style='padding:8px;border:1px solid #e5e7eb'>{WebUtility.HtmlEncode(r.UnitNameEn)}</td>
-                            <td style='padding:8px;border:1px solid #e5e7eb'>{WebUtility.HtmlEncode(r.Barcode)}</td>
-                            <td style='padding:8px;border:1px solid #e5e7eb;text-align:right;color:#b91c1c;font-weight:bold'>{r.Remaining}</td>
-                            <td style='padding:8px;border:1px solid #e5e7eb;text-align:right'>{r.Threshold}</td>
-                        </tr>"));
-
-        var rowsAr = string.Join("", flatRows.Select(r => $@"
-                        <tr>
-                            <td style='padding:8px;border:1px solid #e5e7eb'>{WebUtility.HtmlEncode(r.ProductNameAr)}</td>
-                            <td style='padding:8px;border:1px solid #e5e7eb'>{WebUtility.HtmlEncode(r.UnitNameAr)}</td>
-                            <td style='padding:8px;border:1px solid #e5e7eb'>{WebUtility.HtmlEncode(r.Barcode)}</td>
-                            <td style='padding:8px;border:1px solid #e5e7eb;text-align:left;color:#b91c1c;font-weight:bold'>{r.Remaining}</td>
-                            <td style='padding:8px;border:1px solid #e5e7eb;text-align:left'>{r.Threshold}</td>
-                        </tr>"));
-
-        var warehouseLineEn = string.IsNullOrWhiteSpace(warehouseNameEn)
-            ? string.Empty
-            : $" at <strong>{WebUtility.HtmlEncode(warehouseNameEn)}</strong>";
-        var warehouseLineAr = string.IsNullOrWhiteSpace(warehouseNameAr)
-            ? string.Empty
-            : $" في <strong>{WebUtility.HtmlEncode(warehouseNameAr)}</strong>";
-
-        var triggeredBy = WebUtility.HtmlEncode(triggeredByEmail ?? "N/A");
-
-        var body = $@"
-            <html>
-            <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
-                <div style='max-width: 720px; margin: 0 auto; padding: 20px;'>
-
-                    <!-- Arabic section -->
-                    <div dir='rtl' style='text-align:right;'>
-                        <h2 style='color: #b91c1c; margin-bottom: 4px;'>تنبيه انخفاض المخزون</h2>
-                        <p style='color:#6b7280;margin-top:0;font-size:13px'>{systemNameAr}</p>
-                        <p>وصلت المنتجات التالية أو انخفضت إلى ما دون الحد الأدنى المُعرَّف للمخزون بعد عملية بيع حديثة{warehouseLineAr}.</p>
-                        <table style='border-collapse:collapse;width:100%;margin-top:12px'>
-                            <thead>
-                                <tr style='background:#f3f4f6'>
-                                    <th style='padding:8px;border:1px solid #e5e7eb;text-align:right'>المنتج</th>
-                                    <th style='padding:8px;border:1px solid #e5e7eb;text-align:right'>الوحدة</th>
-                                    <th style='padding:8px;border:1px solid #e5e7eb;text-align:right'>الباركود</th>
-                                    <th style='padding:8px;border:1px solid #e5e7eb;text-align:left'>المتبقي</th>
-                                    <th style='padding:8px;border:1px solid #e5e7eb;text-align:left'>الحد الأدنى</th>
-                                </tr>
-                            </thead>
-                            <tbody>{rowsAr}</tbody>
-                        </table>
-                        <p style='margin-top:16px;color:#666;font-size:13px'>تم التنبيه بواسطة الكاشير: {triggeredBy}</p>
-                        <p style='color:#666;margin-top:24px'>مع أطيب التحيات،<br/>فريق {systemNameAr}</p>
-                    </div>
-
-                    <hr style='margin:32px 0;border:none;border-top:1px solid #e5e7eb' />
-
-                    <!-- English section -->
-                    <div dir='ltr' style='text-align:left;'>
-                        <h2 style='color: #b91c1c; margin-bottom: 4px;'>Low Stock Alert</h2>
-                        <p style='color:#6b7280;margin-top:0;font-size:13px'>{systemNameEn}</p>
-                        <p>The following product(s) have reached or fallen below the configured low-stock threshold after a recent sale{warehouseLineEn}.</p>
-                        <table style='border-collapse:collapse;width:100%;margin-top:12px'>
-                            <thead>
-                                <tr style='background:#f3f4f6'>
-                                    <th style='padding:8px;border:1px solid #e5e7eb;text-align:left'>Product</th>
-                                    <th style='padding:8px;border:1px solid #e5e7eb;text-align:left'>Unit</th>
-                                    <th style='padding:8px;border:1px solid #e5e7eb;text-align:left'>Barcode</th>
-                                    <th style='padding:8px;border:1px solid #e5e7eb;text-align:right'>Remaining</th>
-                                    <th style='padding:8px;border:1px solid #e5e7eb;text-align:right'>Threshold</th>
-                                </tr>
-                            </thead>
-                            <tbody>{rowsEn}</tbody>
-                        </table>
-                        <p style='margin-top:16px;color:#666;font-size:13px'>Triggered by cashier: {triggeredBy}</p>
-                        <p style='color:#666;margin-top:24px'>Best regards,<br/>{systemNameEn} Team</p>
-                    </div>
-
-                </div>
-            </body>
-            </html>
-        ";
-
-        var allOk = true;
-        foreach (var to in recipientList)
-        {
-            try
-            {
-                var ok = await SendEmailAsync(to, subject, body);
-                if (!ok) allOk = false;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to send low-stock email to {Recipient}", to);
-                allOk = false;
-            }
-        }
-        return allOk;
-    }
-
-    public async Task<bool> SendRequestActionAsync(
-        string recipientEmail,
-        string requestedByName,
-        RequestType requestType,
-        bool approved,
-        string reviewerName,
-        string? reviewNote,
-        string? subjectName,
-        DateTime decidedAtUtc)
-    {
-        const string systemNameEn = "SMA Retail System";
-        const string systemNameAr = "نظام هيئة الشارقة للمتاحف للبيع بالتجزئة";
-
-        if (string.IsNullOrWhiteSpace(recipientEmail))
-            return false;
-
-        var (typeEn, typeAr) = GetRequestTypeLabels(requestType);
-        var actionEn = approved ? "approved" : "rejected";
-        var actionAr = approved ? "الموافقة على" : "رفض";
-        var actionTitleEn = approved ? "Request Approved" : "Request Rejected";
-        var actionTitleAr = approved ? "تمت الموافقة على الطلب" : "تم رفض الطلب";
-        var accentColor = approved ? "#059669" : "#b91c1c";
-
-        var subject = $"{actionTitleAr}: {typeAr} | {actionTitleEn}: {typeEn} - {systemNameEn}";
-
-        var safeRequestedBy = WebUtility.HtmlEncode(requestedByName ?? string.Empty);
-        var safeReviewer = WebUtility.HtmlEncode(reviewerName ?? string.Empty);
-        var safeTypeEn = WebUtility.HtmlEncode(typeEn);
-        var safeTypeAr = WebUtility.HtmlEncode(typeAr);
-        var safeSubject = string.IsNullOrWhiteSpace(subjectName) ? null : WebUtility.HtmlEncode(subjectName);
-        var safeNote = string.IsNullOrWhiteSpace(reviewNote) ? null : WebUtility.HtmlEncode(reviewNote);
-        var decidedAtLocal = decidedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
-
-        var subjectRowEn = safeSubject == null ? string.Empty : $@"
-                            <tr><td style='padding:6px 8px;color:#6b7280'>Item</td><td style='padding:6px 8px;font-weight:600'>{safeSubject}</td></tr>";
-        var subjectRowAr = safeSubject == null ? string.Empty : $@"
-                            <tr><td style='padding:6px 8px;color:#6b7280'>العنصر</td><td style='padding:6px 8px;font-weight:600'>{safeSubject}</td></tr>";
-
-        var noteBlockEn = safeNote == null ? string.Empty : $@"
-                        <div style='margin-top:16px;padding:12px;background:#f9fafb;border-left:3px solid {accentColor};border-radius:4px'>
-                            <div style='color:#6b7280;font-size:12px;margin-bottom:4px'>Reviewer note</div>
-                            <div>{safeNote}</div>
-                        </div>";
-        var noteBlockAr = safeNote == null ? string.Empty : $@"
-                        <div style='margin-top:16px;padding:12px;background:#f9fafb;border-right:3px solid {accentColor};border-radius:4px'>
-                            <div style='color:#6b7280;font-size:12px;margin-bottom:4px'>ملاحظة المراجع</div>
-                            <div>{safeNote}</div>
-                        </div>";
-
-        var body = $@"
-            <html>
-            <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
-                <div style='max-width: 720px; margin: 0 auto; padding: 20px;'>
-
-                    <!-- Arabic section -->
-                    <div dir='rtl' style='text-align:right;'>
-                        <h2 style='color: {accentColor}; margin-bottom: 4px;'>{actionTitleAr}</h2>
-                        <p style='color:#6b7280;margin-top:0;font-size:13px'>{systemNameAr}</p>
-                        <p>مرحباً {safeRequestedBy}،</p>
-                        <p>تم {actionAr} طلبك بواسطة <strong>{safeReviewer}</strong>.</p>
-                        <table style='border-collapse:collapse;width:100%;margin-top:12px'>
-                            <tbody>
-                                <tr><td style='padding:6px 8px;color:#6b7280;width:160px'>نوع الطلب</td><td style='padding:6px 8px;font-weight:600'>{safeTypeAr}</td></tr>{subjectRowAr}
-                                <tr><td style='padding:6px 8px;color:#6b7280'>القرار</td><td style='padding:6px 8px;font-weight:600;color:{accentColor}'>{actionTitleAr}</td></tr>
-                                <tr><td style='padding:6px 8px;color:#6b7280'>تمت المراجعة في</td><td style='padding:6px 8px'>{decidedAtLocal}</td></tr>
-                            </tbody>
-                        </table>{noteBlockAr}
-                        <p style='color:#666;margin-top:24px'>مع أطيب التحيات،<br/>فريق {systemNameAr}</p>
-                    </div>
-
-                    <hr style='margin:32px 0;border:none;border-top:1px solid #e5e7eb' />
-
-                    <!-- English section -->
-                    <div dir='ltr' style='text-align:left;'>
-                        <h2 style='color: {accentColor}; margin-bottom: 4px;'>{actionTitleEn}</h2>
-                        <p style='color:#6b7280;margin-top:0;font-size:13px'>{systemNameEn}</p>
-                        <p>Hello {safeRequestedBy},</p>
-                        <p>Your request has been {actionEn} by <strong>{safeReviewer}</strong>.</p>
-                        <table style='border-collapse:collapse;width:100%;margin-top:12px'>
-                            <tbody>
-                                <tr><td style='padding:6px 8px;color:#6b7280;width:160px'>Request type</td><td style='padding:6px 8px;font-weight:600'>{safeTypeEn}</td></tr>{subjectRowEn}
-                                <tr><td style='padding:6px 8px;color:#6b7280'>Decision</td><td style='padding:6px 8px;font-weight:600;color:{accentColor}'>{actionTitleEn}</td></tr>
-                                <tr><td style='padding:6px 8px;color:#6b7280'>Reviewed at</td><td style='padding:6px 8px'>{decidedAtLocal}</td></tr>
-                            </tbody>
-                        </table>{noteBlockEn}
-                        <p style='color:#666;margin-top:24px'>Best regards,<br/>{systemNameEn} Team</p>
-                    </div>
-
-                </div>
-            </body>
-            </html>
-        ";
-
-        try
-        {
-            return await SendEmailAsync(recipientEmail, subject, body);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to send request-action email to {Recipient}", recipientEmail);
-            return false;
-        }
-    }
-
-    private static (string En, string Ar) GetRequestTypeLabels(RequestType type) => type switch
-    {
-        RequestType.ChangePrice => ("Change Price", "تغيير السعر"),
-        RequestType.SetUnitPrice => ("Set Unit Price", "تحديد سعر الوحدة"),
-        RequestType.ActivateProduct => ("Activate Product", "تفعيل المنتج"),
-        RequestType.ActivateUnit => ("Activate Unit", "تفعيل الوحدة"),
-        RequestType.AddProduct => ("Add Product", "إضافة منتج"),
-        RequestType.UpdateProduct => ("Update Product", "تحديث منتج"),
-        RequestType.AddUnit => ("Add Unit", "إضافة وحدة"),
-        RequestType.UpdateUnit => ("Update Unit", "تحديث وحدة"),
-        RequestType.AddGRN => ("Add GRN", "إضافة إذن استلام"),
-        RequestType.AddStockAdjustment => ("Add Stock Adjustment", "إضافة تسوية مخزون"),
-        RequestType.AddStockTransfer => ("Add Stock Transfer", "إضافة نقل مخزون"),
-        RequestType.DeleteProduct => ("Delete Product", "حذف منتج"),
-        RequestType.DeleteUnit => ("Delete Unit", "حذف وحدة"),
-        RequestType.SetLogisticsDetails => ("Set Logistics Details", "تحديد تفاصيل اللوجستيات"),
-        _ => (type.ToString(), type.ToString())
-    };
 
     public async Task<bool> SendEmailAsync(string to, string subject, string body)
     {

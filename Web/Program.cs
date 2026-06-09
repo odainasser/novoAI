@@ -81,31 +81,12 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IUserLogService, ClientUserLogService>();
 builder.Services.AddScoped<IMediaService, ClientMediaService>();
 builder.Services.AddScoped<ILookupService, ClientLookupService>();
-builder.Services.AddScoped<ICategoryService, ClientCategoryService>();
-
-builder.Services.AddScoped<IProductService, ClientProductService>();
-
-builder.Services.AddScoped<ISupplierService, ClientSupplierService>();
 builder.Services.AddScoped<IAssistantAdminService, ClientAssistantAdminService>();
-builder.Services.AddScoped<IRequestService, ClientRequestService>();
 builder.Services.AddScoped<IBranchService, ClientBranchService>();
-
-// Branch Panel: in-memory active-branch context. Per spec, this is not
-// persisted — a hard reload clears it and forces the user back to the
-// branch selector. Branch pages call the same client services as Admin
-// (IOrderService, IGoodsReceivingClientService, …) with a branchId arg.
-builder.Services.AddScoped<ActiveBranchContext>();
 builder.Services.AddScoped<IWarehouseService, ClientWarehouseService>();
 builder.Services.AddScoped<ITerminalService, ClientTerminalService>();
-builder.Services.AddScoped<IGoodsReceivingClientService, ClientGoodsReceivingService>();
-builder.Services.AddScoped<IStockAdjustmentClientService, ClientStockAdjustmentService>();
-builder.Services.AddScoped<IStockTransferClientService, ClientStockTransferService>();
-builder.Services.AddScoped<IPurchaseRequestClientService, ClientPurchaseRequestService>();
-builder.Services.AddScoped<IStocktakeClientService, ClientStocktakeService>();
-builder.Services.AddScoped<IInventoryHistoryClientService, ClientInventoryHistoryService>();
 builder.Services.AddScoped<IDashboardClientService, ClientDashboardService>();
 builder.Services.AddScoped<IAssistantClientService, ClientAssistantService>();
-builder.Services.AddScoped<IUnitService, ClientUnitService>();
 builder.Services.AddScoped<INotificationClientService, NotificationClientService>();
 
 // Register other services

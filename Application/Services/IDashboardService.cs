@@ -5,5 +5,4 @@ namespace Application.Services;
 public interface IDashboardService
 {
     Task<DashboardSummaryDto> GetSummaryAsync();
-    Task<List<WarehouseStockDto>> GetWarehouseCurrentStockAsync(DateTime? fromDate = null, DateTime? toDate = null);
 }

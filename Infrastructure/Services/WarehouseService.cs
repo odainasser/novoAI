@@ -197,19 +197,6 @@ public class WarehouseService : IWarehouseService
         var warehouse = await _context.Warehouses.FirstOrDefaultAsync(w => w.Id == id)
             ?? throw new KeyNotFoundException($"Warehouse with ID {id} not found.");
 
-        if (await _context.StockBalances.AnyAsync(sb => sb.WarehouseId == id &&
-                (sb.AvailableQuantity != 0 || sb.ReservedQuantity != 0 || sb.InTransitQuantity != 0)))
-            throw new InvalidOperationException("Cannot delete warehouse: it has stock balances.");
-
-        if (await _context.GoodsReceivingNotes.AnyAsync(g => g.WarehouseId == id))
-            throw new InvalidOperationException("Cannot delete warehouse: it is linked to goods receiving notes.");
-
-        if (await _context.StockAdjustments.AnyAsync(sa => sa.WarehouseId == id))
-            throw new InvalidOperationException("Cannot delete warehouse: it is linked to stock adjustments.");
-
-        if (await _context.StockTransfers.AnyAsync(t => t.FromWarehouseId == id || t.ToWarehouseId == id))
-            throw new InvalidOperationException("Cannot delete warehouse: it is linked to stock transfers.");
-
         _context.Warehouses.Remove(warehouse);
         await _context.SaveChangesAsync();
 

@@ -17,19 +17,4 @@ public class ClientDashboardService : IDashboardClientService
         return await _httpClient.GetFromJsonAsync<DashboardSummaryDto>("api/dashboard/summary")
                ?? new DashboardSummaryDto();
     }
-
-    public async Task<List<WarehouseStockDto>> GetWarehouseCurrentStockAsync(DateTime? fromDate = null, DateTime? toDate = null)
-    {
-        var query = "api/dashboard/warehouse-stock";
-        var queryParams = new List<string>();
-        if (fromDate.HasValue)
-            queryParams.Add($"fromDate={fromDate.Value:yyyy-MM-dd}");
-        if (toDate.HasValue)
-            queryParams.Add($"toDate={toDate.Value:yyyy-MM-dd}");
-        if (queryParams.Any())
-            query += "?" + string.Join("&", queryParams);
-
-        return await _httpClient.GetFromJsonAsync<List<WarehouseStockDto>>(query)
-               ?? new List<WarehouseStockDto>();
-    }
 }

@@ -212,14 +212,7 @@
             return;
         }
 
-        if (user.IsInRole(Roles.BranchManager))
-        {
-            Navigation.NavigateTo("/branch", forceLoad: true);
-        }
-        else
-        {
-            Navigation.NavigateTo("/admin", forceLoad: true);
-        }
+        Navigation.NavigateTo("/admin", forceLoad: true);
     }
 
     private async Task HandleLogin()
@@ -234,15 +227,6 @@
             if (response.Success)
             {
                 ((CustomAuthenticationStateProvider)AuthStateProvider).NotifyAuthenticationStateChanged();
-
-                if (response.User?.Roles != null)
-                {
-                    if (response.User.Roles.Contains(Roles.BranchManager))
-                    {
-                        Navigation.NavigateTo("/branch", forceLoad: true);
-                        return;
-                    }
-                }
 
                 Navigation.NavigateTo("/admin", forceLoad: true);
             }

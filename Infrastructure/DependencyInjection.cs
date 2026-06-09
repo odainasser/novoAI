@@ -155,21 +155,10 @@ public static class DependencyInjection
         services.AddScoped<ILookupService, LookupService>();
         services.AddScoped<IUserLogService, UserLogService>();
         services.AddScoped<IMediaService, MediaService>();
-        services.AddScoped<ICategoryService, CategoryService>();
-        services.AddScoped<IProductService, ProductService>();
-        services.AddScoped<ISupplierService, SupplierService>();
-        services.AddScoped<IRequestService, RequestService>();
         services.AddScoped<IBranchService, BranchService>();
         services.AddScoped<IWarehouseService, WarehouseService>();
         services.AddScoped<ITerminalService, TerminalService>();
-        services.AddScoped<IGoodsReceivingService, GoodsReceivingService>();
-        services.AddScoped<IStockAdjustmentService, StockAdjustmentService>();
-        services.AddScoped<IStockTransferService, StockTransferService>();
-        services.AddScoped<IStocktakeService, StocktakeService>();
-        services.AddScoped<IInventoryHistoryService, InventoryHistoryService>();
-        services.AddScoped<IPurchaseRequestService, PurchaseRequestService>();
         services.AddScoped<IDashboardService, DashboardService>();
-        services.AddScoped<IUnitService, UnitService>();
         services.AddScoped<INotificationService, NotificationService>();
 
         // Register infrastructure CurrentUserService (uses IHttpContextAccessor only)
@@ -196,9 +185,6 @@ public static class DependencyInjection
 
         // SignalR for real-time notifications
         services.AddSignalR();
-
-        // Background job: auto-reorder proposal generator (creates draft PRs only).
-        services.AddHostedService<AutoReorderHostedService>();
 
         return services;
     }

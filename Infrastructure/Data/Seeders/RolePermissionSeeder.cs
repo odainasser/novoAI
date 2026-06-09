@@ -76,27 +76,9 @@ public class RolePermissionSeeder
         // Administrator - All permissions
         await AssignPermissionsToRoleAsync(adminRole, allPermissions);
 
-        // BranchManager — read access to every section in the Branch Panel,
-        // plus the ability to submit (write) requests. Membership in
-        // UserBranches scopes the actual data the user sees; permissions only
-        // gate which sidebar sections are visible.
+        // BranchManager — read access to the facilities sections that remain.
         var branchManagerPermissions = allPermissions
-            .Where(p => p.Code == Permissions.InventoryRead ||
-                        // Stocktake (physical count) is owned end-to-end by the branch
-                        // manager: create/count (write) and review/approve in their branch.
-                        p.Code == Permissions.InventoryWrite ||
-                        p.Code == Permissions.InventoryApprove ||
-                        // Purchase requests: branch managers raise and track them
-                        // (approval/conversion remain with Admin-Panel approvers).
-                        p.Code == Permissions.PurchaseRequestsRead ||
-                        p.Code == Permissions.PurchaseRequestsWrite ||
-                        p.Code == Permissions.RequestsRead ||
-                        p.Code == Permissions.RequestsWrite ||
-                        p.Code == Permissions.WarehousesRead ||
-                        p.Code == Permissions.UnitsRead ||
-                        p.Code == Permissions.UnitsPrice ||
-                        p.Code == Permissions.UnitsLogistics ||
-                        p.Code == Permissions.SuppliersRead ||
+            .Where(p => p.Code == Permissions.WarehousesRead ||
                         p.Code == Permissions.BranchesRead)
             .ToList();
 
