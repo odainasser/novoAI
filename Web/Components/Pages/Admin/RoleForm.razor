@@ -1,0 +1,339 @@
+@page "/admin/roles/create"
+@page "/admin/roles/edit/{RoleId:guid}"
+@attribute [Authorize]
+@attribute [RequirePermission(Permissions.RolesWrite)]
+@using Microsoft.AspNetCore.Authorization
+@using Web.Authorization
+@using System.Globalization
+@using System.ComponentModel.DataAnnotations
+@using Web.Components.Common
+@inject IRoleManagementService RoleService
+@inject IPermissionManagementService PermissionService
+@inject NavigationManager Navigation
+
+<PageTitle>@(IsEditMode ? Localizer["EditRole"] : Localizer["CreateRole"])</PageTitle>
+
+@if (isLoading)
+{
+    <Spinner Size="Spinner.SpinnerSize.Lg" Centered="true" />
+}
+else
+{
+    <EditForm Model="@model" OnValidSubmit="@HandleSubmit" FormName="roleForm">
+        <LocalizedDataAnnotationsValidator />
+        <ServerValidator @ref="serverValidator" />
+
+        <!-- Sticky top bar -->
+        <div class="form-sticky-toolbar sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 mb-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <button type="button" @onclick="Cancel" class="p-2 -ml-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                        <i class="bi bi-arrow-left text-lg"></i>
+                    </button>
+                    <h1 class="text-xl font-semibold text-gray-900">
+                        @(IsEditMode ? Localizer["EditRole"] : Localizer["CreateRole"])
+                    </h1>
+                    @if (IsEditMode && currentRole?.IsSystemRole == true)
+                    {
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bf-bg-warning-100 bf-text-warning">
+                            @Localizer["SystemRole"]
+                        </span>
+                    }
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" @onclick="Cancel" class="form-cancel-btn px-4 py-2 text-sm font-medium rounded-lg transition-colors">
+                        @((currentRole?.IsSystemRole == true) ? Localizer["Close"] : Localizer["Cancel"])
+                    </button>
+                    @if (currentRole?.IsSystemRole != true)
+                    {
+                        <button type="submit" disabled="@isSaving" class="px-4 py-2 text-sm font-medium bg-bf-primary text-bf-primary-contrast rounded-lg hover:opacity-90 transition-all disabled:opacity-50 inline-flex items-center gap-2">
+                            @if (isSaving)
+                            {
+                                <Spinner Size="Spinner.SpinnerSize.Xs" Color="Spinner.SpinnerColor.White" />
+                            }
+                            <span>@(IsEditMode ? Localizer["Update"] : Localizer["Create"])</span>
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+                <i class="bi bi-exclamation-triangle-fill text-red-600 text-lg mt-0.5"></i>
+                <span class="text-red-800 text-sm">@errorMessage</span>
+            </div>
+        }
+
+        @if (IsEditMode && currentRole?.IsSystemRole == true)
+        {
+            <div class="mb-5 p-4 bf-bg-warning-50 border bf-border-warning rounded-xl">
+                <div class="flex items-start gap-3">
+                    <i class="bi bi-exclamation-triangle bf-icon-warning text-lg mt-0.5"></i>
+                    <div>
+                        <p class="bf-text-warning font-medium text-sm">@Localizer["SystemRole"]</p>
+                        <p class="bf-text-warning text-xs">@Localizer["SystemRoleWarning"]</p>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Two-column Shopify-style layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+            <!-- Main column (2/3) -->
+            <div class="lg:col-span-2 space-y-5">
+
+                <!-- Card: Role Details -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="name" class="block text-sm font-medium text-gray-700 mb-1.5">
+                                    @Localizer["RoleName"] <span class="text-red-500">*</span>
+                                </label>
+                                <InputText @bind-Value="model.NameEn"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                    id="name"
+                                    placeholder="@Localizer["RoleName"]"
+                                    disabled="@(currentRole?.IsSystemRole == true)" />
+                                <ValidationMessage For="@(() => model.NameEn)" class="text-red-600 text-xs mt-1" />
+                            </div>
+                            <div>
+                                <label for="nameAr" class="block text-sm font-medium text-gray-700 mb-1.5">
+                                    @Localizer["RoleNameAr"] <span class="text-red-500">*</span>
+                                </label>
+                                <InputText @bind-Value="model.NameAr"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                    id="nameAr"
+                                    placeholder="@Localizer["RoleNameAr"]"
+                                    disabled="@(currentRole?.IsSystemRole == true)" />
+                                <ValidationMessage For="@(() => model.NameAr)" class="text-red-600 text-xs mt-1" />
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="descriptionEn" class="block text-sm font-medium text-gray-700 mb-1.5">@Localizer["RoleDescriptionEn"]</label>
+                                <InputTextArea @bind-Value="model.DescriptionEn"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                    id="descriptionEn" rows="3"
+                                    placeholder="@Localizer["RoleDescriptionEnPlaceholder"]"
+                                    disabled="@(currentRole?.IsSystemRole == true)" />
+                                <ValidationMessage For="@(() => model.DescriptionEn)" class="text-red-600 text-xs mt-1" />
+                            </div>
+                            <div>
+                                <label for="descriptionAr" class="block text-sm font-medium text-gray-700 mb-1.5">@Localizer["RoleDescriptionAr"]</label>
+                                <InputTextArea @bind-Value="model.DescriptionAr"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                    id="descriptionAr" rows="3"
+                                    placeholder="@Localizer["RoleDescriptionArPlaceholder"]"
+                                    disabled="@(currentRole?.IsSystemRole == true)" />
+                                <ValidationMessage For="@(() => model.DescriptionAr)" class="text-red-600 text-xs mt-1" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card: Permissions -->
+                <PermissionsSelector Permissions="availablePermissions"
+                                     SelectedIds="model.PermissionIds"
+                                     SelectedIdsChanged="OnPermissionIdsChanged"
+                                     Disabled="@(currentRole?.IsSystemRole == true)" />
+            </div>
+
+            <!-- Sidebar (1/3) - intentionally minimal for roles -->
+            <div class="space-y-5">
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <h2 class="text-sm font-semibold text-gray-900 mb-3">@Localizer["Status"]</h2>
+                    <ToggleSwitch @bind-Value="model.IsActive" Label="@Localizer["Active"]" />
+                </div>
+            </div>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public Guid? RoleId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+
+    private bool IsEditMode => RoleId.HasValue && RoleId.Value != Guid.Empty;
+    
+    private RoleFormModel model = new();
+    private RoleDetailResponse? currentRole;
+    private List<PermissionDto> availablePermissions = new();
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private string errorMessage = string.Empty;
+    private bool isAr = false;
+    private ServerValidator serverValidator = null!;
+    private string? originalNameEn;
+    private void OnPermissionIdsChanged(List<Guid> ids)
+    {
+        model.PermissionIds = ids;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        isAr = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("ar", StringComparison.OrdinalIgnoreCase);
+        await LoadPermissions();
+        
+        if (IsEditMode)
+        {
+            await LoadRole();
+        }
+        
+        isLoading = false;
+    }
+
+    private async Task LoadPermissions()
+    {
+        try
+        {
+            var permissions = await PermissionService.GetAllPermissionsAsync();
+            availablePermissions = permissions.ToList();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"{Localizer["FailedToLoadPermissions"]}: {ex.Message}";
+        }
+    }
+
+    private async Task LoadRole()
+    {
+        try
+        {
+            currentRole = await RoleService.GetRoleByIdAsync(RoleId!.Value);
+            if (currentRole != null)
+            {
+                model = new RoleFormModel
+                {
+                    NameEn = currentRole.NameEn,
+                    NameAr = currentRole.NameAr,
+                    DescriptionEn = currentRole.DescriptionEn,
+                    DescriptionAr = currentRole.DescriptionAr,
+                    PermissionIds = currentRole.Permissions.Select(p => p.Id).ToList(),
+                    IsActive = currentRole.IsActive
+                };
+                originalNameEn = currentRole.NameEn; // Track original name for validation
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"{Localizer["FailedToLoadRole"]}: {ex.Message}";
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        isSaving = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            // Check if role name already exists
+            if (!IsEditMode || (IsEditMode && !string.Equals(originalNameEn, model.NameEn, StringComparison.OrdinalIgnoreCase)))
+            {
+                var exists = await RoleService.CheckRoleNameExistsAsync(model.NameEn, IsEditMode ? RoleId : null);
+                if (exists)
+                {
+                    serverValidator.DisplayErrors(new Dictionary<string, string[]>
+                    {
+                        { nameof(model.NameEn), new[] { Localizer["RoleAlreadyExists"] } }
+                    });
+                    isSaving = false;
+                    return;
+                }
+            }
+
+            if (IsEditMode)
+            {
+                var updateRequest = new UpdateRoleRequest
+                {
+                    NameEn = model.NameEn,
+                    NameAr = model.NameAr,
+                    DescriptionEn = model.DescriptionEn,
+                    DescriptionAr = model.DescriptionAr,
+                    IsActive = model.IsActive
+                };
+                
+                await RoleService.UpdateRoleAsync(RoleId!.Value, updateRequest);
+                
+                // Assign permissions separately
+                var assignPermissionsRequest = new AssignPermissionsRequest
+                {
+                    PermissionIds = model.PermissionIds
+                };
+                await RoleService.AssignPermissionsToRoleAsync(RoleId!.Value, assignPermissionsRequest);
+            }
+            else
+            {
+                var createRequest = new CreateRoleRequest
+                {
+                    NameEn = model.NameEn,
+                    NameAr = model.NameAr,
+                    DescriptionEn = model.DescriptionEn,
+                    DescriptionAr = model.DescriptionAr,
+                    IsSystemRole = false,
+                    IsActive = model.IsActive
+                };
+                
+                var createdRole = await RoleService.CreateRoleAsync(createRequest);
+                
+                // Assign permissions to newly created role
+                if (model.PermissionIds.Any())
+                {
+                    var assignPermissionsRequest = new AssignPermissionsRequest
+                    {
+                        PermissionIds = model.PermissionIds
+                    };
+                    await RoleService.AssignPermissionsToRoleAsync(createdRole.Id, assignPermissionsRequest);
+                }
+            }
+
+            Navigation.NavigateTo(GetReturnUrl());
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"{Localizer["FailedToSaveRole"]}: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo(GetReturnUrl());
+    }
+
+    private string GetReturnUrl()
+    {
+        if (string.IsNullOrWhiteSpace(ReturnUrl) ||
+            !ReturnUrl.StartsWith("/", StringComparison.Ordinal) ||
+            ReturnUrl.StartsWith("//", StringComparison.Ordinal))
+        {
+            return "/admin/roles";
+        }
+
+        return ReturnUrl;
+    }
+
+    private class RoleFormModel
+    {
+        [Required(ErrorMessage = "RoleNameRequired")]
+        public string NameEn { get; set; } = string.Empty;
+        
+        [Required(ErrorMessage = "RoleNameArRequired")]
+        public string NameAr { get; set; } = string.Empty;
+        
+        public string? DescriptionEn { get; set; }
+        public string? DescriptionAr { get; set; }
+        public List<Guid> PermissionIds { get; set; } = new();
+        public bool IsActive { get; set; } = true;
+    }
+}

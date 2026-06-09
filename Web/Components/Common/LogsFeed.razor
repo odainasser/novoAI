@@ -1,0 +1,290 @@
+@using Web.Models.UserLogs
+@using System.Globalization
+@inject IUserLogService LogService
+@inject IUserManagementService UserService
+@inject IJsonStringLocalizer Localizer
+@inject NavigationManager Navigation
+
+<div class="@(Inline ? "bg-white rounded-xl shadow-sm border border-gray-100" : "")">
+    @if (Inline)
+    {
+        <div class="p-4 border-b border-gray-100 flex justify-between items-center">
+            <h3 class="font-semibold text-gray-900 flex items-center gap-2">
+                <i class="bi bi-activity text-indigo-500"></i>
+                @Title
+            </h3>
+            @if (!string.IsNullOrEmpty(ViewAllUrl))
+            {
+                <a href="@ViewAllUrl" class="text-sm bf-text-info bf-hover-text-info-strong font-medium flex items-center gap-1">
+                    @ViewAllText
+                    <i class="bi bi-arrow-right rtl:rotate-180"></i>
+                </a>
+            }
+        </div>
+    }
+
+    <div class="@(Inline ? "p-0" : "p-4")">
+        @if (isLoading)
+        {
+            <Spinner Size="Spinner.SpinnerSize.Md" Centered="true" />
+        }
+        else if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="p-4 text-center text-red-600 text-sm">
+                @errorMessage
+            </div>
+        }
+        else if (logs == null || !logs.Any())
+        {
+            <div class="p-8 text-center text-gray-400 text-sm">
+                @EmptyText
+            </div>
+        }
+        else
+        {
+            <div class="relative">
+                @{ var logIndex = 0; }
+                @foreach (var log in logs)
+                {
+                    var isFirst = logIndex == 0;
+                    var isLast = logIndex == logs.Count - 1;
+                    logIndex++;
+                    <a href="/admin/logs" class="group flex gap-3 px-4 py-3 hover:bg-gray-50/80 transition-all no-underline cursor-pointer relative">
+                        @* Timeline connector *@
+                        <div class="relative flex flex-col items-center">
+                            @if (isFirst)
+                            {
+                                <span class="relative flex h-2.5 w-2.5 mt-1.5">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 @GetDotColor(log.Action)"></span>
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="relative flex h-2.5 w-2.5 mt-1.5">
+                                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 @GetDotColor(log.Action)"></span>
+                                </span>
+                            }
+                            @if (!isLast)
+                            {
+                                <div class="w-px grow bg-gray-200 mt-1"></div>
+                            }
+                        </div>
+                        @* Content *@
+                        <div class="grow min-w-0 pb-1">
+                            <div class="flex items-baseline justify-between gap-2">
+                                <p class="text-sm text-gray-700 truncate leading-snug">
+                                    <span class="font-semibold text-gray-900">@log.UserName</span>
+                                    @(" ")<span class="text-gray-500">@Localizer[$"ActionVerb_{log.Action}"]?.ToString().ToLower()</span>
+                                    @if (!string.IsNullOrEmpty(log.EntityName))
+                                    {
+                                        @(" ")<span class="font-medium text-gray-800">@Localizer[$"Entity_{log.EntityName}"]</span>
+                                    }
+                                </p>
+                                <span class="text-[11px] text-gray-400 whitespace-nowrap shrink-0">@FormatRelativeTime(log.Timestamp)</span>
+                            </div>
+                            @if (!string.IsNullOrEmpty(log.EntityDisplayName))
+                            {
+                                <p class="text-xs text-gray-400 mt-0.5 truncate">@log.EntityDisplayName</p>
+                            }
+                        </div>
+                    </a>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool Inline { get; set; } = false;
+    [Parameter] public int Count { get; set; } = 10;
+    [Parameter] public string Title { get; set; } = "Logs";
+    [Parameter] public string ViewAllText { get; set; } = "View All";
+    [Parameter] public string ViewAllUrl { get; set; } = "";
+    [Parameter] public string EmptyText { get; set; } = "No logs found";
+
+    private List<UserLogDto> logs = new();
+    private bool isLoading = true;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLogs();
+    }
+
+    private async Task LoadLogs()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var result = await LogService.GetLogsAsync(1, Count, null, null, null, System.Globalization.CultureInfo.CurrentUICulture.Name);
+            logs = result.Items;
+        }
+        catch
+        {
+            errorMessage = Localizer["FailedToLoadLogs"];
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string GetDotColor(string action)
+    {
+        if (string.IsNullOrEmpty(action)) return "bg-gray-400";
+        var a = action.Trim().ToLowerInvariant();
+        if (a == "created" || a == "approvedrequest") return "bg-emerald-500";
+        if (a == "deleted" || a == "rejectedrequest" || a == "requesteddeletion") return "bg-red-500";
+        if (a == "updated" || a == "updateddraft" || a == "updatedrequest") return "bg-amber-500";
+        if (a.StartsWith("requested")) return "bg-purple-500";
+        if (a == "setsellingdetails" || a == "setlogisticsdetails") return "bg-teal-500";
+        if (a == "loggedin") return "bg-indigo-500";
+        if (a == "loggedout") return "bg-gray-400";
+        if (a == "passwordchanged" || a == "passwordreset") return "bg-orange-500";
+        return "bg-blue-500";
+    }
+
+    private string FormatRelativeTime(DateTime utcTime)
+    {
+        var diff = DateTime.UtcNow - utcTime;
+        if (diff.TotalMinutes < 1) return Localizer["JustNow"];
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}{Localizer["MinAgo"]}";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}{Localizer["HrAgo"]}";
+        if (diff.TotalDays < 7) return $"{(int)diff.TotalDays}{Localizer["DayAgo"]}";
+        return utcTime.ToLocal().ToString("MMM dd");
+    }
+
+    private string GetActionIconClass(string action)
+    {
+        if (string.IsNullOrEmpty(action))
+            return "bg-gray-100 text-gray-600";
+
+        switch (action.Trim().ToLowerInvariant())
+        {
+            case "created":
+            case "approvedrequest":
+                return "bg-green-100 text-green-600";
+            case "updated":
+            case "updateddraft":
+            case "updatedrequest":
+                return "bg-yellow-100 text-yellow-600";
+            case "deleted":
+            case "rejectedrequest":
+            case "requesteddeletion":
+                return "bg-red-100 text-red-600";
+            case "requestedupdate":
+            case "requestedsetsellingdetails":
+            case "requestedactivation":
+            case "requestedsetlogisticsdetails":
+                return "bg-purple-100 text-purple-600";
+            case "setsellingdetails":
+            case "setlogisticsdetails":
+                return "bg-teal-100 text-teal-600";
+            case "loggedin":
+            case "logged in":
+                return "bg-indigo-100 text-indigo-600";
+            case "loggedout":
+            case "logged out":
+                return "bg-gray-100 text-gray-600";
+            case "passwordchanged":
+            case "password changed":
+            case "passwordreset":
+            case "password reset":
+                return "bg-orange-100 text-orange-600";
+            case "emailverified":
+            case "email verified":
+                return "bg-teal-100 text-teal-600";
+            case "twofactorenabled":
+            case "two factor enabled":
+            case "twofactordisabled":
+            case "two factor disabled":
+                return "bg-purple-100 text-purple-600";
+            default:
+                return "bg-blue-100 text-blue-600";
+        }
+    }
+
+    private string GetActionIcon(string action)
+    {
+        if (string.IsNullOrEmpty(action))
+            return "bi-circle";
+
+        switch (action.Trim().ToLowerInvariant())
+        {
+            case "created":
+            case "approvedrequest":
+                return "bi-plus-lg";
+            case "updated":
+            case "updateddraft":
+            case "updatedrequest":
+                return "bi-pencil";
+            case "deleted":
+            case "rejectedrequest":
+            case "requesteddeletion":
+                return "bi-trash";
+            case "requestedupdate":
+            case "requestedsetsellingdetails":
+            case "requestedactivation":
+            case "requestedsetlogisticsdetails":
+                return "bi-send";
+            case "setsellingdetails":
+                return "bi-currency-dollar";
+            case "setlogisticsdetails":
+                return "bi-truck";
+            case "loggedin":
+            case "logged in":
+                return "bi-box-arrow-in-right";
+            case "loggedout":
+            case "logged out":
+                return "bi-box-arrow-right";
+            case "passwordchanged":
+            case "password changed":
+            case "passwordreset":
+            case "password reset":
+                return "bi-key";
+            case "emailverified":
+            case "email verified":
+                return "bi-envelope-check";
+            case "twofactorenabled":
+            case "two factor enabled":
+            case "twofactordisabled":
+            case "two factor disabled":
+                return "bi-shield-check";
+            default:
+                return "bi-activity";
+        }
+    }
+
+    private string? GetEntityUrl(string? entityName, string? entityId)
+    {
+        if (string.IsNullOrWhiteSpace(entityName) || string.IsNullOrWhiteSpace(entityId))
+            return null;
+
+        var name = entityName.Trim().ToLowerInvariant();
+
+        return name switch
+        {
+            "user" or "users" => $"/admin/users/edit/{entityId}",
+            "role" or "roles" => $"/admin/roles/edit/{entityId}",
+            "lookup" or "lookups" => $"/admin/lookups/edit/{entityId}",
+            "category" or "categories" => $"/admin/categories/edit/{entityId}",
+            "product" or "products" => $"/admin/products/edit/{entityId}",
+            "unit" or "units" => $"/admin/catalog/units/edit/{entityId}",
+            "promotion" or "promotions" => $"/admin/promotions/edit/{entityId}",
+            "supplier" or "suppliers" => $"/admin/suppliers/edit/{entityId}",
+            "warehouse" or "warehouses" => $"/admin/warehouses/edit/{entityId}",
+            "terminal" or "terminals" => $"/admin/terminals/edit/{entityId}",
+            "cashier" or "cashiers" => $"/admin/users/edit/{entityId}",
+            "branch" or "branches" => $"/admin/branches/edit/{entityId}",
+            "order" or "orders" => "/admin/orders",
+            "shift" or "shifts" => "/admin/shifts",
+            "goodsreceivingnote" or "goodsreceiving" or "grn" => $"/admin/inventory/grn?id={entityId}",
+            "stockadjustment" => $"/admin/inventory/adjustments?id={entityId}",
+            "stocktransfer" => $"/admin/inventory/transfers?id={entityId}",
+            _ => null
+        };
+    }
+}

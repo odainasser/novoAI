@@ -1,0 +1,421 @@
+@using Microsoft.AspNetCore.Authorization
+@using Web.Authorization
+@using Web.Components.Common
+@using Web.Models.Promotions
+@using Web.Models.Enums
+@using Web.Models.Requests
+@using System.Globalization
+@using System.Text.Json
+@inject IProductService ProductService
+@inject ICategoryService CategoryService
+@inject IPromotionService PromotionService
+@inject IRequestService RequestService
+@inject NavigationManager Navigation
+
+<div class="flex justify-end mb-4">
+    <AuthorizeView Policy="Permission:products.write">
+        <Authorized>
+            <button @onclick="NavigateToCreate"
+                    class="btn-primary-action">
+                <i class="bi bi-plus-circle"></i>
+                <span>@Localizer["CreateProduct"]</span>
+            </button>
+        </Authorized>
+    </AuthorizeView>
+</div>
+
+<div class="mb-6 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+    <div class="flex flex-wrap items-center gap-3 p-4">
+        <div class="flex-1 min-w-[200px]">
+            <SearchInput @bind-Value="searchTerm" OnSearch="HandleSearch" Placeholder="@Localizer["SearchProducts"]" />
+        </div>
+
+        <button @onclick="() => showFiltersPanel = !showFiltersPanel"
+                class="@($"inline-flex items-center gap-2 py-2 px-4 rounded-lg border transition-all duration-200 font-medium text-sm {(showFiltersPanel ? "bg-purple-50 border-purple-300 text-purple-700" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50")}")">
+            <i class="bi bi-funnel"></i>
+            <span>@Localizer["Filters"]</span>
+            @if (ActiveFilterCount > 0)
+            {
+                <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-purple-600 rounded-full">@ActiveFilterCount</span>
+            }
+            <i class="@($"bi bi-chevron-{(showFiltersPanel ? "up" : "down")} text-xs")"></i>
+        </button>
+
+        @if (HasActiveFilters())
+        {
+            <button @onclick="ResetFilters" class="inline-flex items-center gap-2 py-2 px-4 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                <i class="bi bi-x-circle"></i>
+                <span>@Localizer["ResetFilters"]</span>
+            </button>
+        }
+    </div>
+
+    @if (showFiltersPanel)
+    {
+        <div class="px-4 pb-4 pt-0 border-t border-gray-200">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4">
+                <div>
+                    <SearchableDropdown TItem="CategoryDto"
+                                        TValue="string"
+                                        Items="filterCategories"
+                                        @bind-Value="selectedCategoryId"
+                                        OnChanged="ApplyFilters"
+                                        DisplayText="c => isAr ? c.NameAr : c.NameEn"
+                                        SearchText='c => $"{c.NameEn} {c.NameAr}"'
+                                        ItemValue="c => c.Id.ToString()"
+                                        Label='@Localizer["Category"]'
+                                        Placeholder='@Localizer["AllCategories"]'
+                                        Compact="true" />
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">@Localizer["Status"]</label>
+                    <div class="relative">
+                        <select @bind="selectedStatus" @bind:after="ApplyFilters" class="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2 px-3 pe-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-bf-primary text-sm">
+                            <option value="">@Localizer["AllStatuses"]</option>
+                            <option value="@((int)ItemStatus.Draft)">@Localizer["Draft"]</option>
+                            <option value="@((int)ItemStatus.Active)">@Localizer["Active"]</option>
+                            <option value="@((int)ItemStatus.Inactive)">@Localizer["Inactive"]</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 end-0 flex items-center px-2 text-gray-400"><svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@if (isLoading)
+{
+    <Spinner Size="Spinner.SpinnerSize.Lg" Centered="true" />
+}
+else if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="p-4 bf-bg-danger-50 border bf-border-danger rounded-lg flex items-start gap-3">
+        <i class="bi bi-exclamation-triangle-fill bf-icon-danger text-lg mt-0.5"></i>
+        <span class="bf-text-danger">@errorMessage</span>
+    </div>
+}
+else if (products == null || !products.Any())
+{
+    <div class="text-center py-12">
+        <i class="bi bi-box-seam text-6xl text-gray-300 mb-4"></i>
+        <p class="text-gray-500 text-lg">@Localizer["NoProductsFound"]</p>
+    </div>
+}
+else
+{
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Product"]</th>
+                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Category"]</th>
+                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Status"]</th>
+                    <th class="px-6 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Actions"]</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                @foreach (var product in products)
+                {
+                    <tr class="hover:bg-gray-50 transition-colors duration-150">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                @if (!string.IsNullOrEmpty(product.ImageUrl))
+                                {
+                                    <img src="@product.ImageUrl" alt="@(isAr ? product.NameAr : product.NameEn)" class="flex-shrink-0 h-10 w-10 rounded-lg object-cover border border-gray-200" />
+                                }
+                                else
+                                {
+                                    <div class="flex-shrink-0 h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                                        <i class="bi bi-box text-purple-600"></i>
+                                    </div>
+                                }
+                                <div class="ms-4">
+                                    <a href="@($"/admin/products/edit/{product.Id}")" class="text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline">@(isAr ? product.NameAr : product.NameEn)</a>
+                                    <div class="text-xs text-gray-500">@(isAr ? product.NameEn : product.NameAr)</div>
+                                    @if (productIdsNeedingAction.Contains(product.Id))
+                                    {
+                                        <div class="mt-1">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                                                <i class="bi bi-exclamation-circle-fill me-1"></i>@Localizer["NeedsAction"]
+                                            </span>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            @if (product.CategoryId.HasValue)
+                            {
+                                <a class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 hover:underline"
+                                   href="@($"/admin/categories/edit/{product.CategoryId}")" title="@(isAr ? product.CategoryNameAr : product.CategoryNameEn)">
+                                    @(isAr ? product.CategoryNameAr : product.CategoryNameEn)
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="text-gray-400">-</span>
+                            }
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            @if (product.Status == ItemStatus.Draft)
+                            {
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 w-fit">
+                                    <i class="bi bi-hourglass-split me-1"></i> @Localizer["Draft"]
+                                </span>
+                            }
+                            else if (product.IsActive)
+                            {
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bf-bg-success-100 bf-text-success w-fit">
+                                    <i class="bi bi-check-circle-fill me-1"></i> @Localizer["Active"]
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bf-bg-danger-100 bf-text-danger w-fit">
+                                    <i class="bi bi-x-circle-fill me-1"></i> @Localizer["Inactive"]
+                                </span>
+                            }
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-end text-sm font-medium">
+                            <AuthorizeView Policy="Permission:products.write">
+                                <Authorized>
+                                    @if (product.Status != ItemStatus.Rejected)
+                                    {
+                                        <button @onclick="() => NavigateToEdit(product.Id)" class="text-purple-600 hover:text-purple-900 me-3" title="@Localizer["Edit"]">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button disabled class="text-gray-400 me-3 cursor-not-allowed" title="@Localizer["Edit"]"><i class="bi bi-pencil-square"></i></button>
+                                    }
+                                </Authorized>
+                                <NotAuthorized>
+                                    <button disabled class="text-gray-400 me-3 cursor-not-allowed" title="@Localizer["Edit"]"><i class="bi bi-pencil-square"></i></button>
+                                </NotAuthorized>
+                            </AuthorizeView>
+                            <AuthorizeView Policy="Permission:products.delete">
+                                <Authorized>
+                                    <button @onclick="() => ConfirmDelete(product.Id)" class="bf-text-danger bf-hover-text-danger-strong" title="@Localizer["Delete"]">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </Authorized>
+                                <NotAuthorized>
+                                    <button disabled class="text-gray-400 cursor-not-allowed" title="@Localizer["Delete"]"><i class="bi bi-trash"></i></button>
+                                </NotAuthorized>
+                            </AuthorizeView>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <Pagination PageIndex="@pageIndex" TotalPages="@totalPages" TotalCount="@totalCount" PageSize="@pageSize" OnPageChanged="@OnPageChanged" />
+}
+
+<ConfirmModal IsVisible="@showDeleteConfirm"
+              Title="@Localizer["DeleteProductTitle"]"
+              Message="@Localizer["DeleteProductConfirmation"]"
+              OnConfirm="@DeleteProduct"
+              OnCancel="@CancelDelete"
+              IsDanger="true" />
+
+@code {
+    private List<ProductDto> products = new();
+    private List<CategoryDto> filterCategories = new();
+    private bool isLoading = true;
+    private bool isAr = false;
+    private string errorMessage = string.Empty;
+
+    private string searchTerm = string.Empty;
+    private string selectedCategoryId = string.Empty;
+    private string selectedStatus = string.Empty;
+    private bool showFiltersPanel = false;
+
+    private int pageIndex = 1;
+    private int pageSize = 10;
+    private int totalPages = 1;
+    private int totalCount = 0;
+
+    private HashSet<Guid> productIdsNeedingAction = new();
+
+    private bool showDeleteConfirm = false;
+    private Guid productToDelete;
+
+    private bool HasActiveFilters() => !string.IsNullOrEmpty(selectedCategoryId) || !string.IsNullOrEmpty(selectedStatus);
+    private int ActiveFilterCount => (string.IsNullOrEmpty(selectedCategoryId) ? 0 : 1) + (string.IsNullOrEmpty(selectedStatus) ? 0 : 1);
+
+    protected override async Task OnInitializedAsync()
+    {
+        isAr = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("ar", StringComparison.OrdinalIgnoreCase);
+
+        var productsTask = LoadProducts();
+        var categoriesTask = LoadFilterCategories();
+
+        await productsTask;
+
+        _ = FinishLoadingSupportDataAsync(categoriesTask);
+    }
+
+    private async Task FinishLoadingSupportDataAsync(Task supportTask)
+    {
+        try { await supportTask; } catch { }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadFilterCategories()
+    {
+        try
+        {
+            var result = await CategoryService.GetAllCategoriesAsync(1, 1000);
+            filterCategories = result.Items.Where(c => c.IsActive).ToList();
+        }
+        catch { }
+    }
+
+    private async Task LoadProducts()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+        try
+        {
+            Guid? catId = string.IsNullOrEmpty(selectedCategoryId) ? null : Guid.Parse(selectedCategoryId);
+            ItemStatus? status = string.IsNullOrEmpty(selectedStatus) ? null : (ItemStatus)int.Parse(selectedStatus);
+            var result = await ProductService.GetAllProductsAsync(pageIndex, pageSize, searchTerm, catId, status: status);
+            products = result.Items;
+            totalPages = result.TotalPages;
+            totalCount = result.TotalCount;
+            await LoadPendingRequestFlagsAsync();
+        }
+        catch (Exception ex) { errorMessage = Localizer["FailedToLoadProducts"] + $": {ex.Message}"; }
+        finally { isLoading = false; }
+    }
+
+    private async Task LoadPendingRequestFlagsAsync()
+    {
+        productIdsNeedingAction.Clear();
+        if (!products.Any()) return;
+
+        var visibleProductIds = products.Select(p => p.Id).ToHashSet();
+        var pendingRequests = new List<RequestDto>();
+        try
+        {
+            var pending = await RequestService.GetAllRequestsAsync(
+                1,
+                1000,
+                type: null,
+                status: RequestStatus.Pending);
+            pendingRequests = pending.Items;
+        }
+        catch
+        {
+            try
+            {
+                var pendingMine = await RequestService.GetMyRequestsAsync(
+                    1,
+                    1000,
+                    search: null,
+                    type: null,
+                    status: RequestStatus.Pending);
+                pendingRequests = pendingMine.Items;
+            }
+            catch
+            {
+                // Ignore request label loading errors to keep main list usable.
+                return;
+            }
+        }
+
+        foreach (var req in pendingRequests)
+        {
+            if (req.ProductId.HasValue && visibleProductIds.Contains(req.ProductId.Value))
+            {
+                productIdsNeedingAction.Add(req.ProductId.Value);
+                continue;
+            }
+
+            var productId = ExtractEntityIdFromRequest(req.NewDataJson, req.OldDataJson, "ProductId", "productId", "Id", "id");
+            if (productId.HasValue && visibleProductIds.Contains(productId.Value))
+                productIdsNeedingAction.Add(productId.Value);
+        }
+    }
+
+    private static Guid? ExtractEntityIdFromRequest(string? newDataJson, string? oldDataJson, params string[] keys)
+    {
+        return ExtractGuid(newDataJson, keys) ?? ExtractGuid(oldDataJson, keys);
+    }
+
+    private static Guid? ExtractGuid(string? json, params string[] keys)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return ExtractGuidFromElement(doc.RootElement, keys);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static Guid? ExtractGuidFromElement(JsonElement element, params string[] keys)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var prop in element.EnumerateObject())
+            {
+                if (keys.Contains(prop.Name, StringComparer.OrdinalIgnoreCase))
+                {
+                    if (prop.Value.ValueKind == JsonValueKind.String && Guid.TryParse(prop.Value.GetString(), out var parsed))
+                        return parsed;
+                }
+
+                var nested = ExtractGuidFromElement(prop.Value, keys);
+                if (nested.HasValue)
+                    return nested;
+            }
+        }
+        else if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in element.EnumerateArray())
+            {
+                var nested = ExtractGuidFromElement(item, keys);
+                if (nested.HasValue)
+                    return nested;
+            }
+        }
+
+        return null;
+    }
+
+
+    private async Task HandleSearch(string v) { searchTerm = v; pageIndex = 1; await LoadProducts(); }
+    private async Task ApplyFilters() { pageIndex = 1; await LoadProducts(); }
+    private async Task ResetFilters() { searchTerm = string.Empty; selectedCategoryId = string.Empty; selectedStatus = string.Empty; pageIndex = 1; await LoadProducts(); }
+    private async Task OnPageChanged(int p) { pageIndex = p; await LoadProducts(); }
+
+    private void NavigateToCreate() => Navigation.NavigateTo("/admin/products/create");
+    private void NavigateToEdit(Guid id) => Navigation.NavigateTo($"/admin/products/edit/{id}");
+
+    private void ConfirmDelete(Guid id) { productToDelete = id; showDeleteConfirm = true; }
+    private void CancelDelete() { showDeleteConfirm = false; productToDelete = Guid.Empty; }
+    private async Task DeleteProduct()
+    {
+        try
+        {
+            var product = products.FirstOrDefault(p => p.Id == productToDelete);
+            if (product != null && product.Status == ItemStatus.Draft)
+                await ProductService.DeleteProductAsync(productToDelete);
+            else
+                await RequestService.CreateDeleteProductRequestAsync(new CreateDeleteProductRequest { ProductId = productToDelete });
+            showDeleteConfirm = false;
+            await LoadProducts();
+        }
+        catch (Exception ex) { errorMessage = Localizer["FailedToDeleteProduct"] + $": {ex.Message}"; showDeleteConfirm = false; }
+    }
+
+}

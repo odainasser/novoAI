@@ -1,0 +1,245 @@
+@typeparam TItem
+@typeparam TValue
+@inject IJSRuntime JS
+
+<div class="relative @WrapperClass" @ref="wrapperRef">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="block text-@(Compact ? "xs" : "sm") font-medium text-gray-@(Compact ? "500" : "700") mb-@(Compact ? "1" : "2")">
+            @Label
+            @if (Required)
+            {
+                <span class="text-red-600">*</span>
+            }
+        </label>
+    }
+    <div class="relative">
+        <button type="button"
+                @ref="buttonRef"
+                @onclick="ToggleDropdown"
+                disabled="@Disabled"
+                class="@GetButtonClass()">
+            <span class="truncate flex-1 text-start">
+                @if (SelectedItem != null)
+                {
+                    @DisplayText(SelectedItem)
+                }
+                else
+                {
+                    <span class="text-gray-400">@Placeholder</span>
+                }
+            </span>
+            <span class="flex items-center gap-1 shrink-0">
+                @if (SelectedItem != null && Clearable)
+                {
+                    <span class="text-gray-400 hover:text-gray-600 p-0.5" @onclick="ClearSelection" @onclick:stopPropagation>
+                        <i class="bi bi-x text-sm"></i>
+                    </span>
+                }
+                <svg class="fill-current h-4 w-4 text-gray-400 transition-transform duration-200 @(isOpen ? "rotate-180" : "")" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                </svg>
+            </span>
+        </button>
+
+        @if (isOpen)
+        {
+            <div class="fixed inset-0" style="z-index: 9998;" @onclick="CloseDropdown" @onclick:stopPropagation></div>
+            <div class="fixed bg-white border border-gray-200 rounded-lg shadow-lg flex flex-col overflow-hidden"
+                 style="@panelStyle z-index: 9999;"
+                 @onclick:stopPropagation>
+                <div class="p-2 border-b border-gray-100">
+                    <div class="relative">
+                        <i class="bi bi-search absolute start-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                        <input @ref="searchInputRef"
+                               type="text"
+                               @bind="searchQuery"
+                               @bind:event="oninput"
+                               @onkeydown="OnKeyDown"
+                               placeholder="@Localizer["Search"]..."
+                               class="w-full ps-8 pe-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-bf-primary focus:border-bf-primary" />
+                    </div>
+                </div>
+                <div class="overflow-y-auto flex-1">
+                    @if (!FilteredItems.Any())
+                    {
+                        <div class="px-3 py-4 text-sm text-gray-400 text-center">
+                            <i class="bi bi-search me-1"></i> @Localizer["NoDataFound"]
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var item in FilteredItems)
+                        {
+                            var isSelected = EqualityComparer<TValue>.Default.Equals(ItemValue(item), Value);
+                            var isHighlighted = highlightedIndex >= 0 && FilteredItems.ToList().IndexOf(item) == highlightedIndex;
+                            <button type="button"
+                                    @onclick="() => SelectItem(item)"
+                                    class="w-full text-start px-3 py-2 text-sm transition-colors duration-100
+                                           @(isSelected ? "bg-bf-primary/10 text-bf-primary font-medium" : "text-gray-700")
+                                           @(isHighlighted ? "bg-gray-100" : "hover:bg-gray-50")">
+                                <span class="flex items-center gap-2">
+                                    @if (isSelected)
+                                    {
+                                        <i class="bi bi-check2 text-bf-primary text-xs shrink-0"></i>
+                                    }
+                                    <span class="truncate">@DisplayText(item)</span>
+                                </span>
+                            </button>
+                        }
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IEnumerable<TItem> Items { get; set; } = Enumerable.Empty<TItem>();
+    [Parameter, EditorRequired] public Func<TItem, string> DisplayText { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TItem, TValue> ItemValue { get; set; } = default!;
+    [Parameter] public Func<TItem, string>? SearchText { get; set; }
+
+    [Parameter] public TValue? Value { get; set; }
+    [Parameter] public EventCallback<TValue?> ValueChanged { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    [Parameter] public string Placeholder { get; set; } = "";
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool Clearable { get; set; } = true;
+    [Parameter] public bool Compact { get; set; }
+    [Parameter] public string WrapperClass { get; set; } = "";
+
+    private bool isOpen;
+    private string searchQuery = "";
+    private int highlightedIndex = -1;
+    private string panelStyle = "";
+    private ElementReference wrapperRef;
+    private ElementReference buttonRef;
+    private ElementReference searchInputRef;
+
+    private TItem? SelectedItem => Items.FirstOrDefault(i =>
+        EqualityComparer<TValue>.Default.Equals(ItemValue(i), Value));
+
+    private IEnumerable<TItem> FilteredItems =>
+        string.IsNullOrWhiteSpace(searchQuery)
+            ? Items
+            : Items.Where(i =>
+            {
+                var text = SearchText != null ? SearchText(i) : DisplayText(i);
+                return text.Contains(searchQuery, StringComparison.OrdinalIgnoreCase);
+            });
+
+    private string GetButtonClass()
+    {
+        var baseClass = Compact
+            ? "w-full flex items-center justify-between bg-white border border-gray-300 text-gray-700 py-2 px-3 pe-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-bf-primary text-sm"
+            : "w-full flex items-center justify-between px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all duration-200 text-sm";
+        if (Disabled) baseClass += " opacity-50 cursor-not-allowed bg-gray-50";
+        else baseClass += " bg-white cursor-pointer";
+        return baseClass;
+    }
+
+    private async Task ToggleDropdown()
+    {
+        if (Disabled) return;
+        isOpen = !isOpen;
+        searchQuery = "";
+        highlightedIndex = -1;
+        if (isOpen)
+        {
+            await UpdatePanelPosition();
+            await Task.Yield();
+            try { await searchInputRef.FocusAsync(); } catch { }
+        }
+    }
+
+    private async Task UpdatePanelPosition()
+    {
+        try
+        {
+            var rect = await JS.InvokeAsync<RectInfo?>("App.getRect", buttonRef);
+            if (rect == null) return;
+
+            const double panelEstimate = 280;
+            const double margin = 8;
+            var spaceBelow = rect.ViewportHeight - rect.Bottom - margin;
+            var spaceAbove = rect.Top - margin;
+            var placeAbove = spaceBelow < panelEstimate && spaceAbove > spaceBelow;
+
+            var maxH = Math.Max(160, Math.Min(panelEstimate, placeAbove ? spaceAbove : spaceBelow));
+
+            string positionCss;
+            if (placeAbove)
+            {
+                var bottomFromViewport = rect.ViewportHeight - rect.Top + 4;
+                positionCss = $"bottom:{bottomFromViewport.ToString(System.Globalization.CultureInfo.InvariantCulture)}px;";
+            }
+            else
+            {
+                var top = rect.Bottom + 4;
+                positionCss = $"top:{top.ToString(System.Globalization.CultureInfo.InvariantCulture)}px;";
+            }
+
+            var ci = System.Globalization.CultureInfo.InvariantCulture;
+            panelStyle = $"{positionCss} left:{rect.Left.ToString(ci)}px; width:{rect.Width.ToString(ci)}px; max-height:{maxH.ToString(ci)}px;";
+        }
+        catch
+        {
+            panelStyle = "";
+        }
+    }
+
+    private async Task SelectItem(TItem item)
+    {
+        Value = ItemValue(item);
+        await ValueChanged.InvokeAsync(Value);
+        await OnChanged.InvokeAsync();
+        isOpen = false;
+        searchQuery = "";
+        highlightedIndex = -1;
+    }
+
+    private async Task ClearSelection()
+    {
+        Value = default;
+        await ValueChanged.InvokeAsync(Value);
+        await OnChanged.InvokeAsync();
+        isOpen = false;
+        searchQuery = "";
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        var items = FilteredItems.ToList();
+        if (e.Key == "ArrowDown")
+        {
+            highlightedIndex = Math.Min(highlightedIndex + 1, items.Count - 1);
+        }
+        else if (e.Key == "ArrowUp")
+        {
+            highlightedIndex = Math.Max(highlightedIndex - 1, 0);
+        }
+        else if (e.Key == "Enter" && highlightedIndex >= 0 && highlightedIndex < items.Count)
+        {
+            _ = SelectItem(items[highlightedIndex]);
+        }
+        else if (e.Key == "Escape")
+        {
+            isOpen = false;
+            searchQuery = "";
+            highlightedIndex = -1;
+        }
+    }
+
+    private void CloseDropdown()
+    {
+        isOpen = false;
+        searchQuery = "";
+        highlightedIndex = -1;
+    }
+
+    private record RectInfo(double Top, double Left, double Bottom, double Right, double Width, double Height, double ViewportWidth, double ViewportHeight);
+}

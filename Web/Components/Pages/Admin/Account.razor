@@ -1,0 +1,37 @@
+@page "/admin/account"
+@page "/admin/account/{Tab}"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Web.Components.Common
+
+<PageTitle>@Localizer["Account"]</PageTitle>
+
+<AccountProfile ActiveTab="@activeTab" OnTabChanged="SetActiveTab" />
+
+@code {
+    [Parameter] public string? Tab { get; set; }
+
+    private string activeTab = "profile";
+
+    protected override void OnInitialized()
+    {
+        activeTab = ResolveTab();
+    }
+
+    protected override void OnParametersSet()
+    {
+        activeTab = ResolveTab();
+    }
+
+    private string ResolveTab() =>
+        Tab?.ToLower() switch
+        {
+            "change-password" or "password" => "password",
+            _ => "profile"
+        };
+
+    private void SetActiveTab(string tab)
+    {
+        activeTab = tab;
+    }
+}

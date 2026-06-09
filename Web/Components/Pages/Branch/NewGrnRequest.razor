@@ -1,0 +1,289 @@
+@page "/branch/requests/new-grn"
+@layout BranchLayout
+@attribute [Authorize]
+@attribute [RequirePermission(Permissions.RequestsWrite)]
+@using Microsoft.AspNetCore.Authorization
+@using System.Globalization
+@using Web.Authorization
+@using Web.Components.Common
+@using Web.Models.Branches
+@using Web.Models.Inventory
+@using Web.Models.Requests
+@using Web.Models.Suppliers
+@using Web.Models.Units
+@inject IBranchService BranchService
+@inject IRequestService RequestService
+@inject IUnitService UnitService
+@inject ISupplierService SupplierService
+@inject ActiveBranchContext ActiveBranch
+@inject NavigationManager Navigation
+
+<PageTitle>@Localizer["NewGrnRequest"]</PageTitle>
+
+@if (isLoading)
+{
+    <Spinner Size="Spinner.SpinnerSize.Lg" Centered="true" />
+}
+else if (warehouse is null)
+{
+    <div class="p-4 bf-bg-warning-50 border bf-border-warning rounded-lg flex items-start gap-3">
+        <i class="bi bi-exclamation-triangle-fill bf-icon-warning text-lg mt-0.5"></i>
+        <span class="bf-text-warning">@Localizer["BranchWarehouseNotConfigured"]</span>
+    </div>
+}
+else
+{
+    <EditForm Model="@model" OnValidSubmit="HandleSubmit" FormName="grnRequestForm">
+        <FormToolbar Title="@Localizer["NewGrnRequest"]"
+                     OnBack="Cancel"
+                     OnCancel="Cancel"
+                     SubmitText="@Localizer["Submit"]"
+                     IsSubmitting="isSubmitting" />
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+                <i class="bi bi-exclamation-triangle-fill text-red-600 text-lg mt-0.5"></i>
+                <span class="text-red-800 text-sm">@errorMessage</span>
+            </div>
+        }
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <div class="lg:col-span-2 space-y-5">
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1.5">@Localizer["PORef"]</label>
+                            <input type="text" @bind="model.PurchaseOrderReference"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1.5">@Localizer["ReceivedDate"]</label>
+                            <input type="date" @bind="model.ReceivedDate"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm" />
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">@Localizer["Notes"]</label>
+                        <textarea @bind="model.Notes" rows="3"
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"></textarea>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-sm font-semibold text-gray-900">
+                            @Localizer["Items"] <span class="text-red-500">*</span>
+                        </h2>
+                        <button type="button" @onclick="AddLine"
+                                class="inline-flex items-center gap-1.5 py-1.5 px-3 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                            <i class="bi bi-plus-circle"></i>
+                            <span>@Localizer["AddLine"]</span>
+                        </button>
+                    </div>
+
+                    @if (model.Lines.Count == 0)
+                    {
+                        <div class="text-center py-6 border-2 border-dashed border-gray-200 rounded-lg">
+                            <i class="bi bi-box text-3xl text-gray-300"></i>
+                            <p class="text-sm text-gray-500 mt-2">@Localizer["NoLinesAddedYet"]</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="space-y-3">
+                            @for (int i = 0; i < model.Lines.Count; i++)
+                            {
+                                var index = i;
+                                var line = model.Lines[index];
+                                <div class="grid grid-cols-1 md:grid-cols-12 gap-2 items-start p-3 border border-gray-200 rounded-lg">
+                                    <div class="md:col-span-4">
+                                        <label class="block text-xs font-medium text-gray-500 mb-1">@Localizer["Item"]</label>
+                                        <SearchableDropdown TItem="UnitDto"
+                                                            TValue="Guid?"
+                                                            Items="availableUnits"
+                                                            Value="line.UnitId == Guid.Empty ? (Guid?)null : line.UnitId"
+                                                            ValueChanged='id => OnUnitSelected(index, id)'
+                                                            DisplayText='u => isAr ? $"{u.ProductNameAr} — {u.UnitOfMeasureNameAr}" : $"{u.ProductNameEn} — {u.UnitOfMeasureNameEn}"'
+                                                            SearchText='u => $"{u.ProductNameEn} {u.ProductNameAr} {u.Barcode}"'
+                                                            ItemValue="u => (Guid?)u.Id"
+                                                            Placeholder='@Localizer["SearchUnit"]'
+                                                            Compact="true" />
+                                    </div>
+                                    <div class="md:col-span-3">
+                                        <label class="block text-xs font-medium text-gray-500 mb-1">@Localizer["Supplier"]</label>
+                                        <SearchableDropdown TItem="SupplierDto"
+                                                            TValue="Guid?"
+                                                            Items="availableSuppliers"
+                                                            Value="line.SupplierId == Guid.Empty ? (Guid?)null : line.SupplierId"
+                                                            ValueChanged='id => OnSupplierSelected(index, id)'
+                                                            DisplayText='s => isAr ? s.NameAr : s.NameEn'
+                                                            SearchText='s => $"{s.NameEn} {s.NameAr}"'
+                                                            ItemValue="s => (Guid?)s.Id"
+                                                            Placeholder='@Localizer["SelectSupplier"]'
+                                                            Compact="true" />
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label class="block text-xs font-medium text-gray-500 mb-1">@Localizer["Quantity"]</label>
+                                        <input type="number" min="1" @bind="line.ReceivedQuantity"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label class="block text-xs font-medium text-gray-500 mb-1">@Localizer["Cost"]</label>
+                                        <input type="number" min="0" step="0.01" @bind="line.Cost"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                                    </div>
+                                    <div class="md:col-span-1 flex md:justify-end md:pt-5">
+                                        <button type="button" @onclick="() => RemoveLine(index)"
+                                                class="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg"
+                                                title="@Localizer["Remove"]">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="space-y-5">
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <h2 class="text-sm font-semibold text-gray-900 mb-3">@Localizer["BranchWarehouse"]</h2>
+                    <div class="text-sm text-gray-700">@(isAr ? warehouse!.NameAr : warehouse!.NameEn)</div>
+                    <p class="text-xs text-gray-500 mt-2">@Localizer["GrnDestinationNote"]</p>
+                </div>
+                <div class="p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-3">
+                    <i class="bi bi-info-circle text-blue-600 text-lg mt-0.5"></i>
+                    <span class="text-blue-800 text-xs">@Localizer["GrnRequestApprovalNote"]</span>
+                </div>
+            </div>
+        </div>
+    </EditForm>
+}
+
+@code {
+    private bool isLoading = true;
+    private bool isSubmitting = false;
+    private string errorMessage = string.Empty;
+    private BranchWarehouseDto? warehouse;
+    private List<UnitDto> availableUnits = new();
+    private List<SupplierDto> availableSuppliers = new();
+    private FormModel model = new();
+    private bool isAr => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("ar", StringComparison.OrdinalIgnoreCase);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!ActiveBranch.IsSelected)
+        {
+            Navigation.NavigateTo("/branch/select", replace: true);
+            return;
+        }
+
+        try
+        {
+            warehouse = await BranchService.GetBranchWarehouseAsync(ActiveBranch.BranchId!.Value);
+            var unitPage = await UnitService.GetAllAsync(1, 500, isActive: true);
+            availableUnits = unitPage.Items;
+            var suppliers = await SupplierService.GetAllSuppliersAsync(1, 500, isActive: true);
+            availableSuppliers = suppliers.Items;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OnUnitSelected(int index, Guid? unitId)
+    {
+        if (index >= 0 && index < model.Lines.Count)
+        {
+            model.Lines[index].UnitId = unitId ?? Guid.Empty;
+            // If the unit has a default cost, prefill it once.
+            var unit = availableUnits.FirstOrDefault(u => u.Id == unitId);
+            if (unit != null && model.Lines[index].Cost == 0)
+            {
+                model.Lines[index].Cost = unit.Cost;
+            }
+        }
+    }
+
+    private void OnSupplierSelected(int index, Guid? supplierId)
+    {
+        if (index >= 0 && index < model.Lines.Count)
+        {
+            model.Lines[index].SupplierId = supplierId ?? Guid.Empty;
+        }
+    }
+
+    private void AddLine() => model.Lines.Add(new CreateGoodsReceivingNoteLineRequest { ReceivedQuantity = 1 });
+
+    private void RemoveLine(int index)
+    {
+        if (index >= 0 && index < model.Lines.Count) model.Lines.RemoveAt(index);
+    }
+
+    private async Task HandleSubmit()
+    {
+        errorMessage = string.Empty;
+
+        if (model.Lines.Count == 0 || model.Lines.Any(l =>
+            l.UnitId == Guid.Empty ||
+            l.SupplierId == Guid.Empty ||
+            l.ReceivedQuantity <= 0 ||
+            l.Cost < 0))
+        {
+            errorMessage = Localizer["InvalidLines"];
+            return;
+        }
+        if (warehouse is null)
+        {
+            errorMessage = Localizer["BranchWarehouseNotConfigured"];
+            return;
+        }
+
+        isSubmitting = true;
+        try
+        {
+            var dto = new CreateInventoryGRNRequest
+            {
+                Data = new CreateGoodsReceivingNoteRequest
+                {
+                    PurchaseOrderReference = model.PurchaseOrderReference,
+                    ReceivedDate = model.ReceivedDate,
+                    Notes = model.Notes,
+                    Lines = model.Lines
+                },
+                Note = model.Notes
+            };
+            await RequestService.CreateAddGRNRequestAsync(dto, branchId: ActiveBranch.BranchId!.Value);
+            Navigation.NavigateTo("/branch/requests");
+        }
+        catch (Web.Services.ServerValidationException ex)
+        {
+            errorMessage = string.Join(" ", ex.Errors.Values.SelectMany(v => v).Select(e => Localizer[e]));
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void Cancel() => Navigation.NavigateTo("/branch/requests");
+
+    private class FormModel
+    {
+        public string? PurchaseOrderReference { get; set; }
+        public DateTime? ReceivedDate { get; set; } = DateTime.Today;
+        public string? Notes { get; set; }
+        public List<CreateGoodsReceivingNoteLineRequest> Lines { get; set; } = new();
+    }
+}

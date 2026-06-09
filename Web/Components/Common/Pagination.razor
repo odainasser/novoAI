@@ -1,0 +1,66 @@
+<div class="@(Compact ? "flex items-center justify-between" : "bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6")">
+    <div class="flex-1 flex justify-between sm:hidden">
+        <button @onclick="() => OnPageChanged.InvokeAsync(PageIndex - 1)" 
+                disabled="@(!HasPreviousPage)"
+                class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+            @Localizer["Previous"]
+        </button>
+        <button @onclick="() => OnPageChanged.InvokeAsync(PageIndex + 1)" 
+                disabled="@(!HasNextPage)"
+                class="relative ms-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+            @Localizer["Next"]
+        </button>
+    </div>
+    <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between gap-4">
+        <div>
+            <p class="text-sm text-gray-700 whitespace-nowrap">
+                @Localizer["ShowingResults", (PageIndex - 1) * PageSize + 1, Math.Min(PageIndex * PageSize, TotalCount), TotalCount]
+            </p>
+        </div>
+        <div>
+            <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                <button @onclick="() => OnPageChanged.InvokeAsync(PageIndex - 1)" 
+                        disabled="@(!HasPreviousPage)"
+                        class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span class="sr-only">@Localizer["Previous"]</span>
+                    <i class="bi bi-chevron-left h-5 w-5 rtl:rotate-180"></i>
+                </button>
+                
+                @for (int i = 1; i <= TotalPages; i++)
+                {
+                    var pageNumber = i;
+                    if (i == 1 || i == TotalPages || (i >= PageIndex - 2 && i <= PageIndex + 2))
+                    {
+                        <button @onclick="() => OnPageChanged.InvokeAsync(pageNumber)"
+                                class="@(PageIndex == pageNumber ? "relative z-10 inline-flex items-center bg-bf-primary text-bf-primary-contrast px-4 py-2 text-sm font-semibold focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bf-primary" : "relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0")">
+                            @pageNumber
+                        </button>
+                    }
+                    else if (i == PageIndex - 3 || i == PageIndex + 3)
+                    {
+                        <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 focus:outline-offset-0">...</span>
+                    }
+                }
+
+                <button @onclick="() => OnPageChanged.InvokeAsync(PageIndex + 1)" 
+                        disabled="@(!HasNextPage)"
+                        class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span class="sr-only">@Localizer["Next"]</span>
+                    <i class="bi bi-chevron-right h-5 w-5 rtl:rotate-180"></i>
+                </button>
+            </nav>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int PageIndex { get; set; }
+    [Parameter] public int TotalPages { get; set; }
+    [Parameter] public int TotalCount { get; set; }
+    [Parameter] public int PageSize { get; set; }
+    [Parameter] public EventCallback<int> OnPageChanged { get; set; }
+    [Parameter] public bool Compact { get; set; }
+
+    private bool HasPreviousPage => PageIndex > 1;
+    private bool HasNextPage => PageIndex < TotalPages;
+}

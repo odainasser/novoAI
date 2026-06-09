@@ -1,0 +1,70 @@
+@* Reusable button with loading state *@
+@using Web.Components.Common
+<button type="@ButtonType" 
+        class="@GetButtonClass()" 
+        disabled="@(IsLoading || Disabled)"
+        @onclick="HandleClick">
+    @if (IsLoading)
+    {
+        <Spinner Size="Spinner.SpinnerSize.Sm" Color="Spinner.SpinnerColor.White" ExtraClass="@(IconPosition == "left" ? "me-2" : "ms-2")" />
+        <span>@(LoadingText ?? Text)</span>
+    }
+    else
+    {
+        @if (!string.IsNullOrEmpty(Icon) && IconPosition == "left")
+        {
+            <i class="bi bi-@Icon mr-2"></i>
+        }
+        <span>@Text</span>
+        @if (!string.IsNullOrEmpty(Icon) && IconPosition == "right")
+        {
+            <i class="bi bi-@Icon ml-2"></i>
+        }
+    }
+</button>
+
+@code {
+    [Parameter] public string Text { get; set; } = "Submit";
+    [Parameter] public string? LoadingText { get; set; }
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public string IconPosition { get; set; } = "left";
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string ButtonType { get; set; } = "button";
+    [Parameter] public ButtonStyle Style { get; set; } = ButtonStyle.Primary;
+    [Parameter] public string? CustomClass { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    private async Task HandleClick()
+    {
+        if (!IsLoading && !Disabled)
+        {
+            await OnClick.InvokeAsync();
+        }
+    }
+
+    private string GetButtonClass()
+    {
+        var baseClass = "inline-flex items-center justify-center gap-2 py-3 px-6 rounded-lg transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed";
+        
+        var styleClass = Style switch
+        {
+            ButtonStyle.Primary => "bg-bf-primary text-bf-primary-contrast hover:opacity-90 shadow-lg hover:shadow-xl",
+            ButtonStyle.Secondary => "bg-gray-200 text-gray-700 hover:bg-gray-300",
+            ButtonStyle.Danger => "bf-bg-danger-600 bf-hover-bg-danger-700 shadow-md",
+            ButtonStyle.Success => "bf-bg-success-600 bf-hover-bg-success-700 shadow-md",
+            _ => ""
+        };
+
+        return $"{baseClass} {styleClass} {CustomClass}".Trim();
+    }
+
+    public enum ButtonStyle
+    {
+        Primary,
+        Secondary,
+        Danger,
+        Success,
+        Custom
+    }
+}

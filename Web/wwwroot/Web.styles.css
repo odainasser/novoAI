@@ -1,0 +1,1536 @@
+/* Placeholder stylesheet to avoid 404. Add global/site-specific overrides here. */
+
+/* Import app.css to preserve existing styles if needed */
+@import url('app.css');
+
+/* Small default fallback styles */
+body {
+  background-color: #ffffff;
+  color: #111827;
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+}
+
+/* Loader/spinner sizing used in the app */
+svg.animate-spin { width: 3rem; height: 3rem; }
+
+/* ===========================================
+   BRAND / PRIMARY THEME — defined on :root
+   Dark-first design: dark navy base (#090e1a) +
+   bright cyan-blue (#059669) brand accent.
+   =========================================== */
+:root {
+  --brand: #059669;            /* legacy alias for --bf-primary */
+  --bg-0: #090e1a;             /* legacy alias for --bf-header-bg */
+
+  /* Primary scale */
+  --bf-primary:           #059669;
+  --bf-primary-600:       #059669;
+  --bf-primary-700:       #047857;
+  --bf-primary-dark:      #047857;
+  --bf-primary-contrast:  #ffffff;
+  --bf-primary-text:      #ffffff;
+
+  /* Accent Colors — hover / pressed on primary elements */
+  --bf-accent:            #047857;  /* hover */
+  --bf-accent-light:      #059669;
+  --bf-accent-dark:       #065f46;  /* pressed / active */
+
+  /* Backgrounds — headers, sidebars, hero sections */
+  --bf-header-bg:         #090e1a;
+  --bf-sidebar-bg:        #090e1a;
+
+  /* Borders */
+  --bf-border-color:      rgba(0, 0, 0, 0.08);      /* on light surfaces */
+  --bf-border-color-dark: rgba(255, 255, 255, 0.1); /* on dark surfaces */
+}
+
+/* Helper for light tints using color-mix where available */
+@supports (color: color-mix(in srgb, #059669 10%, white)) {
+  :root {
+    --bf-primary-50:  color-mix(in srgb, #059669  6%, white);
+    --bf-primary-100: color-mix(in srgb, #059669 12%, white);
+    --bf-primary-200: color-mix(in srgb, #059669 24%, white);
+    --bf-primary-300: color-mix(in srgb, #059669 36%, white);
+    --bf-primary-400: color-mix(in srgb, #059669 48%, white);
+    --bf-primary-500: color-mix(in srgb, #059669 64%, white);
+    --bf-primary-800: color-mix(in srgb, #059669 82%, black);
+    --bf-primary-900: color-mix(in srgb, #059669 92%, black);
+  }
+}
+
+/* Fallback hard-coded tints if color-mix not supported */
+@supports not (color: color-mix(in srgb, #059669 10%, white)) {
+  :root {
+    --bf-primary-50:  #ecfdf5;
+    --bf-primary-100: #d1fae5;
+    --bf-primary-200: #a7f3d0;
+    --bf-primary-300: #6ee7b7;
+    --bf-primary-400: #34d399;
+    --bf-primary-500: #10b981;
+    --bf-primary-800: #065f46;
+    --bf-primary-900: #064e3b;
+  }
+}
+
+/* ===========================================
+   Component integration of the theme tokens
+   =========================================== */
+
+/* Primary action button: brand background, white text, accent on hover/press */
+.btn-primary-action,
+.bg-bf-primary {
+  background-color: var(--bf-primary);
+  color: var(--bf-primary-contrast);
+}
+
+.btn-primary-action:hover,
+.bg-bf-primary:hover,
+a.bg-bf-primary:hover,
+button.bg-bf-primary:hover {
+  background-color: var(--bf-accent) !important;
+  color: var(--bf-primary-contrast) !important;
+}
+
+.btn-primary-action:active,
+.bg-bf-primary:active,
+.btn-primary-action.is-active,
+a.bg-bf-primary:active,
+button.bg-bf-primary:active {
+  background-color: var(--bf-accent-dark) !important;
+  color: var(--bf-primary-contrast) !important;
+}
+
+/* Headers and sidebars use the dark navy base */
+.portal-header,
+.admin-header {
+  background-color: var(--bf-header-bg) !important;
+  color: var(--bf-primary-contrast);
+  border-bottom: 1px solid var(--bf-border-color-dark) !important;
+}
+
+/* Borders inside dark sections (header chips, separators, etc.) */
+.portal-header .header-separator,
+.admin-header .header-separator {
+  background: var(--bf-border-color-dark);
+}
+
+/* Light-surface border helper */
+.bf-border { border-color: var(--bf-border-color); }
+.bf-border-dark { border-color: var(--bf-border-color-dark); }
+
+/* =======================
+   Tailwind Purple Utilities Override
+  (re-mapped to theme color)
+   ======================= */
+
+/* Text color utilities */
+.text-purple-50 { color: var(--bf-primary-50) !important; }
+.text-purple-100 { color: var(--bf-primary-100) !important; }
+.text-purple-200 { color: var(--bf-primary-200) !important; }
+.text-purple-300 { color: var(--bf-primary-300) !important; }
+.text-purple-400 { color: var(--bf-primary-400) !important; }
+.text-purple-500 { color: var(--bf-primary-500) !important; }
+.text-purple-600 { color: var(--bf-primary-600) !important; }
+.text-purple-700 { color: var(--bf-primary-700) !important; }
+.text-purple-800 { color: var(--bf-primary-800) !important; }
+.text-purple-900 { color: var(--bf-primary-900) !important; }
+
+/* Background utilities */
+.bg-purple-50 { background-color: var(--bf-primary-50) !important; }
+.bg-purple-100 { background-color: var(--bf-primary-100) !important; }
+.bg-purple-200 { background-color: var(--bf-primary-200) !important; }
+.bg-purple-300 { background-color: var(--bf-primary-300) !important; }
+.bg-purple-400 { background-color: var(--bf-primary-400) !important; }
+.bg-purple-500 { background-color: var(--bf-primary-500) !important; }
+.bg-purple-600 { background-color: var(--bf-primary-600) !important; color: var(--bf-primary-text) !important; }
+.bg-purple-700 { background-color: var(--bf-primary-700) !important; color: var(--bf-primary-text) !important; }
+.bg-purple-800 { background-color: var(--bf-primary-800) !important; color: var(--bf-primary-text) !important; }
+.bg-purple-900 { background-color: var(--bf-primary-900) !important; color: var(--bf-primary-text) !important; }
+
+/* Border utilities */
+.border-purple-50 { border-color: var(--bf-primary-50) !important; }
+.border-purple-100 { border-color: var(--bf-primary-100) !important; }
+.border-purple-200 { border-color: var(--bf-primary-200) !important; }
+.border-purple-300 { border-color: var(--bf-primary-300) !important; }
+.border-purple-400 { border-color: var(--bf-primary-400) !important; }
+.border-purple-500 { border-color: var(--bf-primary-500) !important; }
+.border-purple-600 { border-color: var(--bf-primary-600) !important; }
+.border-purple-700 { border-color: var(--bf-primary-700) !important; }
+.border-purple-800 { border-color: var(--bf-primary-800) !important; }
+.border-purple-900 { border-color: var(--bf-primary-900) !important; }
+
+/* Hover states */
+.hover\:bg-purple-50:hover { background-color: var(--bf-primary-50) !important; }
+.hover\:bg-purple-100:hover { background-color: var(--bf-primary-100) !important; }
+.hover\:bg-purple-600:hover { background-color: var(--bf-primary-600) !important; color: var(--bf-primary-text) !important; }
+.hover\:bg-purple-700:hover { background-color: var(--bf-primary-700) !important; color: var(--bf-primary-text) !important; }
+.hover\:bg-purple-900:hover { background-color: var(--bf-primary-900) !important; color: var(--bf-primary-text) !important; }
+
+.hover\:text-purple-50:hover { color: var(--bf-primary-50) !important; }
+.hover\:text-purple-600:hover { color: var(--bf-primary-600) !important; }
+.hover\:text-purple-700:hover { color: var(--bf-primary-700) !important; }
+.hover\:text-purple-900:hover { color: var(--bf-primary-900) !important; }
+
+.hover\:border-purple-500:hover { border-color: var(--bf-primary-500) !important; }
+.hover\:border-purple-600:hover { border-color: var(--bf-primary-600) !important; }
+
+/* Focus states */
+.focus\:ring-purple-500:focus { --tw-ring-color: var(--bf-primary-500) !important; }
+.focus\:ring-purple-600:focus { --tw-ring-color: var(--bf-primary-600) !important; }
+
+/* Gradient utilities mapping */
+.from-purple-50 { --tw-gradient-from: var(--bf-primary-50) !important; --tw-gradient-to: rgba(0,0,0,0) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }
+.from-purple-100 { --tw-gradient-from: var(--bf-primary-100) !important; --tw-gradient-to: rgba(0,0,0,0) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }
+.from-purple-200 { --tw-gradient-from: var(--bf-primary-200) !important; --tw-gradient-to: rgba(0,0,0,0) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }
+.from-purple-300 { --tw-gradient-from: var(--bf-primary-300) !important; --tw-gradient-to: rgba(0,0,0,0) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }
+.from-purple-600 { --tw-gradient-from: var(--bf-primary-600) !important; --tw-gradient-to: rgba(0,0,0,0) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }
+.from-purple-700 { --tw-gradient-from: var(--bf-primary-700) !important; --tw-gradient-to: rgba(0,0,0,0) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }
+
+.to-purple-200 { --tw-gradient-to: var(--bf-primary-200) !important; }
+.to-purple-300 { --tw-gradient-to: var(--bf-primary-300) !important; }
+.to-purple-800 { --tw-gradient-to: var(--bf-primary-800) !important; }
+.to-purple-900 { --tw-gradient-to: var(--bf-primary-900) !important; }
+
+.hover\:from-purple-700:hover { --tw-gradient-from: var(--bf-primary-700) !important; }
+.hover\:to-purple-900:hover { --tw-gradient-to: var(--bf-primary-900) !important; }
+
+/* =======================
+   Tailwind Violet Utilities Override
+   (re-mapped to the cyan-blue brand color so violet badges,
+   payment pills, email tags, etc. follow the theme.)
+   ======================= */
+.text-violet-50  { color: var(--bf-primary-50)  !important; }
+.text-violet-100 { color: var(--bf-primary-100) !important; }
+.text-violet-200 { color: var(--bf-primary-200) !important; }
+.text-violet-300 { color: var(--bf-primary-300) !important; }
+.text-violet-400 { color: var(--bf-primary-400) !important; }
+.text-violet-500 { color: var(--bf-primary-500) !important; }
+.text-violet-600 { color: var(--bf-primary-600) !important; }
+.text-violet-700 { color: var(--bf-primary-700) !important; }
+.text-violet-800 { color: var(--bf-primary-800) !important; }
+.text-violet-900 { color: var(--bf-primary-900) !important; }
+
+.bg-violet-50  { background-color: var(--bf-primary-50)  !important; }
+.bg-violet-100 { background-color: var(--bf-primary-100) !important; }
+.bg-violet-200 { background-color: var(--bf-primary-200) !important; }
+.bg-violet-300 { background-color: var(--bf-primary-300) !important; }
+.bg-violet-400 { background-color: var(--bf-primary-400) !important; }
+.bg-violet-500 { background-color: var(--bf-primary-500) !important; }
+.bg-violet-600 { background-color: var(--bf-primary-600) !important; color: var(--bf-primary-text) !important; }
+.bg-violet-700 { background-color: var(--bf-primary-700) !important; color: var(--bf-primary-text) !important; }
+.bg-violet-800 { background-color: var(--bf-primary-800) !important; color: var(--bf-primary-text) !important; }
+.bg-violet-900 { background-color: var(--bf-primary-900) !important; color: var(--bf-primary-text) !important; }
+
+.border-violet-50  { border-color: var(--bf-primary-50)  !important; }
+.border-violet-100 { border-color: var(--bf-primary-100) !important; }
+.border-violet-200 { border-color: var(--bf-primary-200) !important; }
+.border-violet-300 { border-color: var(--bf-primary-300) !important; }
+.border-violet-400 { border-color: var(--bf-primary-400) !important; }
+.border-violet-500 { border-color: var(--bf-primary-500) !important; }
+.border-violet-600 { border-color: var(--bf-primary-600) !important; }
+.border-violet-700 { border-color: var(--bf-primary-700) !important; }
+.border-violet-800 { border-color: var(--bf-primary-800) !important; }
+.border-violet-900 { border-color: var(--bf-primary-900) !important; }
+
+.hover\:bg-violet-50:hover  { background-color: var(--bf-primary-50)  !important; }
+.hover\:bg-violet-100:hover { background-color: var(--bf-primary-100) !important; }
+.hover\:bg-violet-600:hover { background-color: var(--bf-primary-600) !important; color: var(--bf-primary-text) !important; }
+.hover\:bg-violet-700:hover { background-color: var(--bf-primary-700) !important; color: var(--bf-primary-text) !important; }
+.hover\:text-violet-600:hover { color: var(--bf-primary-600) !important; }
+.hover\:text-violet-700:hover { color: var(--bf-primary-700) !important; }
+
+.ring-violet-500 { --tw-ring-color: var(--bf-primary-500) !important; }
+.ring-violet-600 { --tw-ring-color: var(--bf-primary-600) !important; }
+.focus\:ring-violet-500:focus { --tw-ring-color: var(--bf-primary-500) !important; }
+.focus\:ring-violet-600:focus { --tw-ring-color: var(--bf-primary-600) !important; }
+
+.bg-violet-100 i,
+.bg-violet-200 i,
+.bg-violet-300 i { color: var(--bf-primary) !important; }
+.bg-violet-600 i,
+.bg-violet-700 i,
+.bg-violet-800 i,
+.bg-violet-900 i { color: var(--bf-primary-text) !important; }
+
+/* Tailwind Fuchsia Utilities Override (also pink-purple family) */
+.text-fuchsia-50  { color: var(--bf-primary-50)  !important; }
+.text-fuchsia-100 { color: var(--bf-primary-100) !important; }
+.text-fuchsia-500 { color: var(--bf-primary-500) !important; }
+.text-fuchsia-600 { color: var(--bf-primary-600) !important; }
+.text-fuchsia-700 { color: var(--bf-primary-700) !important; }
+.text-fuchsia-800 { color: var(--bf-primary-800) !important; }
+.text-fuchsia-900 { color: var(--bf-primary-900) !important; }
+.bg-fuchsia-50  { background-color: var(--bf-primary-50)  !important; }
+.bg-fuchsia-100 { background-color: var(--bf-primary-100) !important; }
+.bg-fuchsia-500 { background-color: var(--bf-primary-500) !important; }
+.bg-fuchsia-600 { background-color: var(--bf-primary-600) !important; color: var(--bf-primary-text) !important; }
+.bg-fuchsia-700 { background-color: var(--bf-primary-700) !important; color: var(--bf-primary-text) !important; }
+.border-fuchsia-200 { border-color: var(--bf-primary-200) !important; }
+.border-fuchsia-500 { border-color: var(--bf-primary-500) !important; }
+
+/* =======================
+   Tailwind Blue / Cyan / Teal / Pink Utilities Override
+   Decorative palettes that the admin dashboard uses for
+   icon variety, KPI tints, badges, and chart accents.
+   Remapped to the brand cyan-blue scale so the dashboard
+   adheres to "theme colors only".
+   ======================= */
+.text-blue-50,  .text-cyan-50,  .text-teal-50,  .text-pink-50   { color: var(--bf-primary-50)  !important; }
+.text-blue-100, .text-cyan-100, .text-teal-100, .text-pink-100  { color: var(--bf-primary-100) !important; }
+.text-blue-200, .text-cyan-200, .text-teal-200, .text-pink-200  { color: var(--bf-primary-200) !important; }
+.text-blue-300, .text-cyan-300, .text-teal-300, .text-pink-300  { color: var(--bf-primary-300) !important; }
+.text-blue-400, .text-cyan-400, .text-teal-400, .text-pink-400  { color: var(--bf-primary-400) !important; }
+.text-blue-500, .text-cyan-500, .text-teal-500, .text-pink-500  { color: var(--bf-primary-500) !important; }
+.text-blue-600, .text-cyan-600, .text-teal-600, .text-pink-600  { color: var(--bf-primary-600) !important; }
+.text-blue-700, .text-cyan-700, .text-teal-700, .text-pink-700  { color: var(--bf-primary-700) !important; }
+.text-blue-800, .text-cyan-800, .text-teal-800, .text-pink-800  { color: var(--bf-primary-800) !important; }
+.text-blue-900, .text-cyan-900, .text-teal-900, .text-pink-900  { color: var(--bf-primary-900) !important; }
+
+.bg-blue-50,  .bg-cyan-50,  .bg-teal-50,  .bg-pink-50   { background-color: var(--bf-primary-50)  !important; }
+.bg-blue-100, .bg-cyan-100, .bg-teal-100, .bg-pink-100  { background-color: var(--bf-primary-100) !important; }
+.bg-blue-200, .bg-cyan-200, .bg-teal-200, .bg-pink-200  { background-color: var(--bf-primary-200) !important; }
+.bg-blue-300, .bg-cyan-300, .bg-teal-300, .bg-pink-300  { background-color: var(--bf-primary-300) !important; }
+.bg-blue-400, .bg-cyan-400, .bg-teal-400, .bg-pink-400  { background-color: var(--bf-primary-400) !important; }
+.bg-blue-500, .bg-cyan-500, .bg-teal-500, .bg-pink-500  { background-color: var(--bf-primary-500) !important; }
+.bg-blue-600, .bg-cyan-600, .bg-teal-600, .bg-pink-600  { background-color: var(--bf-primary-600) !important; color: var(--bf-primary-text) !important; }
+.bg-blue-700, .bg-cyan-700, .bg-teal-700, .bg-pink-700  { background-color: var(--bf-primary-700) !important; color: var(--bf-primary-text) !important; }
+.bg-blue-800, .bg-cyan-800, .bg-teal-800, .bg-pink-800  { background-color: var(--bf-primary-800) !important; color: var(--bf-primary-text) !important; }
+.bg-blue-900, .bg-cyan-900, .bg-teal-900, .bg-pink-900  { background-color: var(--bf-primary-900) !important; color: var(--bf-primary-text) !important; }
+
+.border-blue-50,  .border-cyan-50,  .border-teal-50,  .border-pink-50   { border-color: var(--bf-primary-50)  !important; }
+.border-blue-100, .border-cyan-100, .border-teal-100, .border-pink-100  { border-color: var(--bf-primary-100) !important; }
+.border-blue-200, .border-cyan-200, .border-teal-200, .border-pink-200  { border-color: var(--bf-primary-200) !important; }
+.border-blue-300, .border-cyan-300, .border-teal-300, .border-pink-300  { border-color: var(--bf-primary-300) !important; }
+.border-blue-400, .border-cyan-400, .border-teal-400, .border-pink-400  { border-color: var(--bf-primary-400) !important; }
+.border-blue-500, .border-cyan-500, .border-teal-500, .border-pink-500  { border-color: var(--bf-primary-500) !important; }
+.border-blue-600, .border-cyan-600, .border-teal-600, .border-pink-600  { border-color: var(--bf-primary-600) !important; }
+.border-blue-700, .border-cyan-700, .border-teal-700, .border-pink-700  { border-color: var(--bf-primary-700) !important; }
+.border-blue-800, .border-cyan-800, .border-teal-800, .border-pink-800  { border-color: var(--bf-primary-800) !important; }
+.border-blue-900, .border-cyan-900, .border-teal-900, .border-pink-900  { border-color: var(--bf-primary-900) !important; }
+
+.hover\:bg-blue-50:hover,  .hover\:bg-cyan-50:hover,  .hover\:bg-teal-50:hover,  .hover\:bg-pink-50:hover   { background-color: var(--bf-primary-50)  !important; }
+.hover\:bg-blue-100:hover, .hover\:bg-cyan-100:hover, .hover\:bg-teal-100:hover, .hover\:bg-pink-100:hover  { background-color: var(--bf-primary-100) !important; }
+.hover\:bg-blue-200:hover, .hover\:bg-cyan-200:hover, .hover\:bg-teal-200:hover, .hover\:bg-pink-200:hover  { background-color: var(--bf-primary-200) !important; }
+.hover\:bg-blue-600:hover, .hover\:bg-cyan-600:hover, .hover\:bg-teal-600:hover, .hover\:bg-pink-600:hover  { background-color: var(--bf-primary-600) !important; color: var(--bf-primary-text) !important; }
+.hover\:bg-blue-700:hover, .hover\:bg-cyan-700:hover, .hover\:bg-teal-700:hover, .hover\:bg-pink-700:hover  { background-color: var(--bf-primary-700) !important; color: var(--bf-primary-text) !important; }
+.hover\:text-blue-600:hover, .hover\:text-cyan-600:hover, .hover\:text-teal-600:hover, .hover\:text-pink-600:hover { color: var(--bf-primary-600) !important; }
+.hover\:text-blue-700:hover, .hover\:text-cyan-700:hover, .hover\:text-teal-700:hover, .hover\:text-pink-700:hover { color: var(--bf-primary-700) !important; }
+.hover\:text-blue-800:hover, .hover\:text-cyan-800:hover, .hover\:text-teal-800:hover, .hover\:text-pink-800:hover { color: var(--bf-primary-800) !important; }
+
+.ring-blue-300, .ring-cyan-300, .ring-teal-300, .ring-pink-300 { --tw-ring-color: var(--bf-primary-300) !important; }
+.ring-blue-400, .ring-cyan-400, .ring-teal-400, .ring-pink-400 { --tw-ring-color: var(--bf-primary-400) !important; }
+.ring-blue-500, .ring-cyan-500, .ring-teal-500, .ring-pink-500 { --tw-ring-color: var(--bf-primary-500) !important; }
+.ring-blue-600, .ring-cyan-600, .ring-teal-600, .ring-pink-600 { --tw-ring-color: var(--bf-primary-600) !important; }
+.focus\:ring-blue-300:focus, .focus\:ring-cyan-300:focus, .focus\:ring-teal-300:focus, .focus\:ring-pink-300:focus { --tw-ring-color: var(--bf-primary-300) !important; }
+.focus\:ring-blue-400:focus, .focus\:ring-cyan-400:focus, .focus\:ring-teal-400:focus, .focus\:ring-pink-400:focus { --tw-ring-color: var(--bf-primary-400) !important; }
+.focus\:ring-blue-500:focus, .focus\:ring-cyan-500:focus, .focus\:ring-teal-500:focus, .focus\:ring-pink-500:focus { --tw-ring-color: var(--bf-primary-500) !important; }
+.focus\:border-blue-400:focus, .focus\:border-cyan-400:focus, .focus\:border-teal-400:focus, .focus\:border-pink-400:focus { border-color: var(--bf-primary-400) !important; }
+.focus\:border-blue-500:focus, .focus\:border-cyan-500:focus, .focus\:border-teal-500:focus, .focus\:border-pink-500:focus { border-color: var(--bf-primary-500) !important; }
+
+/* Icons inside blue/cyan/teal/pink tinted backgrounds remain readable */
+.bg-blue-100 i, .bg-cyan-100 i, .bg-teal-100 i, .bg-pink-100 i,
+.bg-blue-200 i, .bg-cyan-200 i, .bg-teal-200 i, .bg-pink-200 i { color: var(--bf-primary) !important; }
+.bg-blue-600 i, .bg-cyan-600 i, .bg-teal-600 i, .bg-pink-600 i,
+.bg-blue-700 i, .bg-cyan-700 i, .bg-teal-700 i, .bg-pink-700 i { color: var(--bf-primary-text) !important; }
+
+/* =======================
+   Tailwind Amber / Orange / Yellow Utilities Override
+   Force amber/orange/yellow to the brand cyan-blue scale so the
+   admin dashboard contains zero non-theme warm tones.
+   RED IS DELIBERATELY EXCLUDED — it carries semantic meaning
+   (form validation errors, required asterisks, destructive
+   actions) and must render as red across the app.
+   ======================= */
+.text-amber-50,  .text-orange-50,  .text-yellow-50   { color: var(--bf-primary-50)  !important; }
+.text-amber-100, .text-orange-100, .text-yellow-100  { color: var(--bf-primary-100) !important; }
+.text-amber-200, .text-orange-200, .text-yellow-200  { color: var(--bf-primary-200) !important; }
+.text-amber-300, .text-orange-300, .text-yellow-300  { color: var(--bf-primary-300) !important; }
+.text-amber-400, .text-orange-400, .text-yellow-400  { color: var(--bf-primary-400) !important; }
+.text-amber-500, .text-orange-500, .text-yellow-500  { color: var(--bf-primary-500) !important; }
+.text-amber-600, .text-orange-600, .text-yellow-600  { color: var(--bf-primary-600) !important; }
+.text-amber-700, .text-orange-700, .text-yellow-700  { color: var(--bf-primary-700) !important; }
+.text-amber-800, .text-orange-800, .text-yellow-800  { color: var(--bf-primary-800) !important; }
+.text-amber-900, .text-orange-900, .text-yellow-900  { color: var(--bf-primary-900) !important; }
+
+.bg-amber-50,  .bg-orange-50,  .bg-yellow-50   { background-color: var(--bf-primary-50)  !important; }
+.bg-amber-100, .bg-orange-100, .bg-yellow-100  { background-color: var(--bf-primary-100) !important; }
+.bg-amber-200, .bg-orange-200, .bg-yellow-200  { background-color: var(--bf-primary-200) !important; }
+.bg-amber-300, .bg-orange-300, .bg-yellow-300  { background-color: var(--bf-primary-300) !important; }
+.bg-amber-400, .bg-orange-400, .bg-yellow-400  { background-color: var(--bf-primary-400) !important; }
+.bg-amber-500, .bg-orange-500, .bg-yellow-500  { background-color: var(--bf-primary-500) !important; }
+.bg-amber-600, .bg-orange-600, .bg-yellow-600  { background-color: var(--bf-primary-600) !important; color: var(--bf-primary-text) !important; }
+.bg-amber-700, .bg-orange-700, .bg-yellow-700  { background-color: var(--bf-primary-700) !important; color: var(--bf-primary-text) !important; }
+.bg-amber-800, .bg-orange-800, .bg-yellow-800  { background-color: var(--bf-primary-800) !important; color: var(--bf-primary-text) !important; }
+.bg-amber-900, .bg-orange-900, .bg-yellow-900  { background-color: var(--bf-primary-900) !important; color: var(--bf-primary-text) !important; }
+
+.border-amber-50,  .border-orange-50,  .border-yellow-50   { border-color: var(--bf-primary-50)  !important; }
+.border-amber-100, .border-orange-100, .border-yellow-100  { border-color: var(--bf-primary-100) !important; }
+.border-amber-200, .border-orange-200, .border-yellow-200  { border-color: var(--bf-primary-200) !important; }
+.border-amber-300, .border-orange-300, .border-yellow-300  { border-color: var(--bf-primary-300) !important; }
+.border-amber-400, .border-orange-400, .border-yellow-400  { border-color: var(--bf-primary-400) !important; }
+.border-amber-500, .border-orange-500, .border-yellow-500  { border-color: var(--bf-primary-500) !important; }
+.border-amber-600, .border-orange-600, .border-yellow-600  { border-color: var(--bf-primary-600) !important; }
+.border-amber-700, .border-orange-700, .border-yellow-700  { border-color: var(--bf-primary-700) !important; }
+.border-amber-800, .border-orange-800, .border-yellow-800  { border-color: var(--bf-primary-800) !important; }
+.border-amber-900, .border-orange-900, .border-yellow-900  { border-color: var(--bf-primary-900) !important; }
+
+.hover\:bg-amber-50:hover,  .hover\:bg-orange-50:hover,  .hover\:bg-yellow-50:hover   { background-color: var(--bf-primary-50)  !important; }
+.hover\:bg-amber-100:hover, .hover\:bg-orange-100:hover, .hover\:bg-yellow-100:hover  { background-color: var(--bf-primary-100) !important; }
+.hover\:bg-amber-200:hover, .hover\:bg-orange-200:hover, .hover\:bg-yellow-200:hover  { background-color: var(--bf-primary-200) !important; }
+.hover\:bg-amber-600:hover, .hover\:bg-orange-600:hover, .hover\:bg-yellow-600:hover  { background-color: var(--bf-primary-600) !important; color: var(--bf-primary-text) !important; }
+.hover\:bg-amber-700:hover, .hover\:bg-orange-700:hover, .hover\:bg-yellow-700:hover  { background-color: var(--bf-primary-700) !important; color: var(--bf-primary-text) !important; }
+.hover\:text-amber-600:hover, .hover\:text-orange-600:hover, .hover\:text-yellow-600:hover { color: var(--bf-primary-600) !important; }
+.hover\:text-amber-700:hover, .hover\:text-orange-700:hover, .hover\:text-yellow-700:hover { color: var(--bf-primary-700) !important; }
+.hover\:text-amber-800:hover, .hover\:text-orange-800:hover, .hover\:text-yellow-800:hover { color: var(--bf-primary-800) !important; }
+
+.ring-amber-300, .ring-orange-300, .ring-yellow-300 { --tw-ring-color: var(--bf-primary-300) !important; }
+.ring-amber-400, .ring-orange-400, .ring-yellow-400 { --tw-ring-color: var(--bf-primary-400) !important; }
+.ring-amber-500, .ring-orange-500, .ring-yellow-500 { --tw-ring-color: var(--bf-primary-500) !important; }
+.ring-amber-600, .ring-orange-600, .ring-yellow-600 { --tw-ring-color: var(--bf-primary-600) !important; }
+.focus\:ring-amber-300:focus, .focus\:ring-orange-300:focus, .focus\:ring-yellow-300:focus { --tw-ring-color: var(--bf-primary-300) !important; }
+.focus\:ring-amber-500:focus, .focus\:ring-orange-500:focus, .focus\:ring-yellow-500:focus { --tw-ring-color: var(--bf-primary-500) !important; }
+
+/* Divide / icons inside amber/orange/yellow backgrounds */
+.bg-amber-100 i, .bg-orange-100 i, .bg-yellow-100 i,
+.bg-amber-200 i, .bg-orange-200 i, .bg-yellow-200 i { color: var(--bf-primary) !important; }
+.bg-amber-600 i, .bg-orange-600 i, .bg-yellow-600 i,
+.bg-amber-700 i, .bg-orange-700 i, .bg-yellow-700 i { color: var(--bf-primary-text) !important; }
+
+/* Specific component fixes used throughout app */
+.app-header {
+  /* Force white header and dark text to override theme gradient */
+  background: #ffffff !important;
+  color: #111827 !important; /* gray-900 */
+}
+
+/* Buttons and CTA */
+.bg-gradient-to-r.from-purple-600.to-purple-800,
+.bg-gradient-to-br.from-purple-600.to-purple-800,
+.bg-gradient-to-r.from-purple-700.to-purple-900,
+.bg-gradient-to-br.from-purple-700.to-purple-900 {
+  background: linear-gradient(90deg, var(--bf-primary) 0%, var(--bf-primary-dark) 100%) !important;
+  color: var(--bf-primary-text) !important;
+}
+
+/* Utilities for explicit usage */
+.bg-bf-primary { background-color: var(--bf-primary) !important; color: var(--bf-primary-contrast) !important; }
+.text-bf-primary { color: var(--bf-primary) !important; }
+.text-bf-primary-contrast { color: var(--bf-primary-contrast) !important; }
+.border-bf-primary { border-color: var(--bf-primary) !important; }
+
+/* ─── Page Tab Navigation ─── */
+.tab-nav {
+  display: flex;
+  gap: 0.25rem;
+  background: #f3f4f6;
+  border-radius: 0.75rem;
+  padding: 0.25rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tab-nav::-webkit-scrollbar { display: none; }
+
+.tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.625rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all 200ms cubic-bezier(.4,0,.2,1);
+  border: none;
+  cursor: pointer;
+  color: #6b7280;
+  background: transparent;
+  line-height: 1.25rem;
+}
+.tab-btn:hover:not(.tab-btn-active) {
+  color: #374151;
+  background: rgba(255,255,255,0.6);
+}
+.tab-btn-active {
+  background: #ffffff;
+  color: var(--bf-primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+}
+.tab-btn-active i { color: var(--bf-primary); }
+
+/* ─── Primary Action Button (Create / Add) ─── */
+.btn-primary-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  background-color: var(--bf-primary);
+  color: var(--bf-primary-contrast);
+  border-radius: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  white-space: nowrap;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  transition: all 200ms cubic-bezier(.4,0,.2,1);
+}
+.btn-primary-action:hover {
+  opacity: 0.9;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+}
+.btn-primary-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.hover\:bg-bf-primary:hover { background-color: var(--bf-primary) !important; color: var(--bf-primary-contrast) !important; }
+.hover\:text-bf-primary:hover { color: var(--bf-primary) !important; }
+.hover\:text-bf-primary-contrast:hover { color: var(--bf-primary-contrast) !important; }
+
+/* Ensure icons inside purple backgrounds remain readable */
+.bg-purple-100 i, 
+.bg-purple-200 i, 
+.bg-purple-300 i { 
+  color: var(--bf-primary) !important; 
+}
+
+.bg-purple-600 i,
+.bg-purple-700 i,
+.bg-purple-800 i,
+.bg-purple-900 i {
+  color: var(--bf-primary-text) !important;
+}
+
+/* Ensure smooth transitions for theme changes */
+[class*="purple"] { 
+  transition: background-color .15s ease, color .15s ease, border-color .15s ease; 
+}
+
+/* Spinner colors */
+.text-purple-600.animate-spin circle,
+.text-purple-600.animate-spin path {
+  color: var(--bf-primary) !important;
+  stroke: var(--bf-primary) !important;
+}
+
+/* Badge/pill colors */
+.bg-blue-100.text-blue-800 {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  color: rgb(30, 64, 175) !important;
+}
+
+/* Ring colors for focus */
+.ring-purple-500 { --tw-ring-color: var(--bf-primary-500) !important; }
+.ring-purple-600 { --tw-ring-color: var(--bf-primary-600) !important; }
+
+/* End of file */
+
+/* Map common Tailwind color utilities (indigo, emerald) to theme variables
+  so existing markup using those utility names adopts the configured theme. */
+.text-indigo-50 { color: var(--bf-primary-50) !important; }
+.text-indigo-100 { color: var(--bf-primary-100) !important; }
+.text-indigo-200 { color: var(--bf-primary-200) !important; }
+.text-indigo-300 { color: var(--bf-primary-300) !important; }
+.text-indigo-400 { color: var(--bf-primary-400) !important; }
+.text-indigo-500 { color: var(--bf-primary-500) !important; }
+.text-indigo-600 { color: var(--bf-primary-600) !important; }
+.text-indigo-700 { color: var(--bf-primary-700) !important; }
+.text-indigo-800 { color: var(--bf-primary-800) !important; }
+.text-indigo-900 { color: var(--bf-primary-900) !important; }
+
+.bg-indigo-50 { background-color: var(--bf-primary-50) !important; }
+.bg-indigo-100 { background-color: var(--bf-primary-100) !important; }
+.bg-indigo-200 { background-color: var(--bf-primary-200) !important; }
+.bg-indigo-300 { background-color: var(--bf-primary-300) !important; }
+.bg-indigo-400 { background-color: var(--bf-primary-400) !important; }
+.bg-indigo-500 { background-color: var(--bf-primary-500) !important; }
+.bg-indigo-600 { background-color: var(--bf-primary-600) !important; color: var(--bf-primary-text) !important; }
+.bg-indigo-700 { background-color: var(--bf-primary-700) !important; color: var(--bf-primary-text) !important; }
+.bg-indigo-800 { background-color: var(--bf-primary-800) !important; color: var(--bf-primary-text) !important; }
+.bg-indigo-900 { background-color: var(--bf-primary-900) !important; color: var(--bf-primary-text) !important; }
+
+.border-indigo-50 { border-color: var(--bf-primary-50) !important; }
+.border-indigo-100 { border-color: var(--bf-primary-100) !important; }
+.border-indigo-200 { border-color: var(--bf-primary-200) !important; }
+.border-indigo-300 { border-color: var(--bf-primary-300) !important; }
+.border-indigo-400 { border-color: var(--bf-primary-400) !important; }
+.border-indigo-500 { border-color: var(--bf-primary-500) !important; }
+.border-indigo-600 { border-color: var(--bf-primary-600) !important; }
+.border-indigo-700 { border-color: var(--bf-primary-700) !important; }
+.border-indigo-800 { border-color: var(--bf-primary-800) !important; }
+.border-indigo-900 { border-color: var(--bf-primary-900) !important; }
+
+/* Reuse same theme mapping for emerald utilities so revenue cards match theme */
+.text-emerald-50 { color: var(--bf-primary-50) !important; }
+.text-emerald-100 { color: var(--bf-primary-100) !important; }
+.text-emerald-200 { color: var(--bf-primary-200) !important; }
+.text-emerald-300 { color: var(--bf-primary-300) !important; }
+.text-emerald-400 { color: var(--bf-primary-400) !important; }
+.text-emerald-500 { color: var(--bf-primary-500) !important; }
+.text-emerald-600 { color: var(--bf-primary-600) !important; }
+.text-emerald-700 { color: var(--bf-primary-700) !important; }
+.text-emerald-800 { color: var(--bf-primary-800) !important; }
+.text-emerald-900 { color: var(--bf-primary-900) !important; }
+
+.bg-emerald-50 { background-color: var(--bf-primary-50) !important; }
+.bg-emerald-100 { background-color: var(--bf-primary-100) !important; }
+.bg-emerald-200 { background-color: var(--bf-primary-200) !important; }
+.bg-emerald-300 { background-color: var(--bf-primary-300) !important; }
+.bg-emerald-400 { background-color: var(--bf-primary-400) !important; }
+.bg-emerald-500 { background-color: var(--bf-primary-500) !important; }
+.bg-emerald-600 { background-color: var(--bf-primary-600) !important; color: var(--bf-primary-text) !important; }
+.bg-emerald-700 { background-color: var(--bf-primary-700) !important; color: var(--bf-primary-text) !important; }
+.bg-emerald-800 { background-color: var(--bf-primary-800) !important; color: var(--bf-primary-text) !important; }
+.bg-emerald-900 { background-color: var(--bf-primary-900) !important; color: var(--bf-primary-text) !important; }
+
+.border-emerald-50 { border-color: var(--bf-primary-50) !important; }
+.border-emerald-100 { border-color: var(--bf-primary-100) !important; }
+.border-emerald-200 { border-color: var(--bf-primary-200) !important; }
+.border-emerald-300 { border-color: var(--bf-primary-300) !important; }
+.border-emerald-400 { border-color: var(--bf-primary-400) !important; }
+.border-emerald-500 { border-color: var(--bf-primary-500) !important; }
+.border-emerald-600 { border-color: var(--bf-primary-600) !important; }
+.border-emerald-700 { border-color: var(--bf-primary-700) !important; }
+.border-emerald-800 { border-color: var(--bf-primary-800) !important; }
+.border-emerald-900 { border-color: var(--bf-primary-900) !important; }
+
+/* Reuse same theme mapping for green utilities so success/positive surfaces
+   adopt the brand cyan-blue instead of literal green. */
+.text-green-50  { color: var(--bf-primary-50)  !important; }
+.text-green-100 { color: var(--bf-primary-100) !important; }
+.text-green-200 { color: var(--bf-primary-200) !important; }
+.text-green-300 { color: var(--bf-primary-300) !important; }
+.text-green-400 { color: var(--bf-primary-400) !important; }
+.text-green-500 { color: var(--bf-primary-500) !important; }
+.text-green-600 { color: var(--bf-primary-600) !important; }
+.text-green-700 { color: var(--bf-primary-700) !important; }
+.text-green-800 { color: var(--bf-primary-800) !important; }
+.text-green-900 { color: var(--bf-primary-900) !important; }
+
+.bg-green-50  { background-color: var(--bf-primary-50)  !important; }
+.bg-green-100 { background-color: var(--bf-primary-100) !important; }
+.bg-green-200 { background-color: var(--bf-primary-200) !important; }
+.bg-green-300 { background-color: var(--bf-primary-300) !important; }
+.bg-green-400 { background-color: var(--bf-primary-400) !important; }
+.bg-green-500 { background-color: var(--bf-primary-500) !important; }
+.bg-green-600 { background-color: var(--bf-primary-600) !important; color: var(--bf-primary-text) !important; }
+.bg-green-700 { background-color: var(--bf-primary-700) !important; color: var(--bf-primary-text) !important; }
+.bg-green-800 { background-color: var(--bf-primary-800) !important; color: var(--bf-primary-text) !important; }
+.bg-green-900 { background-color: var(--bf-primary-900) !important; color: var(--bf-primary-text) !important; }
+
+.border-green-50  { border-color: var(--bf-primary-50)  !important; }
+.border-green-100 { border-color: var(--bf-primary-100) !important; }
+.border-green-200 { border-color: var(--bf-primary-200) !important; }
+.border-green-300 { border-color: var(--bf-primary-300) !important; }
+.border-green-400 { border-color: var(--bf-primary-400) !important; }
+.border-green-500 { border-color: var(--bf-primary-500) !important; }
+.border-green-600 { border-color: var(--bf-primary-600) !important; }
+.border-green-700 { border-color: var(--bf-primary-700) !important; }
+.border-green-800 { border-color: var(--bf-primary-800) !important; }
+.border-green-900 { border-color: var(--bf-primary-900) !important; }
+
+/* Hover & gradient variants for green */
+.hover\:bg-green-50:hover  { background-color: var(--bf-primary-50)  !important; }
+.hover\:bg-green-100:hover { background-color: var(--bf-primary-100) !important; }
+.hover\:bg-green-600:hover { background-color: var(--bf-primary-600) !important; color: var(--bf-primary-text) !important; }
+.hover\:bg-green-700:hover { background-color: var(--bf-primary-700) !important; color: var(--bf-primary-text) !important; }
+.hover\:text-green-600:hover { color: var(--bf-primary-600) !important; }
+.hover\:text-green-700:hover { color: var(--bf-primary-700) !important; }
+.from-green-50  { --tw-gradient-from: var(--bf-primary-50)  !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(0,0,0,0)) !important; }
+.from-green-100 { --tw-gradient-from: var(--bf-primary-100) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(0,0,0,0)) !important; }
+.from-green-500 { --tw-gradient-from: var(--bf-primary-500) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(0,0,0,0)) !important; }
+.from-green-600 { --tw-gradient-from: var(--bf-primary-600) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(0,0,0,0)) !important; }
+.to-green-200 { --tw-gradient-to: var(--bf-primary-200) !important; }
+.to-green-700 { --tw-gradient-to: var(--bf-primary-700) !important; }
+.to-green-800 { --tw-gradient-to: var(--bf-primary-800) !important; }
+
+/* Ring/focus for green */
+.ring-green-500 { --tw-ring-color: var(--bf-primary-500) !important; }
+.ring-green-600 { --tw-ring-color: var(--bf-primary-600) !important; }
+.focus\:ring-green-500:focus { --tw-ring-color: var(--bf-primary-500) !important; }
+.focus\:ring-green-600:focus { --tw-ring-color: var(--bf-primary-600) !important; }
+
+/* Divider utilities (e.g. divide-green-200) */
+.divide-green-100 > * + * { border-color: var(--bf-primary-100) !important; }
+.divide-green-200 > * + * { border-color: var(--bf-primary-200) !important; }
+
+/* Icons inside green tinted backgrounds remain readable */
+.bg-green-100 i,
+.bg-green-200 i,
+.bg-green-300 i { color: var(--bf-primary) !important; }
+.bg-green-600 i,
+.bg-green-700 i,
+.bg-green-800 i,
+.bg-green-900 i { color: var(--bf-primary-text) !important; }
+
+/* =================================================
+   ADMIN DARK MODE
+   Scoped to [data-theme="dark"] on the layout root.
+   Only affects the admin panel — cashier/public are untouched.
+   ================================================= */
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  /* Fill the layout root itself so unclassed divs inherit dark */
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+
+/* Darken <html> and <body> whenever the admin dark layout is present */
+html:has([data-theme="dark"]),
+body:has([data-theme="dark"]) {
+  background-color: #0f172a !important;
+}
+
+/* --- Backgrounds (layered dark levels) ---
+   #0f172a  deepest — page fill
+   #1a2235  surfaces — cards, sidebar, footer
+   #1e293b  elevated — table rows, panels
+   #334155  overlay  — hover, selected, chips    */
+[data-theme="dark"] .bg-white          { background-color: #1a2235 !important; }
+[data-theme="dark"] .bg-gray-50        { background-color: #0f172a !important; }
+[data-theme="dark"] .bg-gray-100       { background-color: #1e293b !important; }
+[data-theme="dark"] .bg-gray-200       { background-color: #334155 !important; }
+
+/* --- Hover backgrounds --- */
+[data-theme="dark"] .hover\:bg-white:hover     { background-color: #334155 !important; }
+[data-theme="dark"] .hover\:bg-gray-50:hover   { background-color: #1e293b !important; }
+[data-theme="dark"] .hover\:bg-gray-100:hover  { background-color: #334155 !important; }
+
+/* --- Text --- */
+[data-theme="dark"] .text-gray-900 { color: #f1f5f9 !important; }
+[data-theme="dark"] .text-gray-800 { color: #e2e8f0 !important; }
+[data-theme="dark"] .text-gray-700 { color: #cbd5e1 !important; }
+[data-theme="dark"] .text-gray-600 { color: #94a3b8 !important; }
+[data-theme="dark"] .text-gray-500 { color: #64748b !important; }
+
+/* --- Borders --- */
+[data-theme="dark"] .border-gray-100 { border-color: #334155 !important; }
+[data-theme="dark"] .border-gray-200 { border-color: #334155 !important; }
+[data-theme="dark"] .border-gray-300 { border-color: #475569 !important; }
+
+/* --- Page Tabs --- */
+[data-theme="dark"] .tab-nav {
+  background: #0f172a !important;
+}
+[data-theme="dark"] .tab-btn {
+  color: #94a3b8;
+}
+[data-theme="dark"] .tab-btn:hover:not(.tab-btn-active) {
+  color: #e2e8f0;
+  background: rgba(255,255,255,0.06);
+}
+[data-theme="dark"] .tab-btn-active {
+  background: #1e293b !important;
+  color: var(--bf-primary) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+}
+
+/* --- Table dividers --- */
+[data-theme="dark"] .divide-gray-200 > * + * { border-color: #334155 !important; }
+
+/* --- Inputs, selects, textareas --- */
+[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]),
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background-color: #0f172a !important;
+  color: #f1f5f9 !important;
+  border-color: #334155 !important;
+}
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder { color: #475569 !important; }
+
+/* --- Semantic -50 backgrounds (stat boxes, mini panels) --- */
+[data-theme="dark"] .bg-blue-50    { background-color: rgba(16, 185, 129, 0.08) !important; }
+[data-theme="dark"] .bg-green-50   { background-color: rgba(16, 185, 129, 0.08) !important; }
+[data-theme="dark"] .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.08) !important; }
+[data-theme="dark"] .bg-purple-50  { background-color: rgba(16, 185, 129, 0.08) !important; }
+[data-theme="dark"] .bg-indigo-50  { background-color: rgba(16, 185, 129, 0.08) !important; }
+[data-theme="dark"] .bg-red-50     { background-color: rgba(239, 68, 68, 0.10) !important; }   /* keep red — error banners */
+[data-theme="dark"] .bg-orange-50  { background-color: rgba(16, 185, 129, 0.08) !important; }
+[data-theme="dark"] .bg-amber-50   { background-color: rgba(16, 185, 129, 0.08) !important; }
+[data-theme="dark"] .bg-yellow-50  { background-color: rgba(16, 185, 129, 0.08) !important; }
+
+/* --- Semantic -100 backgrounds (icon circles, badges) --- */
+[data-theme="dark"] .bg-blue-100    { background-color: rgba(16, 185, 129, 0.15) !important; }
+[data-theme="dark"] .bg-green-100   { background-color: rgba(16, 185, 129, 0.15) !important; }
+[data-theme="dark"] .bg-emerald-100 { background-color: rgba(16, 185, 129, 0.15) !important; }
+[data-theme="dark"] .bg-purple-100  { background-color: rgba(16, 185, 129, 0.15) !important; }
+[data-theme="dark"] .bg-indigo-100  { background-color: rgba(16, 185, 129, 0.15) !important; }
+[data-theme="dark"] .bg-red-100     { background-color: rgba(239, 68, 68, 0.18) !important; }   /* keep red — error/danger icons */
+[data-theme="dark"] .bg-orange-100  { background-color: rgba(16, 185, 129, 0.15) !important; }
+[data-theme="dark"] .bg-amber-100   { background-color: rgba(16, 185, 129, 0.15) !important; }
+[data-theme="dark"] .bg-yellow-100  { background-color: rgba(16, 185, 129, 0.15) !important; }
+
+/* --- Destructive hover --- */
+[data-theme="dark"] .hover\:bg-red-50:hover    { background-color: rgba(239, 68, 68, 0.10) !important; }   /* keep red */
+[data-theme="dark"] .hover\:bg-amber-100:hover { background-color: rgba(16, 185, 129, 0.20) !important; }
+[data-theme="dark"] .hover\:bg-red-100:hover   { background-color: rgba(239, 68, 68, 0.20) !important; }   /* keep red */
+
+/* --- app-header (if used) --- */
+[data-theme="dark"] .app-header {
+  background: #1e293b !important;
+  color: #f1f5f9 !important;
+}
+
+/* --- Admin header dark mode --- */
+[data-theme="dark"] .admin-header {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.40), 0 1px 3px rgba(0,0,0,0.20) !important;
+  border-bottom-color: rgba(255,255,255,0.06) !important;
+}
+
+[data-theme="dark"] .admin-header-btn:hover {
+  background: rgba(255,255,255,0.10);
+  border-color: rgba(255,255,255,0.08);
+}
+
+[data-theme="dark"] .bf-dropdown-menu {
+  background: #1a2235 !important;
+  border-color: #334155 !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.40) !important;
+}
+
+[data-theme="dark"] .bf-dropdown-menu .bg-gradient-to-br {
+  background: linear-gradient(to bottom right, #1e293b, #1a2235) !important;
+}
+
+/* --- Additional text colors --- */
+[data-theme="dark"] .text-gray-400 { color: #94a3b8 !important; }
+[data-theme="dark"] .text-gray-300 { color: #94a3b8 !important; }
+[data-theme="dark"] .text-gray-200 { color: #cbd5e1 !important; }
+[data-theme="dark"] .text-gray-100 { color: #e2e8f0 !important; }
+[data-theme="dark"] .text-black     { color: #f1f5f9 !important; }
+
+/* --- Additional backgrounds --- */
+[data-theme="dark"] .bg-gray-300 { background-color: #475569 !important; }
+[data-theme="dark"] .bg-gray-400 { background-color: #475569 !important; }
+[data-theme="dark"] .bg-gray-500 { background-color: #64748b !important; }
+
+/* --- Semantic -50 backgrounds (pink, teal, cyan — missing) --- */
+[data-theme="dark"] .bg-pink-50    { background-color: rgba(16, 185, 129, 0.08) !important; }
+[data-theme="dark"] .bg-teal-50    { background-color: rgba(16, 185, 129, 0.08) !important; }
+[data-theme="dark"] .bg-cyan-50    { background-color: rgba(16, 185, 129, 0.08) !important; }
+
+/* --- Semantic -100 backgrounds (pink, teal, cyan — missing) --- */
+[data-theme="dark"] .bg-pink-100    { background-color: rgba(16, 185, 129, 0.15) !important; }
+[data-theme="dark"] .bg-teal-100    { background-color: rgba(16, 185, 129, 0.15) !important; }
+[data-theme="dark"] .bg-cyan-100    { background-color: rgba(16, 185, 129, 0.15) !important; }
+[data-theme="dark"] .bg-gray-100.text-gray-800 { background-color: #334155 !important; }
+
+/* --- Additional borders --- */
+[data-theme="dark"] .border-gray-300 { border-color: #475569 !important; }
+[data-theme="dark"] .border-gray-400 { border-color: #475569 !important; }
+[data-theme="dark"] .border-gray-50  { border-color: #1e293b !important; }
+
+/* --- Additional dividers --- */
+[data-theme="dark"] .divide-gray-100 > * + * { border-color: #1e293b !important; }
+
+/* --- Additional hover backgrounds --- */
+[data-theme="dark"] .hover\:bg-gray-200:hover { background-color: #334155 !important; }
+[data-theme="dark"] .hover\:bg-gray-300:hover { background-color: #475569 !important; }
+
+/* --- Additional hover text --- */
+[data-theme="dark"] .hover\:text-gray-600:hover { color: #cbd5e1 !important; }
+[data-theme="dark"] .hover\:text-gray-700:hover { color: #e2e8f0 !important; }
+[data-theme="dark"] .hover\:text-gray-900:hover { color: #f1f5f9 !important; }
+[data-theme="dark"] .hover\:text-purple-700:hover { color: #6ee7b7 !important; }
+[data-theme="dark"] .hover\:text-purple-800:hover { color: #34d399 !important; }
+[data-theme="dark"] .hover\:text-purple-900:hover { color: #059669 !important; }
+[data-theme="dark"] .hover\:text-indigo-700:hover { color: #6ee7b7 !important; }
+[data-theme="dark"] .hover\:text-indigo-900:hover { color: #059669 !important; }
+
+/* --- Disabled inputs --- */
+[data-theme="dark"] input:disabled,
+[data-theme="dark"] select:disabled,
+[data-theme="dark"] textarea:disabled {
+  background-color: #1e293b !important;
+  color: #64748b !important;
+}
+
+/* --- Dropdown menu --- */
+[data-theme="dark"] .bf-dropdown-menu {
+  background-color: #1a2235 !important;
+  color: #f1f5f9 !important;
+  border-color: #334155 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+[data-theme="dark"] .bf-dropdown-menu button:hover,
+[data-theme="dark"] .bf-dropdown-menu a:hover {
+  background-color: #334155 !important;
+}
+
+/* --- Shadows (soften for dark surfaces) --- */
+[data-theme="dark"] .shadow-sm  { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important; }
+[data-theme="dark"] .shadow-md  { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4) !important; }
+[data-theme="dark"] .shadow-lg  { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4) !important; }
+[data-theme="dark"] .shadow-xl  { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4) !important; }
+[data-theme="dark"] .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important; }
+[data-theme="dark"] .hover\:shadow-md:hover { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5) !important; }
+[data-theme="dark"] .hover\:shadow-lg:hover { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important; }
+
+/* --- Sidebar (bg-white set in code-behind) --- */
+[data-theme="dark"] aside,
+[data-theme="dark"] [class*="fixed"][class*="bg-white"][class*="border-e"] {
+  background-color: #1a2235 !important;
+  border-color: #334155 !important;
+}
+
+/* --- Sidebar section group dividers (hardcoded #e5e7eb) --- */
+[data-theme="dark"] .sidebar-mini .section-group::after {
+  border-top-color: #334155 !important;
+}
+
+/* --- File input buttons --- */
+[data-theme="dark"] input[type="file"]::file-selector-button {
+  background-color: #334155 !important;
+  color: #e2e8f0 !important;
+  border-color: #475569 !important;
+}
+
+/* --- Table header row --- */
+[data-theme="dark"] thead { background-color: #1e293b !important; }
+[data-theme="dark"] thead th { color: #94a3b8 !important; }
+[data-theme="dark"] tbody tr { border-color: #334155 !important; }
+[data-theme="dark"] tbody tr:hover { background-color: #1e293b !important; }
+
+/* --- Badge text colors for dark mode (x00 shades) --- */
+[data-theme="dark"] .text-green-800  { color: #6ee7b7 !important; }
+/* text-red-800 intentionally not remapped — red stays red for danger/validation */
+[data-theme="dark"] .text-yellow-800 { color: #6ee7b7 !important; }
+[data-theme="dark"] .text-blue-800   { color: #6ee7b7 !important; }
+[data-theme="dark"] .text-purple-800 { color: #6ee7b7 !important; }
+[data-theme="dark"] .text-indigo-800 { color: #6ee7b7 !important; }
+[data-theme="dark"] .text-orange-800 { color: #6ee7b7 !important; }
+[data-theme="dark"] .text-pink-800   { color: #6ee7b7 !important; }
+[data-theme="dark"] .text-teal-800   { color: #6ee7b7 !important; }
+[data-theme="dark"] .text-cyan-800   { color: #6ee7b7 !important; }
+
+/* --- Semantic text-*-700 (dashboard KPI badge labels, inventory link labels) --- */
+[data-theme="dark"] .text-emerald-700 { color: #6ee7b7 !important; }
+[data-theme="dark"] .text-green-700   { color: #6ee7b7 !important; }
+[data-theme="dark"] .text-blue-700    { color: #6ee7b7 !important; }
+[data-theme="dark"] .text-purple-700  { color: #6ee7b7 !important; }
+[data-theme="dark"] .text-indigo-700  { color: #6ee7b7 !important; }
+/* text-red-700 intentionally not remapped — red stays red for danger/validation */
+[data-theme="dark"] .text-orange-700  { color: #6ee7b7 !important; }
+[data-theme="dark"] .text-amber-700   { color: #6ee7b7 !important; }
+[data-theme="dark"] .text-yellow-700  { color: #6ee7b7 !important; }
+[data-theme="dark"] .text-pink-700    { color: #6ee7b7 !important; }
+
+/* --- Semantic text-*-600 (dashboard icon colors — keep vivid) --- */
+[data-theme="dark"] .text-emerald-600 { color: #34d399 !important; }
+[data-theme="dark"] .text-green-600   { color: #34d399 !important; }
+[data-theme="dark"] .text-blue-600    { color: #34d399 !important; }
+[data-theme="dark"] .text-purple-600  { color: #34d399 !important; }
+[data-theme="dark"] .text-indigo-600  { color: #34d399 !important; }
+/* text-red-600 intentionally not remapped — red stays red for danger/validation */
+[data-theme="dark"] .text-orange-600  { color: #34d399 !important; }
+[data-theme="dark"] .text-amber-600   { color: #34d399 !important; }
+[data-theme="dark"] .text-yellow-600  { color: #34d399 !important; }
+
+/* --- Semantic border-*-200 (inventory alert card borders) --- */
+[data-theme="dark"] .border-amber-200 { border-color: rgba(16, 185, 129, 0.3) !important; }
+[data-theme="dark"] .border-red-200   { border-color: rgba(239, 68, 68, 0.30) !important; }   /* keep red */
+[data-theme="dark"] .border-green-200 { border-color: rgba(16, 185, 129, 0.3) !important; }
+[data-theme="dark"] .border-blue-200  { border-color: rgba(16, 185, 129, 0.3) !important; }
+[data-theme="dark"] .border-purple-300 { border-color: rgba(16, 185, 129, 0.4) !important; }
+[data-theme="dark"] .border-indigo-300 { border-color: rgba(16, 185, 129, 0.4) !important; }
+
+/* --- Hover backgrounds for inventory alert links --- */
+[data-theme="dark"] .hover\:bg-amber-100:hover { background-color: rgba(16, 185, 129, 0.20) !important; }
+/* hover:bg-red-100 stays red — handled above for danger contexts */
+[data-theme="dark"] .hover\:bg-green-100:hover { background-color: rgba(16, 185, 129, 0.20) !important; }
+
+/* --- Inner card stat cells: bg-gray-50 inside bg-white cards needs distinct shade --- */
+[data-theme="dark"] .bg-white .bg-gray-50 { background-color: #0f172a !important; }
+
+/* --- Colored rounded-full pill badges (e.g. "Today", "Total" on KPI cards) --- */
+[data-theme="dark"] .bg-emerald-100.text-emerald-700 { background-color: rgba(16, 185, 129, 0.15) !important; color: #6ee7b7 !important; }
+[data-theme="dark"] .bg-blue-100.text-blue-700       { background-color: rgba(16, 185, 129, 0.15) !important; color: #6ee7b7 !important; }
+[data-theme="dark"] .bg-amber-100.text-amber-700     { background-color: rgba(16, 185, 129, 0.15) !important; color: #6ee7b7 !important; }
+[data-theme="dark"] .bg-purple-100.text-purple-700   { background-color: rgba(16, 185, 129, 0.15) !important; color: #6ee7b7 !important; }
+[data-theme="dark"] .bg-indigo-100.text-indigo-700   { background-color: rgba(16, 185, 129, 0.15) !important; color: #6ee7b7 !important; }
+[data-theme="dark"] .bg-purple-100.text-purple-800   { background-color: rgba(16, 185, 129, 0.15) !important; color: #6ee7b7 !important; }
+
+/* --- Violet dark-mode badges/pills (Split payment, Email, AddGRN, etc.) --- */
+[data-theme="dark"] .bg-violet-50    { background-color: rgba(16, 185, 129, 0.08) !important; }
+[data-theme="dark"] .bg-violet-100   { background-color: rgba(16, 185, 129, 0.15) !important; }
+[data-theme="dark"] .text-violet-600 { color: #34d399 !important; }
+[data-theme="dark"] .text-violet-700 { color: #6ee7b7 !important; }
+[data-theme="dark"] .text-violet-800 { color: #6ee7b7 !important; }
+[data-theme="dark"] .border-violet-200 { border-color: rgba(16, 185, 129, 0.3) !important; }
+[data-theme="dark"] .border-violet-300 { border-color: rgba(16, 185, 129, 0.4) !important; }
+[data-theme="dark"] .hover\:bg-violet-100:hover { background-color: rgba(16, 185, 129, 0.20) !important; }
+[data-theme="dark"] .bg-violet-100.text-violet-700 { background-color: rgba(16, 185, 129, 0.15) !important; color: #6ee7b7 !important; }
+[data-theme="dark"] .bg-violet-100.text-violet-800 { background-color: rgba(16, 185, 129, 0.15) !important; color: #6ee7b7 !important; }
+
+/* =================================================
+   DARK MODE: blanket purple-* / violet-* → brand blue
+   The brand blue (#059669) replaces purple anywhere in
+   dark mode, regardless of tone level or utility kind.
+   These rules pin every shade to the theme tokens so
+   no purple/violet ever leaks through.
+   ================================================= */
+
+/* Text */
+[data-theme="dark"] .text-purple-50,
+[data-theme="dark"] .text-violet-50   { color: var(--bf-primary-50)  !important; }
+[data-theme="dark"] .text-purple-100,
+[data-theme="dark"] .text-violet-100  { color: var(--bf-primary-100) !important; }
+[data-theme="dark"] .text-purple-200,
+[data-theme="dark"] .text-violet-200  { color: var(--bf-primary-200) !important; }
+[data-theme="dark"] .text-purple-300,
+[data-theme="dark"] .text-violet-300  { color: var(--bf-primary-300) !important; }
+[data-theme="dark"] .text-purple-400,
+[data-theme="dark"] .text-violet-400  { color: var(--bf-primary-400) !important; }
+[data-theme="dark"] .text-purple-500,
+[data-theme="dark"] .text-violet-500  { color: #34d399 !important; }
+[data-theme="dark"] .text-purple-600,
+[data-theme="dark"] .text-violet-600  { color: #34d399 !important; }
+[data-theme="dark"] .text-purple-700,
+[data-theme="dark"] .text-violet-700  { color: #6ee7b7 !important; }
+[data-theme="dark"] .text-purple-800,
+[data-theme="dark"] .text-violet-800  { color: #6ee7b7 !important; }
+[data-theme="dark"] .text-purple-900,
+[data-theme="dark"] .text-violet-900  { color: #059669 !important; }
+
+/* Backgrounds */
+[data-theme="dark"] .bg-purple-50,
+[data-theme="dark"] .bg-violet-50    { background-color: rgba(16, 185, 129, 0.08) !important; }
+[data-theme="dark"] .bg-purple-100,
+[data-theme="dark"] .bg-violet-100   { background-color: rgba(16, 185, 129, 0.15) !important; }
+[data-theme="dark"] .bg-purple-200,
+[data-theme="dark"] .bg-violet-200   { background-color: rgba(16, 185, 129, 0.22) !important; }
+[data-theme="dark"] .bg-purple-300,
+[data-theme="dark"] .bg-violet-300   { background-color: rgba(16, 185, 129, 0.30) !important; }
+[data-theme="dark"] .bg-purple-400,
+[data-theme="dark"] .bg-violet-400   { background-color: rgba(16, 185, 129, 0.45) !important; }
+[data-theme="dark"] .bg-purple-500,
+[data-theme="dark"] .bg-violet-500   { background-color: #059669 !important; color: #ffffff !important; }
+[data-theme="dark"] .bg-purple-600,
+[data-theme="dark"] .bg-violet-600   { background-color: #059669 !important; color: #ffffff !important; }
+[data-theme="dark"] .bg-purple-700,
+[data-theme="dark"] .bg-violet-700   { background-color: #047857 !important; color: #ffffff !important; }
+[data-theme="dark"] .bg-purple-800,
+[data-theme="dark"] .bg-violet-800   { background-color: #047857 !important; color: #ffffff !important; }
+[data-theme="dark"] .bg-purple-900,
+[data-theme="dark"] .bg-violet-900   { background-color: #065f46 !important; color: #ffffff !important; }
+
+/* Borders */
+[data-theme="dark"] .border-purple-100,
+[data-theme="dark"] .border-violet-100 { border-color: rgba(16, 185, 129, 0.15) !important; }
+[data-theme="dark"] .border-purple-200,
+[data-theme="dark"] .border-violet-200 { border-color: rgba(16, 185, 129, 0.30) !important; }
+[data-theme="dark"] .border-purple-300,
+[data-theme="dark"] .border-violet-300 { border-color: rgba(16, 185, 129, 0.40) !important; }
+[data-theme="dark"] .border-purple-400,
+[data-theme="dark"] .border-violet-400 { border-color: rgba(16, 185, 129, 0.55) !important; }
+[data-theme="dark"] .border-purple-500,
+[data-theme="dark"] .border-violet-500 { border-color: #059669 !important; }
+[data-theme="dark"] .border-purple-600,
+[data-theme="dark"] .border-violet-600 { border-color: #059669 !important; }
+[data-theme="dark"] .border-purple-700,
+[data-theme="dark"] .border-violet-700 { border-color: #047857 !important; }
+[data-theme="dark"] .border-purple-800,
+[data-theme="dark"] .border-violet-800 { border-color: #047857 !important; }
+
+/* Hover variants */
+[data-theme="dark"] .hover\:bg-purple-50:hover,
+[data-theme="dark"] .hover\:bg-violet-50:hover   { background-color: rgba(16, 185, 129, 0.10) !important; }
+[data-theme="dark"] .hover\:bg-purple-100:hover,
+[data-theme="dark"] .hover\:bg-violet-100:hover  { background-color: rgba(16, 185, 129, 0.20) !important; }
+[data-theme="dark"] .hover\:bg-purple-600:hover,
+[data-theme="dark"] .hover\:bg-violet-600:hover  { background-color: #059669 !important; color: #ffffff !important; }
+[data-theme="dark"] .hover\:bg-purple-700:hover,
+[data-theme="dark"] .hover\:bg-violet-700:hover  { background-color: #047857 !important; color: #ffffff !important; }
+[data-theme="dark"] .hover\:border-purple-500:hover { border-color: #059669 !important; }
+[data-theme="dark"] .hover\:border-purple-600:hover { border-color: #059669 !important; }
+
+/* Ring / focus */
+[data-theme="dark"] .ring-purple-300,
+[data-theme="dark"] .ring-violet-300 { --tw-ring-color: rgba(16, 185, 129, 0.40) !important; }
+[data-theme="dark"] .ring-purple-400,
+[data-theme="dark"] .ring-violet-400 { --tw-ring-color: rgba(16, 185, 129, 0.55) !important; }
+[data-theme="dark"] .ring-purple-500,
+[data-theme="dark"] .ring-violet-500 { --tw-ring-color: #059669 !important; }
+[data-theme="dark"] .ring-purple-600,
+[data-theme="dark"] .ring-violet-600 { --tw-ring-color: #059669 !important; }
+[data-theme="dark"] .focus\:ring-purple-300:focus,
+[data-theme="dark"] .focus\:ring-violet-300:focus { --tw-ring-color: rgba(16, 185, 129, 0.40) !important; }
+[data-theme="dark"] .focus\:ring-purple-400:focus,
+[data-theme="dark"] .focus\:ring-violet-400:focus { --tw-ring-color: rgba(16, 185, 129, 0.55) !important; }
+[data-theme="dark"] .focus\:ring-purple-500:focus,
+[data-theme="dark"] .focus\:ring-violet-500:focus { --tw-ring-color: #059669 !important; }
+[data-theme="dark"] .focus\:ring-purple-600:focus,
+[data-theme="dark"] .focus\:ring-violet-600:focus { --tw-ring-color: #059669 !important; }
+[data-theme="dark"] .focus\:border-purple-400:focus,
+[data-theme="dark"] .focus\:border-violet-400:focus { border-color: #059669 !important; }
+[data-theme="dark"] .focus\:border-purple-500:focus,
+[data-theme="dark"] .focus\:border-violet-500:focus { border-color: #059669 !important; }
+
+/* Gradient stops (from / via / to) */
+[data-theme="dark"] .from-purple-50,
+[data-theme="dark"] .from-violet-50  { --tw-gradient-from: rgba(16, 185, 129, 0.08) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(0,0,0,0)) !important; }
+[data-theme="dark"] .from-purple-100,
+[data-theme="dark"] .from-violet-100 { --tw-gradient-from: rgba(16, 185, 129, 0.15) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(0,0,0,0)) !important; }
+[data-theme="dark"] .from-purple-500,
+[data-theme="dark"] .from-violet-500 { --tw-gradient-from: #059669 !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(0,0,0,0)) !important; }
+[data-theme="dark"] .from-purple-600,
+[data-theme="dark"] .from-violet-600 { --tw-gradient-from: #059669 !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(0,0,0,0)) !important; }
+[data-theme="dark"] .from-purple-700,
+[data-theme="dark"] .from-violet-700 { --tw-gradient-from: #047857 !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(0,0,0,0)) !important; }
+[data-theme="dark"] .from-purple-800,
+[data-theme="dark"] .from-violet-800 { --tw-gradient-from: #047857 !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(0,0,0,0)) !important; }
+
+[data-theme="dark"] .via-purple-500,
+[data-theme="dark"] .via-violet-500  { --tw-gradient-stops: var(--tw-gradient-from), #059669, var(--tw-gradient-to, rgba(0,0,0,0)) !important; }
+[data-theme="dark"] .via-purple-600,
+[data-theme="dark"] .via-violet-600  { --tw-gradient-stops: var(--tw-gradient-from), #059669, var(--tw-gradient-to, rgba(0,0,0,0)) !important; }
+[data-theme="dark"] .via-purple-700,
+[data-theme="dark"] .via-violet-700  { --tw-gradient-stops: var(--tw-gradient-from), #047857, var(--tw-gradient-to, rgba(0,0,0,0)) !important; }
+[data-theme="dark"] .via-purple-800,
+[data-theme="dark"] .via-violet-800  { --tw-gradient-stops: var(--tw-gradient-from), #047857, var(--tw-gradient-to, rgba(0,0,0,0)) !important; }
+[data-theme="dark"] .via-purple-900,
+[data-theme="dark"] .via-violet-900  { --tw-gradient-stops: var(--tw-gradient-from), #065f46, var(--tw-gradient-to, rgba(0,0,0,0)) !important; }
+
+[data-theme="dark"] .to-purple-200,
+[data-theme="dark"] .to-violet-200   { --tw-gradient-to: rgba(16, 185, 129, 0.22) !important; }
+[data-theme="dark"] .to-purple-300,
+[data-theme="dark"] .to-violet-300   { --tw-gradient-to: rgba(16, 185, 129, 0.30) !important; }
+[data-theme="dark"] .to-purple-600,
+[data-theme="dark"] .to-violet-600   { --tw-gradient-to: #059669 !important; }
+[data-theme="dark"] .to-purple-700,
+[data-theme="dark"] .to-violet-700   { --tw-gradient-to: #047857 !important; }
+[data-theme="dark"] .to-purple-800,
+[data-theme="dark"] .to-violet-800   { --tw-gradient-to: #047857 !important; }
+[data-theme="dark"] .to-purple-900,
+[data-theme="dark"] .to-violet-900   { --tw-gradient-to: #065f46 !important; }
+
+/* Hover gradient stops */
+[data-theme="dark"] .hover\:from-purple-700:hover,
+[data-theme="dark"] .hover\:from-violet-700:hover { --tw-gradient-from: #047857 !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(0,0,0,0)) !important; }
+[data-theme="dark"] .hover\:to-purple-900:hover,
+[data-theme="dark"] .hover\:to-violet-900:hover   { --tw-gradient-to: #065f46 !important; }
+
+/* --- Progress bar track --- */
+[data-theme="dark"] .bg-emerald-500 { background-color: var(--bf-primary-500) !important; }
+
+/* --- bf-dropdown-white (header dropdowns: NotificationBell, LanguageSelector) --- */
+[data-theme="dark"] .bf-dropdown-white {
+  background: #1a2235 !important;
+  color: #f1f5f9 !important;
+  border-color: #334155 !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.40), 0 1px 4px rgba(0, 0, 0, 0.20) !important;
+}
+
+[data-theme="dark"] .bf-dropdown-white button:hover,
+[data-theme="dark"] .bf-dropdown-white a:hover {
+  background: #334155 !important;
+}
+
+[data-theme="dark"] .bf-dropdown-white .bg-gradient-to-br {
+  background: linear-gradient(to bottom right, #1e293b, #1a2235) !important;
+}
+
+[data-theme="dark"] .bf-dropdown-white .border-gray-100,
+[data-theme="dark"] .bf-dropdown-white .border-gray-200 {
+  border-color: #334155 !important;
+}
+
+/* --- Chart grid/axis colors (themable via class so SVG strokes/fills follow theme) --- */
+.chart-grid-line { stroke: #e5e7eb; background: transparent; border-top-color: #e5e7eb; }
+.chart-grid-baseline { stroke: #d1d5db; background: #d1d5db; }
+.chart-axis-label { fill: #374151; }
+.chart-axis-label-muted { fill: #9ca3af; }
+
+[data-theme="dark"] .chart-grid-line { stroke: #334155 !important; border-top-color: #334155 !important; }
+[data-theme="dark"] .chart-grid-baseline { stroke: #475569 !important; background: #475569 !important; }
+[data-theme="dark"] .chart-axis-label { fill: #cbd5e1 !important; }
+[data-theme="dark"] .chart-axis-label-muted { fill: #94a3b8 !important; }
+
+/* --- Cashier shift banner border on dark header (white/25 border on green) --- */
+/* No change needed — bg-white/10 and border-white/25 work on the primary green
+   header in both themes since the header background is brand-colored. */
+
+/* --- Modal backdrop (bg-black/50) works in both themes since it is alpha-only --- */
+
+/* --- Color hint for bf-dropdown-overlay so dropdowns close properly in dark --- */
+[data-theme="dark"] .bf-dropdown-overlay {
+  background: rgba(0, 0, 0, 0.20);
+}
+
+/* --- Hover for items inside bf-dropdown-white items that use !hover utilities --- */
+[data-theme="dark"] .bf-dropdown-white .hover\:bg-gray-50:hover { background-color: #334155 !important; }
+[data-theme="dark"] .bf-dropdown-white .hover\:bg-red-50:hover { background-color: rgba(239, 68, 68, 0.15) !important; }
+
+/* ============================================================
+   Form sticky toolbar (Add/Edit forms across the admin)
+   The bar that holds the back button, page title, Cancel and
+   Create/Update buttons. This class owns background, border,
+   and blur entirely so there's no inline Tailwind utility
+   competing with the dark-mode override.
+   ============================================================ */
+.form-sticky-toolbar {
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-top: 1px solid #e5e7eb;                         /* gray-200 */
+  border-bottom: 1px solid #e5e7eb;                      /* gray-200 */
+}
+
+[data-theme="dark"] .form-sticky-toolbar {
+  background-color: rgba(15, 23, 42, 0.95);              /* slate-900 @ 95% */
+  border-top-color: #334155;                             /* slate-700 */
+  border-bottom-color: #334155;                          /* slate-700 */
+}
+
+/* Page title text inside the toolbar */
+[data-theme="dark"] .form-sticky-toolbar h1.text-gray-900 {
+  color: #f1f5f9 !important;                             /* slate-100 */
+}
+
+/* Back arrow icon button — light icon, subtle hover */
+[data-theme="dark"] .form-sticky-toolbar button[type="button"].text-gray-500 {
+  color: #94a3b8 !important;                             /* slate-400 */
+}
+[data-theme="dark"] .form-sticky-toolbar button[type="button"].text-gray-500:hover {
+  color: #f1f5f9 !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Cancel button — its own class so styling doesn't depend on
+   any global .bg-white / .text-gray-700 dark override. */
+.form-cancel-btn {
+  color: #374151;                                        /* gray-700 */
+  background-color: #ffffff;
+  border: 1px solid #d1d5db;                             /* gray-300 */
+}
+.form-cancel-btn:hover {
+  background-color: #f9fafb;                             /* gray-50 */
+}
+[data-theme="dark"] .form-cancel-btn {
+  color: #e2e8f0 !important;                             /* slate-200 */
+  background-color: #1e293b !important;                  /* slate-800 */
+  border-color: #475569 !important;                      /* slate-600 */
+}
+[data-theme="dark"] .form-cancel-btn:hover {
+  background-color: #334155 !important;                  /* slate-700 */
+  border-color: #64748b !important;                      /* slate-500 */
+}
+
+/* Smooth transition for all affected elements */
+[data-theme="dark"] *,
+[data-theme="light"] * {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* =====================================================================
+   ███  PANEL REDESIGN — "EMERALD + LIGHT SLATE"  ███
+   A full re-skin of the Admin / Branch / Cashier panels. Appended last
+   so it overrides every earlier design token and component rule.
+
+   Old identity : bright cyan-blue (#059669) accent on a dark-navy
+                  (#090e1a) header & sidebar, with an icon-chip + left
+                  indicator-strip nav style.
+   New identity : emerald (#059669) accent on a clean WHITE light header,
+                  white airy sidebar, and a solid emerald PILL for the
+                  active nav link. Dark mode is reworked to charcoal too,
+                  so even the toggled theme reads as brand-new.
+   ===================================================================== */
+
+:root {
+  /* ── Emerald primary scale (replaces the cyan-blue scale) ── */
+  --bf-primary:           #059669;   /* emerald-600 */
+  --bf-primary-600:       #059669;
+  --bf-primary-700:       #047857;
+  --bf-primary-dark:      #047857;
+  --bf-primary-contrast:  #ffffff;
+  --bf-primary-text:      #ffffff;
+
+  --bf-primary-50:   #ecfdf5;
+  --bf-primary-100:  #d1fae5;
+  --bf-primary-200:  #a7f3d0;
+  --bf-primary-300:  #6ee7b7;
+  --bf-primary-400:  #34d399;
+  --bf-primary-500:  #10b981;
+  --bf-primary-800:  #065f46;
+  --bf-primary-900:  #064e3b;
+
+  /* Accent (hover / pressed states on primary elements) */
+  --bf-accent:        #047857;   /* hover  */
+  --bf-accent-light:  #10b981;
+  --bf-accent-dark:   #065f46;   /* active */
+
+  /* ── Light surfaces (header & sidebar were dark navy #090e1a) ── */
+  --bf-header-bg:     #ffffff;
+  --bf-sidebar-bg:    #ffffff;
+  --bf-header-fg:     #0f172a;            /* header primary text   */
+  --bf-header-muted:  #64748b;            /* header secondary text */
+  --bf-header-border: #e8edf2;            /* header border / chips */
+  --bf-header-hover:  rgba(15, 23, 42, 0.06);
+
+  /* Legacy aliases kept in sync */
+  --brand: #059669;
+  --bg-0:  #ffffff;
+
+  --bf-border-color:      rgba(15, 23, 42, 0.08);
+  --bf-border-color-dark: rgba(255, 255, 255, 0.10);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   LIGHT HEADER
+   The three layouts assume a dark bar and paint everything in white
+   utilities (text-white, bg-white/10, border-white/25, ring-white/50…).
+   We turn the bar white and translate each of those white-on-dark
+   utilities to a light-surface equivalent — no per-layout markup edits.
+   ───────────────────────────────────────────────────────────────────── */
+.portal-header,
+.admin-header {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  color: var(--bf-header-fg) !important;
+  border-bottom: 1px solid var(--bf-header-border) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 1px 0 rgba(15, 23, 42, 0.02) !important;
+}
+
+.portal-header .text-white,
+.portal-header .\!text-white        { color: var(--bf-header-fg) !important; }
+.portal-header .text-white\/90      { color: #1e293b !important; }
+.portal-header .text-white\/80      { color: #475569 !important; }
+.portal-header .text-white\/70,
+.portal-header .text-white\/60      { color: var(--bf-header-muted) !important; }
+.portal-header .text-white\/50      { color: #94a3b8 !important; }
+.portal-header .hover\:text-white:hover { color: var(--bf-header-fg) !important; }
+
+.portal-header .bg-white\/10,
+.portal-header .bg-white\/15        { background-color: #f1f5f9 !important; }
+.portal-header .bg-white\/20,
+.portal-header .bg-white\/30        { background-color: #e2e8f0 !important; }
+.portal-header .hover\:bg-white\/20:hover,
+.portal-header .hover\:bg-white\/30:hover,
+.portal-header .group:hover .group-hover\:bg-white\/30 { background-color: #dbe3ea !important; }
+
+.portal-header .border-white\/10,
+.portal-header .border-white\/20,
+.portal-header .border-white\/25,
+.portal-header .border-white\/30    { border-color: var(--bf-header-border) !important; }
+
+.portal-header .ring-white\/30,
+.portal-header .ring-white\/40,
+.portal-header .ring-white\/50,
+.portal-header .ring-white\/80      { --tw-ring-color: #e2e8f0 !important; }
+.portal-header .group:hover .group-hover\:ring-white\/50,
+.portal-header .group:hover .group-hover\:ring-white\/80 { --tw-ring-color: #cbd5e1 !important; }
+
+/* Avatar fallback (the user-initial circle) → emerald badge on the white bar */
+.portal-header .bg-white\/20.text-white {
+  background-color: var(--bf-primary) !important;
+  color: #ffffff !important;
+}
+
+/* The dropdown menus render INSIDE .portal-header, so keep white text white
+   on their colored chips (menu avatar initial) and on the red unread badge —
+   the light-flip rules above must not darken those. */
+.portal-header .bf-dropdown-menu .text-white,
+.portal-header .bg-red-400.text-white,
+.portal-header .bg-red-500.text-white,
+.portal-header .bg-red-600.text-white { color: #ffffff !important; }
+
+/* Header icon buttons (bell, dark-mode, menu) — were white, now slate */
+.header-icon-btn               { color: #475569 !important; }
+.header-icon-btn:hover         { background: var(--bf-header-hover) !important; color: #0f172a !important; }
+.header-icon-btn:focus-visible { box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.35) !important; }
+.header-separator              { background: var(--bf-header-border) !important; }
+.portal-header .bf-dropdown-toggle:hover,
+.portal-header .bf-dropdown-toggle[aria-expanded="true"] { background: var(--bf-header-hover) !important; }
+
+/* ─────────────────────────────────────────────────────────────────────
+   SIDEBAR — white surface, emerald PILL active link
+   (replaces the old faint-tint + icon-chip + indicator-strip pattern)
+   ───────────────────────────────────────────────────────────────────── */
+aside { background-color: #ffffff !important; }
+
+.sidebar-link        { border-radius: 0.7rem !important; }
+.sidebar-link-icon   { color: #64748b; border-radius: 0.6rem; }
+.sidebar-link-indicator,
+.sidebar-link-active .sidebar-link-indicator { display: none !important; }
+
+/* hover */
+.sidebar-link:hover                  { background: var(--bf-primary-50) !important; color: var(--bf-primary-700) !important; }
+.sidebar-link:hover .sidebar-link-icon { background: var(--bf-primary-100); color: var(--bf-primary-700); }
+.sidebar-link:hover .sidebar-text    { color: var(--bf-primary-700) !important; }
+
+/* active — refined soft emerald-tint pill (no heavy fill / no drop shadow);
+   the emerald-filled icon chip + emerald-700 label carry the "active" cue */
+.sidebar-link-active {
+  background: var(--bf-primary-50) !important;
+  color: var(--bf-primary-700) !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+}
+.sidebar-link-active .sidebar-link-icon { background: var(--bf-primary) !important; color: #ffffff !important; box-shadow: none !important; }
+.sidebar-link-active .sidebar-text      { color: var(--bf-primary-700) !important; }
+.sidebar-link-active .sidebar-chevron   { color: var(--bf-primary-700) !important; }
+
+/* sub-links sit a level down — softer emerald tint, not a full solid pill */
+.sidebar-link-sub.sidebar-link-active {
+  background: var(--bf-primary-50) !important;
+  color: var(--bf-primary-700) !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+}
+.sidebar-link-sub.sidebar-link-active .sidebar-link-icon { background: var(--bf-primary-100) !important; color: var(--bf-primary-700) !important; }
+.sidebar-link-sub.sidebar-link-active .sidebar-text      { color: var(--bf-primary-700) !important; }
+
+/* collapsible-group parent highlight when a child route is active */
+.sidebar-group.is-current > .sidebar-group-toggle .sidebar-link-icon { background: var(--bf-primary-100); color: var(--bf-primary-700); }
+.sidebar-group.is-current > .sidebar-group-toggle .sidebar-text      { color: var(--bf-primary-700) !important; }
+.sidebar-group.is-current > .sidebar-group-toggle .sidebar-chevron,
+.sidebar-group-toggle:hover .sidebar-chevron                         { color: var(--bf-primary-700); }
+
+/* Danger link (Lookups) — re-assert red AFTER the emerald rules above */
+.sidebar-link-danger:hover                   { background: rgba(239, 68, 68, 0.08) !important; color: #dc2626 !important; }
+.sidebar-link-danger:hover .sidebar-link-icon { background: rgba(239, 68, 68, 0.12) !important; color: #dc2626 !important; }
+.sidebar-link-danger:hover .sidebar-text      { color: #dc2626 !important; }
+.sidebar-link-active.sidebar-link-active-danger {
+  background: rgba(239, 68, 68, 0.08) !important;
+  color: #dc2626 !important;
+  box-shadow: none !important;
+}
+.sidebar-link-active.sidebar-link-active-danger .sidebar-link-icon { background: #dc2626 !important; color: #ffffff !important; box-shadow: none !important; }
+.sidebar-link-active.sidebar-link-active-danger .sidebar-text      { color: #dc2626 !important; }
+
+/* Section headers — drop the divider rule, airier uppercase label */
+.sidebar-section-header > div.border-t { display: none !important; }
+.sidebar-section-header p              { color: #94a3b8 !important; letter-spacing: 0.12em; }
+.sidebar-section-header p i            { color: var(--bf-primary) !important; }
+
+aside::-webkit-scrollbar-thumb        { background: rgba(15, 23, 42, 0.12); }
+.sidebar-tooltip                      { background: #0f172a; }
+
+/* ─────────────────────────────────────────────────────────────────────
+   DARK MODE — header / sidebar / footer use the standard dark surface
+   (#1a2235), matching the cards and the rest of the dark theme instead
+   of a heavy near-black bar. Emerald stays the accent.
+   ───────────────────────────────────────────────────────────────────── */
+[data-theme="dark"] .portal-header,
+[data-theme="dark"] .admin-header {
+  background-color: #1a2235 !important;
+  background-image: none !important;
+  color: #f1f5f9 !important;
+  border-bottom-color: rgba(255, 255, 255, 0.07) !important;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.45) !important;
+}
+[data-theme="dark"] .portal-header .text-white,
+[data-theme="dark"] .portal-header .\!text-white { color: #ffffff !important; }
+[data-theme="dark"] .portal-header .text-white\/80 { color: rgba(255, 255, 255, 0.80) !important; }
+[data-theme="dark"] .portal-header .text-white\/70,
+[data-theme="dark"] .portal-header .text-white\/60 { color: rgba(255, 255, 255, 0.60) !important; }
+[data-theme="dark"] .portal-header .text-white\/50 { color: rgba(255, 255, 255, 0.50) !important; }
+/* Restore hover text to white in dark mode (the light-header rule darkens it) */
+[data-theme="dark"] .portal-header .hover\:text-white:hover { color: #ffffff !important; }
+[data-theme="dark"] .portal-header .bg-white\/10,
+[data-theme="dark"] .portal-header .bg-white\/15 { background-color: rgba(255, 255, 255, 0.10) !important; }
+[data-theme="dark"] .portal-header .bg-white\/20,
+[data-theme="dark"] .portal-header .bg-white\/30 { background-color: rgba(255, 255, 255, 0.20) !important; }
+[data-theme="dark"] .portal-header .border-white\/10,
+[data-theme="dark"] .portal-header .border-white\/20,
+[data-theme="dark"] .portal-header .border-white\/25,
+[data-theme="dark"] .portal-header .border-white\/30 { border-color: rgba(255, 255, 255, 0.16) !important; }
+[data-theme="dark"] .portal-header .bg-white\/20.text-white { background-color: var(--bf-primary) !important; }
+[data-theme="dark"] .header-icon-btn        { color: rgba(255, 255, 255, 0.75) !important; }
+[data-theme="dark"] .header-icon-btn:hover  { background: rgba(255, 255, 255, 0.10) !important; color: #ffffff !important; }
+[data-theme="dark"] .header-separator       { background: rgba(255, 255, 255, 0.12) !important; }
+[data-theme="dark"] .portal-header .bf-dropdown-toggle:hover,
+[data-theme="dark"] .portal-header .bf-dropdown-toggle[aria-expanded="true"] { background: rgba(255, 255, 255, 0.10) !important; }
+
+[data-theme="dark"] aside { background-color: #1a2235 !important; border-color: #334155 !important; }
+[data-theme="dark"] .sidebar-link-active { background: rgba(16, 185, 129, 0.14) !important; color: #34d399 !important; box-shadow: none !important; }
+[data-theme="dark"] .sidebar-link-active .sidebar-link-icon { background: var(--bf-primary) !important; color: #ffffff !important; }
+[data-theme="dark"] .sidebar-link-active .sidebar-text      { color: #34d399 !important; }
+[data-theme="dark"] .sidebar-link-active .sidebar-chevron   { color: #34d399 !important; }
+[data-theme="dark"] .sidebar-link:hover               { background: rgba(16, 185, 129, 0.12) !important; color: #34d399 !important; }
+[data-theme="dark"] .sidebar-link:hover .sidebar-link-icon { background: rgba(16, 185, 129, 0.20) !important; color: #34d399 !important; }
+[data-theme="dark"] .sidebar-link:hover .sidebar-text  { color: #34d399 !important; }
+[data-theme="dark"] .sidebar-link-sub.sidebar-link-active { background: rgba(16, 185, 129, 0.15) !important; color: #34d399 !important; }
+[data-theme="dark"] .sidebar-link-sub.sidebar-link-active .sidebar-link-icon { background: rgba(16, 185, 129, 0.22) !important; color: #34d399 !important; }
+[data-theme="dark"] .sidebar-link-sub.sidebar-link-active .sidebar-text { color: #34d399 !important; }
+[data-theme="dark"] .sidebar-group.is-current > .sidebar-group-toggle .sidebar-link-icon { background: rgba(16, 185, 129, 0.20); color: #34d399; }
+[data-theme="dark"] .sidebar-group.is-current > .sidebar-group-toggle .sidebar-text,
+[data-theme="dark"] .sidebar-group.is-current > .sidebar-group-toggle .sidebar-chevron,
+[data-theme="dark"] .sidebar-group-toggle:hover .sidebar-chevron { color: #34d399 !important; }
+[data-theme="dark"] .portal-footer { background-color: #1a2235 !important; border-color: #334155 !important; }
+
+/* Dashboard chart accent dots → emerald family (were blue) */
+.chart-dot-light   { color: #6ee7b7 !important; }
+.chart-dot-mid     { color: #34d399 !important; }
+.chart-dot-primary { color: #059669 !important; }
+.chart-dot-dark    { color: #047857 !important; }
+
+/* Logo badge backdrop on public/auth pages — centralised here so the value
+   is not hard-coded inline in the markup (replaces the `bg-[#231f20]` utility). */
+.bf-logo-badge { background-color: #231f20; }
+
+/* ─────────────────────────────────────────────────────────────────────
+   DASHBOARD ↔ SIDE-MENU LOOK & FEEL
+   Shared classes so dashboard cards / rows / links carry the same visual
+   DNA as the sidebar nav: a rounded icon-chip that fills emerald, and a
+   surface that tints emerald on hover (sidebar hover → active language).
+   ───────────────────────────────────────────────────────────────────── */
+.dash-link {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;                /* gray-200 */
+  border-radius: 0.9rem;
+  transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+.dash-link:hover {
+  background: var(--bf-primary-50) !important;
+  border-color: var(--bf-primary-200) !important;
+  box-shadow: 0 10px 22px -12px rgba(5, 150, 105, 0.5);
+}
+
+/* Static card — same resting look as .dash-link (white, bordered, rounded,
+   emerald icon-chip) but NO hover reaction. Use for non-clickable cards (KPIs). */
+.dash-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;                /* gray-200 */
+  border-radius: 0.9rem;
+}
+[data-theme="dark"] .dash-card { background: #1a2235; border-color: #334155; }
+
+/* Icon-chip — emerald-tint at rest (sidebar hover), solid emerald when the
+   parent tile is hovered or when marked active (sidebar active). */
+.dash-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.7rem;
+  background: var(--bf-primary-50);
+  color: var(--bf-primary-700);
+  transition: background-color .18s ease, color .18s ease;
+}
+.dash-chip i { color: inherit !important; }
+.dash-link:hover .dash-chip,
+.dash-chip-active {
+  background: var(--bf-primary) !important;
+  color: #ffffff !important;
+}
+
+/* Clickable row inside a panel (recent orders / pending requests) — flat,
+   tints emerald on hover like a sidebar link. */
+.dash-row { transition: background-color .15s ease; }
+.dash-row:hover { background: var(--bf-primary-50) !important; }
+
+/* ── Dark mode ── */
+[data-theme="dark"] .dash-link { background: #1a2235; border-color: #334155; }
+[data-theme="dark"] .dash-link:hover {
+  background: rgba(16, 185, 129, 0.12) !important;
+  border-color: rgba(16, 185, 129, 0.30) !important;
+  box-shadow: 0 10px 22px -12px rgba(0, 0, 0, 0.6);
+}
+[data-theme="dark"] .dash-chip { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+[data-theme="dark"] .dash-link:hover .dash-chip,
+[data-theme="dark"] .dash-chip-active { background: var(--bf-primary) !important; color: #ffffff !important; }
+[data-theme="dark"] .dash-row:hover { background: rgba(16, 185, 129, 0.12) !important; }

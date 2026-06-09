@@ -1,0 +1,209 @@
+@using Web.Models.Lookups
+@using Web.Models.Units
+@using Web.Models.Enums
+@using Web.Services
+@inject IJsonStringLocalizer Localizer
+@inject IUnitService UnitService
+
+@if (IsVisible)
+{
+    var isAr = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.ToLowerInvariant() == "ar";
+
+    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center" @onclick="HandleCancel">
+        <div class="bg-white rounded-xl shadow-lg max-w-md w-full mx-4 overflow-hidden" @onclick:stopPropagation>
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">
+                    @(EditingUnit != null ? Localizer["EditUnit"] : Localizer["AddUnit"])
+                </h3>
+                <button type="button" class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" @onclick="HandleCancel">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <div class="px-5 py-4 space-y-4">
+                <SearchableDropdown TItem="LookupDto" TValue="Guid"
+                                   Items="UnitsOfMeasure"
+                                   @bind-Value="model.UnitOfMeasureId"
+                                   DisplayText="@(u => isAr ? u.NameAr : u.NameEn)"
+                                   ItemValue="@(u => u.Id)"
+                                   Label='@Localizer["UnitOfMeasure"]'
+                                   Placeholder='@Localizer["SelectUnitOfMeasure"]'
+                                   Required="true"
+                                   Clearable="false" />
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                        @Localizer["BaseUnits"] <span class="text-red-500">*</span>
+                    </label>
+                    <input type="number" @bind="model.Quantity" min="1"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all" />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                        @Localizer["UnitType"] <span class="text-red-500">*</span>
+                    </label>
+                    <div class="flex flex-wrap gap-3 p-2.5 border border-gray-300 rounded-lg bg-white">
+                        @foreach (var ut in UnitTypes)
+                        {
+                            var utId = ut.Id;
+                            <label class="flex items-center gap-1.5 cursor-pointer">
+                                <input type="checkbox"
+                                       checked="@model.UnitTypeIds.Contains(utId)"
+                                       @onchange="@(e => ToggleUnitType(utId, (bool)(e.Value ?? false)))"
+                                       class="w-4 h-4 rounded border-gray-300 text-bf-primary focus:ring-bf-primary cursor-pointer" />
+                                <span class="text-sm text-gray-700">@(isAr ? ut.NameAr : ut.NameEn)</span>
+                            </label>
+                        }
+                    </div>
+                </div>
+
+                <ToggleSwitch @bind-Value="model.IsActive" Label="@Localizer["Active"]" />
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2">
+                        <i class="bi bi-exclamation-circle flex-shrink-0"></i>
+                        <span>@errorMessage</span>
+                    </div>
+                }
+            </div>
+
+            <div class="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-200">
+                <button type="button" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors" @onclick="HandleCancel">
+                    @Localizer["Cancel"]
+                </button>
+                <button type="button" @onclick="HandleSave" disabled="@isSaving"
+                        class="px-4 py-2 text-sm font-medium bg-bf-primary text-bf-primary-contrast rounded-lg hover:opacity-90 transition-all disabled:opacity-50 inline-flex items-center gap-2">
+                    @if (isSaving)
+                    {
+                        <Spinner Size="Spinner.SpinnerSize.Xs" Color="Spinner.SpinnerColor.White" />
+                    }
+                    @(EditingUnit != null ? Localizer["Update"] : Localizer["Create"])
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public UnitDto? EditingUnit { get; set; }
+    [Parameter] public Guid ProductId { get; set; }
+    [Parameter] public List<LookupDto> UnitsOfMeasure { get; set; } = new();
+    [Parameter] public List<LookupDto> UnitTypes { get; set; } = new();
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private UnitFormModel model = new();
+    private bool isSaving;
+    private string? errorMessage;
+
+    protected override void OnParametersSet()
+    {
+        if (IsVisible)
+        {
+            errorMessage = null;
+            if (EditingUnit != null)
+            {
+                model = new UnitFormModel
+                {
+                    UnitOfMeasureId = EditingUnit.UnitOfMeasureId,
+                    UnitTypeIds = EditingUnit.UnitTypes.Select(ut => ut.Id).ToList(),
+                    Quantity = EditingUnit.Quantity,
+                    IsActive = EditingUnit.IsActive
+                };
+            }
+            else
+            {
+                model = new UnitFormModel();
+            }
+        }
+    }
+
+    private async Task HandleSave()
+    {
+        errorMessage = null;
+
+        if (model.UnitOfMeasureId == Guid.Empty)
+        {
+            errorMessage = Localizer["UnitOfMeasureRequired"];
+            return;
+        }
+        if (model.UnitTypeIds.Count == 0)
+        {
+            errorMessage = Localizer["UnitTypeRequired"];
+            return;
+        }
+        if (model.Quantity < 1)
+        {
+            errorMessage = Localizer["BaseUnitsMustBePositive"];
+            return;
+        }
+
+        isSaving = true;
+        try
+        {
+            if (EditingUnit != null)
+            {
+                await UnitService.UpdateAsync(EditingUnit.Id, new UpdateUnitRequest
+                {
+                    UnitOfMeasureId = model.UnitOfMeasureId,
+                    UnitTypeIds = model.UnitTypeIds,
+                    ProductId = ProductId,
+                    Quantity = model.Quantity,
+                    Status = model.IsActive ? ItemStatus.Active : ItemStatus.Inactive
+                });
+            }
+            else
+            {
+                await UnitService.CreateAsync(new CreateUnitRequest
+                {
+                    UnitOfMeasureId = model.UnitOfMeasureId,
+                    UnitTypeIds = model.UnitTypeIds,
+                    ProductId = ProductId,
+                    Quantity = model.Quantity,
+                    Status = model.IsActive ? ItemStatus.Active : ItemStatus.Inactive
+                });
+            }
+
+            await OnSaved.InvokeAsync();
+        }
+        catch (ServerValidationException ex)
+        {
+            var firstError = ex.Errors.SelectMany(x => x.Value).FirstOrDefault();
+            errorMessage = string.IsNullOrWhiteSpace(firstError)
+                ? Localizer["FailedToSaveUnit"]
+                : Localizer[firstError];
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"{Localizer["FailedToSaveUnit"]}: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void HandleCancel()
+    {
+        OnCancel.InvokeAsync();
+    }
+
+    private void ToggleUnitType(Guid typeId, bool isChecked)
+    {
+        if (isChecked && !model.UnitTypeIds.Contains(typeId))
+            model.UnitTypeIds.Add(typeId);
+        else if (!isChecked)
+            model.UnitTypeIds.Remove(typeId);
+    }
+
+    private class UnitFormModel
+    {
+        public Guid UnitOfMeasureId { get; set; } = Guid.Empty;
+        public List<Guid> UnitTypeIds { get; set; } = new();
+        public int Quantity { get; set; } = 1;
+        public bool IsActive { get; set; } = true;
+    }
+}

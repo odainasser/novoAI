@@ -1,0 +1,9 @@
+@page "/admin/notifications"
+@layout AdminLayout
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Web.Components.Common
+
+<PageTitle>@Localizer["Notifications"]</PageTitle>
+
+<NotificationsView />

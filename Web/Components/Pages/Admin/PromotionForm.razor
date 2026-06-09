@@ -1,0 +1,542 @@
+@page "/admin/promotions/create"
+@page "/admin/promotions/edit/{PromotionId:guid}"
+@attribute [Authorize]
+@attribute [RequirePermission(Permissions.PromotionsWrite)]
+@using Microsoft.AspNetCore.Authorization
+@using Web.Authorization
+@using Web.Models.Promotions
+@using Web.Models.Units
+@using Web.Models.Lookups
+@using Web.Models.Categories
+@using System.Globalization
+@using System.ComponentModel.DataAnnotations
+@using Web.Components.Common
+@inject IPromotionService PromotionService
+@inject IUnitService UnitService
+@inject ILookupService LookupService
+@inject ICategoryService CategoryService
+@inject NavigationManager Navigation
+@inject IJsonStringLocalizer Localizer
+
+<PageTitle>@(IsEditMode ? Localizer["EditPromotion"] : Localizer["CreatePromotion"])</PageTitle>
+
+@if (isLoading)
+{
+    <Spinner Size="Spinner.SpinnerSize.Lg" Centered="true" />
+}
+else
+{
+    <EditForm Model="@model" OnValidSubmit="@HandleSubmit" FormName="promotionForm">
+        <LocalizedDataAnnotationsValidator />
+        <ServerValidator @ref="serverValidator" />
+
+        <!-- Sticky top bar -->
+        <div class="form-sticky-toolbar sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 mb-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <button type="button" @onclick="NavigateBack" class="p-2 -ml-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                        <i class="bi bi-arrow-left text-lg"></i>
+                    </button>
+                    <h1 class="text-xl font-semibold text-gray-900">
+                        @(IsEditMode ? Localizer["EditPromotion"] : Localizer["CreatePromotion"])
+                    </h1>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" @onclick="NavigateBack" class="form-cancel-btn px-4 py-2 text-sm font-medium rounded-lg transition-colors">
+                        @Localizer["Cancel"]
+                    </button>
+                    <button type="submit" disabled="@isSaving" class="px-4 py-2 text-sm font-medium bg-bf-primary text-bf-primary-contrast rounded-lg hover:opacity-90 transition-all disabled:opacity-50 inline-flex items-center gap-2">
+                        @if (isSaving)
+                        {
+                            <Spinner Size="Spinner.SpinnerSize.Xs" Color="Spinner.SpinnerColor.White" />
+                        }
+                        <span>@(IsEditMode ? Localizer["Update"] : Localizer["Create"])</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+                <i class="bi bi-exclamation-triangle-fill text-red-600 text-lg mt-0.5"></i>
+                <span class="text-red-800 text-sm">@errorMessage</span>
+            </div>
+        }
+
+        <!-- Two-column Shopify-style layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+            <!-- Main column (2/3) -->
+            <div class="lg:col-span-2 space-y-5">
+
+                <!-- Card: Promotion Details -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="nameEn" class="block text-sm font-medium text-gray-700 mb-1.5">
+                                    @Localizer["PromotionNameEn"] <span class="text-red-500">*</span>
+                                </label>
+                                <InputText @bind-Value="model.NameEn"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                    id="nameEn"
+                                    placeholder="@Localizer["EnterPromotionNameEn"]" />
+                                <ValidationMessage For="@(() => model.NameEn)" class="text-red-600 text-xs mt-1" />
+                            </div>
+                            <div>
+                                <label for="nameAr" class="block text-sm font-medium text-gray-700 mb-1.5">
+                                    @Localizer["PromotionNameAr"] <span class="text-red-500">*</span>
+                                </label>
+                                <InputText @bind-Value="model.NameAr"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                    id="nameAr"
+                                    dir="rtl"
+                                    placeholder="@Localizer["EnterPromotionNameAr"]" />
+                                <ValidationMessage For="@(() => model.NameAr)" class="text-red-600 text-xs mt-1" />
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="descriptionEn" class="block text-sm font-medium text-gray-700 mb-1.5">@Localizer["DescriptionEn"]</label>
+                                <InputTextArea @bind-Value="model.DescriptionEn"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                    id="descriptionEn"
+                                    rows="3"
+                                    placeholder="@Localizer["EnterDescriptionEn"]" />
+                                <ValidationMessage For="@(() => model.DescriptionEn)" class="text-red-600 text-xs mt-1" />
+                            </div>
+                            <div>
+                                <label for="descriptionAr" class="block text-sm font-medium text-gray-700 mb-1.5">@Localizer["DescriptionAr"]</label>
+                                <InputTextArea @bind-Value="model.DescriptionAr"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                    id="descriptionAr"
+                                    rows="3"
+                                    dir="rtl"
+                                    placeholder="@Localizer["EnterDescriptionAr"]" />
+                                <ValidationMessage For="@(() => model.DescriptionAr)" class="text-red-600 text-xs mt-1" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card: Discount -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <h2 class="text-sm font-semibold text-gray-900 mb-3">@Localizer["DiscountType"]</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="discountType" class="block text-sm font-medium text-gray-700 mb-1.5">
+                                @Localizer["DiscountType"] <span class="text-red-500">*</span>
+                            </label>
+                            <InputSelect @bind-Value="model.DiscountType"
+                                         @bind-Value:after="OnDiscountTypeChanged"
+                                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                         id="discountType">
+                                <option value="@DiscountType.Percentage">@Localizer["Percentage"]</option>
+                                <option value="@DiscountType.FixedAmount">@Localizer["FixedAmount"]</option>
+                            </InputSelect>
+                        </div>
+                        <div>
+                            <label for="discountValue" class="block text-sm font-medium text-gray-700 mb-1.5">
+                                @Localizer["DiscountValue"] <span class="text-red-500">*</span>
+                                <span class="text-gray-500">(@(model.DiscountType == DiscountType.Percentage ? "%" : "AED"))</span>
+                            </label>
+                            <InputNumber @bind-Value="model.DiscountValue"
+                                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                         id="discountValue"
+                                         ParsingErrorMessage="@Localizer["DiscountValueMustBeInteger"]" />
+                            <ValidationMessage For="@(() => model.DiscountValue)" class="text-red-600 text-xs mt-1" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card: Target -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <h2 class="text-sm font-semibold text-gray-900 mb-3">@Localizer["ApplyTo"]</h2>
+                    <div class="flex flex-wrap gap-4 mb-4">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox"
+                                   checked="@applyToAllSellingUnits"
+                                   @onchange="@((e) => ToggleApplyTo(PromotionApplyTo.AllSellingUnits, (bool)(e.Value ?? false)))"
+                                   class="w-4 h-4 text-bf-primary rounded border-gray-300 focus:ring-bf-primary" />
+                            <span class="text-sm text-gray-700">@Localizer["AllSellingUnits"]</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox"
+                                   checked="@applyToSpecificUnits"
+                                   @onchange="@((e) => ToggleApplyTo(PromotionApplyTo.SpecificUnits, (bool)(e.Value ?? false)))"
+                                   class="w-4 h-4 text-bf-primary rounded border-gray-300 focus:ring-bf-primary" />
+                            <span class="text-sm text-gray-700">@Localizer["SpecificUnits"]</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox"
+                                   checked="@applyToCategories"
+                                   @onchange="@((e) => ToggleApplyTo(PromotionApplyTo.Categories, (bool)(e.Value ?? false)))"
+                                   class="w-4 h-4 text-bf-primary rounded border-gray-300 focus:ring-bf-primary" />
+                            <span class="text-sm text-gray-700">@Localizer["Categories"]</span>
+                        </label>
+                    </div>
+                    <ValidationMessage For="@(() => model.ApplyTo)" class="text-red-600 text-xs mt-1" />
+
+                    @if (applyToSpecificUnits)
+                    {
+                        <div class="p-3 bg-gray-50 rounded-lg mb-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1.5">@Localizer["SelectSellingUnits"]</label>
+                            <div class="max-h-48 overflow-y-auto border border-gray-200 rounded-lg bg-white">
+                                @foreach (var unit in sellingUnits)
+                                {
+                                    <label class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
+                                        <input type="checkbox"
+                                               checked="@model.UnitIds.Contains(unit.Id)"
+                                               @onchange="@((e) => ToggleUnit(unit.Id, (bool)(e.Value ?? false)))"
+                                               class="w-4 h-4 text-bf-primary rounded border-gray-300 focus:ring-bf-primary" />
+                                        <span class="text-sm text-gray-700">@(isAr ? unit.ProductNameAr : unit.ProductNameEn) - @(isAr ? unit.UnitOfMeasureNameAr : unit.UnitOfMeasureNameEn)</span>
+                                        <span class="text-xs text-gray-400 ms-auto">@unit.SellingBarcode</span>
+                                    </label>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @if (applyToCategories)
+                    {
+                        <div class="p-3 bg-gray-50 rounded-lg">
+                            <label class="block text-sm font-medium text-gray-700 mb-1.5">@Localizer["SelectCategories"]</label>
+                            <div class="max-h-48 overflow-y-auto border border-gray-200 rounded-lg bg-white">
+                                @foreach (var category in categories)
+                                {
+                                    <label class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
+                                        <input type="checkbox"
+                                               checked="@model.CategoryIds.Contains(category.Id)"
+                                               @onchange="@((e) => ToggleCategory(category.Id, (bool)(e.Value ?? false)))"
+                                               class="w-4 h-4 text-bf-primary rounded border-gray-300 focus:ring-bf-primary" />
+                                        <span class="text-sm text-gray-700">@(isAr ? category.NameAr : category.NameEn)</span>
+                                    </label>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- Card: Schedule -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <h2 class="text-sm font-semibold text-gray-900 mb-3">@Localizer["Schedule"]</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="startDateTime" class="block text-sm font-medium text-gray-700 mb-1.5">
+                                @Localizer["StartDateTime"] <span class="text-red-500">*</span>
+                            </label>
+                            <InputDate Type="InputDateType.DateTimeLocal" @bind-Value="model.StartDateTime"
+                                       min="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                       id="startDateTime" />
+                            <ValidationMessage For="@(() => model.StartDateTime)" class="text-red-600 text-xs mt-1" />
+                        </div>
+                        <div>
+                            <label for="endDateTime" class="block text-sm font-medium text-gray-700 mb-1.5">
+                                @Localizer["EndDateTime"] <span class="text-red-500">*</span>
+                            </label>
+                            <InputDate Type="InputDateType.DateTimeLocal" @bind-Value="model.EndDateTime"
+                                       min="@model.StartDateTime.ToString("yyyy-MM-ddTHH:mm")"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                       id="endDateTime" />
+                            <ValidationMessage For="@(() => model.EndDateTime)" class="text-red-600 text-xs mt-1" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar (1/3) -->
+            <div class="space-y-5">
+
+                <!-- Card: Status -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <h2 class="text-sm font-semibold text-gray-900 mb-3">@Localizer["Status"]</h2>
+                    <ToggleSwitch @bind-Value="model.IsActive" Label="@Localizer["Active"]" />
+                </div>
+            </div>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public Guid? PromotionId { get; set; }
+
+    private bool IsEditMode => PromotionId.HasValue;
+    private PromotionFormModel model = new();
+    private ServerValidator? serverValidator;
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private bool isAr = false;
+    private string errorMessage = string.Empty;
+
+    // Apply To checkboxes
+    private bool applyToAllSellingUnits;
+    private bool applyToSpecificUnits;
+    private bool applyToCategories;
+
+    // Lists for selection
+    private List<UnitDto> sellingUnits = new();
+    private List<CategoryDto> categories = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        isAr = CultureInfo.CurrentCulture.TwoLetterISOLanguageName == "ar";
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            isLoading = true;
+
+            // Load selling units and categories for selection
+            var unitTypes = await LookupService.GetLookupsByParentAsync("UNIT_TYPE");
+            var sellingTypeId = unitTypes.FirstOrDefault(ut => ut.Code == "UT_SELLING")?.Id;
+            if (sellingTypeId.HasValue)
+            {
+                var unitsResult = await UnitService.GetAllAsync(1, 1000, isActive: true, unitTypeId: sellingTypeId.Value);
+                sellingUnits = unitsResult.Items;
+            }
+
+            var categoriesResult = await CategoryService.GetAllCategoriesAsync(1, 1000);
+            categories = categoriesResult.Items;
+
+            if (IsEditMode)
+            {
+                var promotion = await PromotionService.GetPromotionByIdAsync(PromotionId!.Value);
+                if (promotion == null)
+                {
+                    Navigation.NavigateTo("/admin/promotions");
+                    return;
+                }
+
+                model = new PromotionFormModel
+                {
+                    NameEn = promotion.NameEn,
+                    NameAr = promotion.NameAr,
+                    DescriptionEn = promotion.DescriptionEn,
+                    DescriptionAr = promotion.DescriptionAr,
+                    DiscountType = promotion.DiscountType,
+                    DiscountValue = (int)promotion.DiscountValue,
+                    ApplyTo = promotion.ApplyTo,
+                    StartDateTime = promotion.StartDateTime,
+                    EndDateTime = promotion.EndDateTime,
+                    IsActive = promotion.IsActive,
+                    UnitIds = promotion.UnitIds,
+                    CategoryIds = promotion.CategoryIds
+                };
+
+                // Set checkbox states
+                applyToAllSellingUnits = promotion.ApplyTo.HasFlag(PromotionApplyTo.AllSellingUnits);
+                applyToSpecificUnits = promotion.ApplyTo.HasFlag(PromotionApplyTo.SpecificUnits);
+                applyToCategories = promotion.ApplyTo.HasFlag(PromotionApplyTo.Categories);
+            }
+            else
+            {
+                model.StartDateTime = DateTime.Now;
+                model.EndDateTime = DateTime.Now.AddDays(7);
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ToggleApplyTo(PromotionApplyTo flag, bool isChecked)
+    {
+        if (isChecked)
+        {
+            // Make AllSellingUnits and SpecificUnits mutually exclusive
+            if (flag == PromotionApplyTo.AllSellingUnits)
+            {
+                model.ApplyTo &= ~PromotionApplyTo.SpecificUnits;
+                model.UnitIds.Clear();
+            }
+            else if (flag == PromotionApplyTo.SpecificUnits)
+            {
+                model.ApplyTo &= ~PromotionApplyTo.AllSellingUnits;
+            }
+            
+            model.ApplyTo |= flag;
+        }
+        else
+        {
+            model.ApplyTo &= ~flag;
+            
+            // Clear unit selections when unchecking SpecificUnits
+            if (flag == PromotionApplyTo.SpecificUnits)
+            {
+                model.UnitIds.Clear();
+            }
+        }
+
+        // Update checkbox states
+        applyToAllSellingUnits = model.ApplyTo.HasFlag(PromotionApplyTo.AllSellingUnits);
+        applyToSpecificUnits = model.ApplyTo.HasFlag(PromotionApplyTo.SpecificUnits);
+        applyToCategories = model.ApplyTo.HasFlag(PromotionApplyTo.Categories);
+    }
+
+    private void ToggleUnit(Guid unitId, bool isChecked)
+    {
+        if (isChecked && !model.UnitIds.Contains(unitId))
+        {
+            model.UnitIds.Add(unitId);
+        }
+        else if (!isChecked)
+        {
+            model.UnitIds.Remove(unitId);
+        }
+    }
+
+    private void ToggleCategory(Guid categoryId, bool isChecked)
+    {
+        if (isChecked && !model.CategoryIds.Contains(categoryId))
+        {
+            model.CategoryIds.Add(categoryId);
+        }
+        else if (!isChecked)
+        {
+            model.CategoryIds.Remove(categoryId);
+        }
+    }
+
+    private void OnDiscountTypeChanged()
+    {
+        // Cap value at 100 when switching to percentage
+        if (model.DiscountType == DiscountType.Percentage && model.DiscountValue > 100)
+        {
+            model.DiscountValue = 100;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            isSaving = true;
+            errorMessage = string.Empty;
+
+            var errors = new Dictionary<string, string[]>();
+
+            // Validate ApplyTo
+            if (model.ApplyTo == PromotionApplyTo.None)
+                errors.Add(nameof(model.ApplyTo), new[] { "SelectAtLeastOneApplyTo" });
+
+            // Validate dates not in past
+            if (model.StartDateTime <= DateTime.Now)
+                errors.Add(nameof(model.StartDateTime), new[] { "StartDateCannotBeInPast" });
+
+            if (model.EndDateTime <= DateTime.Now)
+                errors.Add(nameof(model.EndDateTime), new[] { "EndDateCannotBeInPast" });
+
+            // Validate date range
+            if (model.EndDateTime <= model.StartDateTime)
+                errors.Add(nameof(model.EndDateTime), new[] { "EndDateMustBeAfterStartDate" });
+
+            if (errors.Any())
+            {
+                serverValidator?.DisplayErrors(errors);
+                isSaving = false;
+                return;
+            }
+
+            if (IsEditMode)
+            {
+                var request = new UpdatePromotionRequest
+                {
+                    NameEn = model.NameEn,
+                    NameAr = model.NameAr,
+                    DescriptionEn = model.DescriptionEn,
+                    DescriptionAr = model.DescriptionAr,
+                    DiscountType = model.DiscountType,
+                    DiscountValue = model.DiscountValue,
+                    ApplyTo = model.ApplyTo,
+                    StartDateTime = model.StartDateTime,
+                    EndDateTime = model.EndDateTime,
+                    IsActive = model.IsActive,
+                    UnitIds = model.UnitIds,
+                    CategoryIds = model.CategoryIds
+                };
+
+                await PromotionService.UpdatePromotionAsync(PromotionId!.Value, request);
+            }
+            else
+            {
+                var request = new CreatePromotionRequest
+                {
+                    NameEn = model.NameEn,
+                    NameAr = model.NameAr,
+                    DescriptionEn = model.DescriptionEn,
+                    DescriptionAr = model.DescriptionAr,
+                    DiscountType = model.DiscountType,
+                    DiscountValue = model.DiscountValue,
+                    ApplyTo = model.ApplyTo,
+                    StartDateTime = model.StartDateTime,
+                    EndDateTime = model.EndDateTime,
+                    IsActive = model.IsActive,
+                    UnitIds = model.UnitIds,
+                    CategoryIds = model.CategoryIds
+                };
+
+                await PromotionService.CreatePromotionAsync(request);
+            }
+
+            Navigation.NavigateTo("/admin/promotions");
+        }
+        catch (ServerValidationException ex)
+        {
+            serverValidator?.DisplayErrors(ex.Errors);
+        }
+        catch (Exception)
+        {
+            // Errors are handled by ServerValidator
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void NavigateBack()
+    {
+        Navigation.NavigateTo("/admin/promotions");
+    }
+
+    private class PromotionFormModel
+    {
+        [Required(ErrorMessage = "NameEnRequired")]
+        [MaxLength(200, ErrorMessage = "NameEnMaxLength")]
+        public string NameEn { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "NameArRequired")]
+        [MaxLength(200, ErrorMessage = "NameArMaxLength")]
+        public string NameAr { get; set; } = string.Empty;
+
+        [MaxLength(1000, ErrorMessage = "DescriptionMaxLength")]
+        public string? DescriptionEn { get; set; }
+
+        [MaxLength(1000, ErrorMessage = "DescriptionMaxLength")]
+        public string? DescriptionAr { get; set; }
+
+        public DiscountType DiscountType { get; set; }
+
+        [Required(ErrorMessage = "DiscountValueRequired")]
+        [Range(1, int.MaxValue, ErrorMessage = "DiscountValueMinValue")]
+        public int DiscountValue { get; set; } = 1;
+
+        public PromotionApplyTo ApplyTo { get; set; }
+        public DateTime StartDateTime { get; set; }
+        public DateTime EndDateTime { get; set; }
+        public bool IsActive { get; set; } = true;
+        public List<Guid> UnitIds { get; set; } = new();
+        public List<Guid> CategoryIds { get; set; } = new();
+    }
+}

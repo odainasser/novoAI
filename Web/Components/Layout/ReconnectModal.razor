@@ -1,0 +1,31 @@
+﻿<script type="module" src="@Assets["Components/Layout/ReconnectModal.razor.js"]"></script>
+
+<dialog id="components-reconnect-modal" data-nosnippet>
+    <div class="components-reconnect-container">
+        <div class="components-rejoining-animation" aria-hidden="true">
+            <div></div>
+            <div></div>
+        </div>
+        <p class="components-reconnect-first-attempt-visible">
+            @Localizer["RejoiningServer"]
+        </p>
+        <p class="components-reconnect-repeated-attempt-visible">
+            @Localizer["RejoinFailedTryAgainIn"] <span id="components-seconds-to-next-attempt"></span> @Localizer["Seconds"]
+        </p>
+        <p class="components-reconnect-failed-visible">
+            @Localizer["FailedToRejoin"], @Localizer["PleaseRetryOrReload"].
+        </p>
+        <button id="components-reconnect-button" class="components-reconnect-failed-visible">
+            @Localizer["Retry"]
+        </button>
+        <p class="components-pause-visible">
+            @Localizer["SessionPausedByServer"]
+        </p>
+        <button id="components-resume-button" class="components-pause-visible">
+            @Localizer["Resume"]
+        </button>
+        <p class="components-resume-failed-visible">
+            @Localizer["FailedToResume"]. @Localizer["PleaseReloadPage"].
+        </p>
+    </div>
+</dialog>

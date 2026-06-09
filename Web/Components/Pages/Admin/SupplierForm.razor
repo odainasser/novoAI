@@ -1,0 +1,312 @@
+@page "/admin/suppliers/create"
+@page "/admin/suppliers/edit/{SupplierId:guid}"
+@attribute [Authorize]
+@attribute [RequirePermission(Permissions.SuppliersWrite)]
+@using Microsoft.AspNetCore.Authorization
+@using Web.Authorization
+@using System.Globalization
+@using Web.Components.Common
+@using System.ComponentModel.DataAnnotations
+@inject ISupplierService SupplierService
+@inject NavigationManager Navigation
+@inject IJsonStringLocalizer Localizer
+
+<PageTitle>@(IsEditMode ? Localizer["EditSupplier"] : Localizer["CreateSupplier"])</PageTitle>
+
+@if (isLoading)
+{
+    <Spinner Size="Spinner.SpinnerSize.Lg" Centered="true" />
+}
+else
+{
+    <EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="supplierForm">
+        <LocalizedDataAnnotationsValidator />
+        <ServerValidator @ref="serverValidator" />
+
+        <!-- Sticky top bar -->
+        <div class="form-sticky-toolbar sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 mb-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <button type="button" @onclick="NavigateBack" class="p-2 -ml-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                        <i class="bi bi-arrow-left text-lg"></i>
+                    </button>
+                    <h1 class="text-xl font-semibold text-gray-900">
+                        @(IsEditMode ? Localizer["EditSupplier"] : Localizer["CreateSupplier"])
+                    </h1>
+                    @if (IsEditMode)
+                    {
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium @(model.IsActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600")">
+                            @(model.IsActive ? Localizer["Active"] : Localizer["Inactive"])
+                        </span>
+                    }
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" @onclick="NavigateBack" class="form-cancel-btn px-4 py-2 text-sm font-medium rounded-lg transition-colors">
+                        @Localizer["Cancel"]
+                    </button>
+                    <button type="submit" disabled="@isSaving" class="px-4 py-2 text-sm font-medium bg-bf-primary text-bf-primary-contrast rounded-lg hover:opacity-90 transition-all disabled:opacity-50 inline-flex items-center gap-2">
+                        @if (isSaving)
+                        {
+                            <Spinner Size="Spinner.SpinnerSize.Xs" Color="Spinner.SpinnerColor.White" />
+                        }
+                        <span>@(IsEditMode ? Localizer["Update"] : Localizer["Create"])</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+                <i class="bi bi-exclamation-triangle-fill text-red-600 text-lg mt-0.5"></i>
+                <span class="text-red-800 text-sm">@errorMessage</span>
+            </div>
+        }
+
+        <!-- Two-column Shopify-style layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+            <!-- Main column (2/3) -->
+            <div class="lg:col-span-2 space-y-5">
+
+                <!-- Card: Supplier Details -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="nameEn" class="block text-sm font-medium text-gray-700 mb-1.5">
+                                    @Localizer["SupplierNameEn"] <span class="text-red-500">*</span>
+                                </label>
+                                <InputText @bind-Value="model.NameEn"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                    id="nameEn"
+                                    placeholder="@Localizer["EnterSupplierNameEn"]" />
+                                <ValidationMessage For="@(() => model.NameEn)" class="text-red-600 text-xs mt-1" />
+                            </div>
+                            <div>
+                                <label for="nameAr" class="block text-sm font-medium text-gray-700 mb-1.5">
+                                    @Localizer["SupplierNameAr"] <span class="text-red-500">*</span>
+                                </label>
+                                <InputText @bind-Value="model.NameAr"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                    id="nameAr" dir="rtl"
+                                    placeholder="@Localizer["EnterSupplierNameAr"]" />
+                                <ValidationMessage For="@(() => model.NameAr)" class="text-red-600 text-xs mt-1" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card: Contact Information -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <h2 class="text-sm font-semibold text-gray-900 mb-3">@Localizer["ContactInformation"]</h2>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="contactPersonEn" class="block text-sm font-medium text-gray-700 mb-1.5">@Localizer["ContactPersonEn"]</label>
+                                <InputText @bind-Value="model.ContactPersonEn"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                    id="contactPersonEn"
+                                    placeholder="@Localizer["EnterContactPersonEn"]" />
+                                <ValidationMessage For="@(() => model.ContactPersonEn)" class="text-red-600 text-xs mt-1" />
+                            </div>
+                            <div>
+                                <label for="contactPersonAr" class="block text-sm font-medium text-gray-700 mb-1.5">@Localizer["ContactPersonAr"]</label>
+                                <InputText @bind-Value="model.ContactPersonAr"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                    id="contactPersonAr" dir="rtl"
+                                    placeholder="@Localizer["EnterContactPersonAr"]" />
+                                <ValidationMessage For="@(() => model.ContactPersonAr)" class="text-red-600 text-xs mt-1" />
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="contactEmail" class="block text-sm font-medium text-gray-700 mb-1.5">@Localizer["ContactEmail"]</label>
+                                <InputText @bind-Value="model.ContactEmail" type="email"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                    id="contactEmail"
+                                    placeholder="@Localizer["EnterContactEmail"]" />
+                                <ValidationMessage For="@(() => model.ContactEmail)" class="text-red-600 text-xs mt-1" />
+                            </div>
+                            <div>
+                                <label for="contactPhone" class="block text-sm font-medium text-gray-700 mb-1.5">@Localizer["ContactPhone"]</label>
+                                <InputText @bind-Value="model.ContactPhone"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                    id="contactPhone"
+                                    placeholder="@Localizer["EnterContactPhone"]" />
+                                <ValidationMessage For="@(() => model.ContactPhone)" class="text-red-600 text-xs mt-1" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar (1/3) -->
+            <div class="space-y-5">
+                <!-- Card: Status -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <h2 class="text-sm font-semibold text-gray-900 mb-3">@Localizer["Status"]</h2>
+                    <ToggleSwitch @bind-Value="model.IsActive" Label="@Localizer["Active"]" />
+                </div>
+            </div>
+        </div>
+    </EditForm>
+}
+
+@code {
+[Parameter]
+public Guid? SupplierId { get; set; }
+
+private bool IsEditMode => SupplierId.HasValue && SupplierId.Value != Guid.Empty;
+
+private SupplierFormModel model = new();
+private ServerValidator? serverValidator;
+private bool isLoading = true;
+private bool isSaving = false;
+private string errorMessage = string.Empty;
+
+protected override async Task OnInitializedAsync()
+{
+    if (IsEditMode)
+    {
+        await LoadSupplier();
+    }
+    else
+    {
+        model.IsActive = true;
+    }
+        
+    isLoading = false;
+}
+
+private async Task LoadSupplier()
+{
+    try
+    {
+        var supplier = await SupplierService.GetSupplierByIdAsync(SupplierId!.Value);
+        if (supplier == null)
+        {
+            errorMessage = Localizer["SupplierNotFound"];
+            return;
+        }
+
+        model = new SupplierFormModel
+        {
+            NameEn = supplier.NameEn,
+            NameAr = supplier.NameAr,
+            ContactPersonEn = supplier.ContactPersonEn,
+            ContactPersonAr = supplier.ContactPersonAr,
+            ContactEmail = supplier.ContactEmail,
+            ContactPhone = supplier.ContactPhone,
+            IsActive = supplier.IsActive
+        };
+    }
+    catch (Exception ex)
+    {
+        errorMessage = $"{Localizer["FailedToLoadSupplier"]}: {ex.Message}";
+    }
+}
+
+private async Task HandleValidSubmit()
+{
+    isSaving = true;
+    errorMessage = string.Empty;
+
+    try
+        {
+            var errors = new Dictionary<string, string[]>();
+
+            // Check if supplier name exists
+            var exists = await SupplierService.CheckSupplierExistsAsync(model.NameEn, model.NameAr, IsEditMode ? SupplierId : null);
+            if (exists)
+                errors.Add(nameof(model.NameEn), new[] { "SupplierNameExists" });
+
+            // Check if supplier email exists (if email is provided)
+            if (!string.IsNullOrWhiteSpace(model.ContactEmail))
+            {
+                var emailExists = await SupplierService.CheckSupplierEmailExistsAsync(model.ContactEmail, IsEditMode ? SupplierId : null);
+                if (emailExists)
+                    errors.Add(nameof(model.ContactEmail), new[] { "SupplierEmailExists" });
+            }
+
+            if (errors.Any())
+            {
+                serverValidator?.DisplayErrors(errors);
+                isSaving = false;
+                return;
+            }
+
+            if (IsEditMode)
+            {
+                var request = new UpdateSupplierRequest
+                {
+                    NameEn = model.NameEn,
+                    NameAr = model.NameAr,
+                    ContactPersonEn = model.ContactPersonEn,
+                    ContactPersonAr = model.ContactPersonAr,
+                    ContactEmail = model.ContactEmail,
+                    ContactPhone = model.ContactPhone,
+                    IsActive = model.IsActive
+                };
+
+                await SupplierService.UpdateSupplierAsync(SupplierId!.Value, request);
+            }
+            else
+            {
+                var request = new CreateSupplierRequest
+                {
+                    NameEn = model.NameEn,
+                    NameAr = model.NameAr,
+                    ContactPersonEn = model.ContactPersonEn,
+                    ContactPersonAr = model.ContactPersonAr,
+                    ContactEmail = model.ContactEmail,
+                    ContactPhone = model.ContactPhone,
+                    IsActive = model.IsActive
+                };
+
+                await SupplierService.CreateSupplierAsync(request);
+            }
+
+            Navigation.NavigateTo("/admin/suppliers");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"{Localizer["FailedToSaveSupplier"]}: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void NavigateBack()
+    {
+        Navigation.NavigateTo("/admin/suppliers");
+    }
+
+    private class SupplierFormModel
+    {
+        [Required(ErrorMessage = "NameEnRequired")]
+        [MaxLength(200, ErrorMessage = "NameEnMaxLength")]
+        public string NameEn { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "NameArRequired")]
+        [MaxLength(200, ErrorMessage = "NameArMaxLength")]
+        public string NameAr { get; set; } = string.Empty;
+
+        [MaxLength(200, ErrorMessage = "MaxLengthError")]
+        public string? ContactPersonEn { get; set; }
+
+        [MaxLength(200, ErrorMessage = "MaxLengthError")]
+        public string? ContactPersonAr { get; set; }
+
+        [EmailAddress(ErrorMessage = "InvalidEmailFormat")]
+        [MaxLength(256, ErrorMessage = "MaxLengthError")]
+        public string? ContactEmail { get; set; }
+
+        [MaxLength(50, ErrorMessage = "MaxLengthError")]
+        public string? ContactPhone { get; set; }
+
+        public bool IsActive { get; set; } = true;
+    }
+}

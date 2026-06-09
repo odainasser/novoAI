@@ -1,0 +1,90 @@
+@using Web.Models.Inventory
+@using System.Globalization
+@inject IJsonStringLocalizer Localizer
+
+@if (IsVisible && Grn is not null)
+{
+    var isAr = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("ar", StringComparison.OrdinalIgnoreCase);
+
+    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center" @onclick="HandleBackgroundClick">
+        <div class="bg-white rounded-xl shadow-lg max-w-3xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col" @onclick:stopPropagation>
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 flex-shrink-0">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">@Localizer["GRNDetails"]</h3>
+                    <p class="text-sm text-gray-500 font-mono">@Grn.GRNNumber</p>
+                </div>
+                <button @onclick="Close" class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <div class="px-5 py-4 overflow-y-auto flex-1">
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-5">
+                    <div class="p-3 bg-gray-50 rounded-lg">
+                        <p class="text-xs text-gray-500 uppercase font-medium">@Localizer["ReceivedDate"]</p>
+                        <span class="font-medium text-sm">@(Grn.ReceivedDate?.ToString("yyyy-MM-dd") ?? Grn.CreatedAt.ToString("yyyy-MM-dd"))</span>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-lg">
+                        <p class="text-xs text-gray-500 uppercase font-medium">@Localizer["ReceivedBy"]</p>
+                        <span class="font-medium text-sm">@(Grn.ReceivedBy ?? "—")</span>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-lg">
+                        <p class="text-xs text-gray-500 uppercase font-medium">@Localizer["PORef"]</p>
+                        <span class="font-medium text-sm">@(Grn.PurchaseOrderReference ?? "—")</span>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(Grn.Notes))
+                {
+                    <div class="p-3 bg-gray-50 rounded-lg mb-5">
+                        <p class="text-xs text-gray-500 uppercase font-medium mb-1">@Localizer["Notes"]</p>
+                        <span class="text-sm">@Grn.Notes</span>
+                    </div>
+                }
+
+                <h4 class="text-sm font-semibold text-gray-900 mb-2">@Localizer["Items"] (@Grn.Lines.Count)</h4>
+                <div class="overflow-x-auto border border-gray-200 rounded-lg">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-3 py-2 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["Product"]</th>
+                                <th class="px-3 py-2 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["Supplier"]</th>
+                                <th class="px-3 py-2 text-end text-xs font-medium text-gray-500 uppercase">@Localizer["Cost"]</th>
+                                <th class="px-3 py-2 text-end text-xs font-medium text-gray-500 uppercase">@Localizer["Quantity"]</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-100">
+                            @foreach (var line in Grn.Lines)
+                            {
+                                <tr>
+                                    <td class="px-3 py-2 text-sm">
+                                        <div class="font-medium text-gray-900">@(isAr ? line.ProductNameAr : line.ProductNameEn)</div>
+                                        <div class="text-xs text-gray-500 font-mono">@line.UnitBarcode</div>
+                                    </td>
+                                    <td class="px-3 py-2 text-sm text-gray-700">@(isAr ? line.SupplierNameAr : line.SupplierNameEn)</td>
+                                    <td class="px-3 py-2 text-sm text-end text-gray-700">@line.Cost.ToString("N2")</td>
+                                    <td class="px-3 py-2 text-sm text-end font-semibold text-gray-900">@line.ReceivedQuantity</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="px-5 py-3 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+                <button @onclick="Close" class="ms-auto block px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100">
+                    @Localizer["Close"]
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public GoodsReceivingNoteDto? Grn { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private async Task Close() => await OnClose.InvokeAsync();
+    private async Task HandleBackgroundClick() => await OnClose.InvokeAsync();
+}

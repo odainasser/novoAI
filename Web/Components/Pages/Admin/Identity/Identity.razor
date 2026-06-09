@@ -1,0 +1,120 @@
+@page "/admin/identity"
+@page "/admin/identity/{Tab}"
+@attribute [Authorize]
+@using Web.Authorization
+@using System.Globalization
+@inject NavigationManager Navigation
+
+<PageTitle>@Localizer["Identity"]</PageTitle>
+
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+                <i class="bi bi-shield-check text-purple-600"></i>
+                @Localizer["Identity"]
+            </h1>
+        </div>
+
+        @* Per-tab Add button *@
+        @if (activeTab == "users")
+        {
+            <AuthorizeView Policy="Permission:users.write">
+                <Authorized>
+                    <button @onclick="NavigateToCreateUser"
+                            class="btn-primary-action">
+                        <i class="bi bi-plus-circle"></i>
+                        <span>@Localizer["CreateUser"]</span>
+                    </button>
+                </Authorized>
+            </AuthorizeView>
+        }
+        else if (activeTab == "roles")
+        {
+            <AuthorizeView Policy="Permission:roles.write">
+                <Authorized>
+                    <button @onclick="NavigateToCreateRole"
+                            class="btn-primary-action">
+                        <i class="bi bi-plus-circle"></i>
+                        <span>@Localizer["CreateRole"]</span>
+                    </button>
+                </Authorized>
+            </AuthorizeView>
+        }
+    </div>
+
+    <!-- Tabs -->
+    <div class="mb-6">
+        <nav class="tab-nav" aria-label="Tabs">
+            <AuthorizeView Policy="Permission:roles.read">
+                <Authorized>
+                    <button @onclick='() => SetActiveTab("roles")'
+                            class="tab-btn @GetTabClass("roles")">
+                        <i class="bi bi-person-gear"></i>
+                        @Localizer["Roles"]
+                    </button>
+                </Authorized>
+            </AuthorizeView>
+            <AuthorizeView Policy="Permission:users.read">
+                <Authorized>
+                    <button @onclick='() => SetActiveTab("users")'
+                            class="tab-btn @GetTabClass("users")">
+                        <i class="bi bi-person-vcard"></i>
+                        @Localizer["Users"]
+                    </button>
+                </Authorized>
+            </AuthorizeView>
+        </nav>
+    </div>
+
+    <!-- Tab Content -->
+    @if (activeTab == "users")
+    {
+        <IdentityUsersTab />
+    }
+    else if (activeTab == "roles")
+    {
+        <IdentityRolesTab />
+    }
+</div>
+
+@code {
+    [Parameter] public string? Tab { get; set; }
+
+    private string activeTab = "users";
+    private const string UsersTabUrl = "/admin/identity/users";
+    private const string RolesTabUrl = "/admin/identity/roles";
+
+    protected override void OnInitialized()
+    {
+        activeTab = ResolveTab();
+    }
+
+    protected override void OnParametersSet()
+    {
+        activeTab = ResolveTab();
+    }
+
+    private string ResolveTab() =>
+        Tab?.ToLower() switch
+        {
+            "users"    => "users",
+            // Legacy /admin/identity/cashiers links still land on the unified Users tab
+            "cashiers" => "users",
+            _          => "roles"
+        };
+
+    private string GetTabClass(string tab) =>
+        activeTab == tab ? "tab-btn-active" : "";
+
+    private async Task SetActiveTab(string tab)
+    {
+        activeTab = tab;
+        Navigation.NavigateTo($"/admin/identity/{tab}", false);
+        await Task.CompletedTask;
+    }
+
+    private void NavigateToCreateUser() => Navigation.NavigateTo($"/admin/users/create?returnUrl={Uri.EscapeDataString(UsersTabUrl)}");
+    private void NavigateToCreateRole() => Navigation.NavigateTo($"/admin/roles/create?returnUrl={Uri.EscapeDataString(RolesTabUrl)}");
+}

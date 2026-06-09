@@ -1,0 +1,401 @@
+@page "/admin/logs"
+@attribute [Authorize]
+@attribute [RequirePermission(Permissions.SystemAudit)]
+@using Microsoft.AspNetCore.Authorization
+@using Web.Authorization
+@using Web.Components.Common
+@using System.Globalization
+@inject IUserLogService LogService
+@inject IUserManagementService UserService
+@inject NavigationManager Navigation
+
+<PageTitle>@Localizer["UserLogs"]</PageTitle>
+
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-6">
+            <!-- Header -->
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+                        <i class="bi bi-journal-text text-purple-600"></i>
+                        @Localizer["AuditLogs"]
+                    </h1>
+                    <p class="text-gray-600 mt-2 text-sm sm:text-base">@Localizer["MonitorLogs"]</p>
+                </div>
+            </div>
+
+            @* Active filter context banner — matches the style used for filter info on other index pages *@
+            @if (UserId.HasValue || !string.IsNullOrEmpty(EntityId))
+            {
+                <div class="mb-6 p-3 bf-bg-info-50 border bf-border-info rounded-lg flex items-center justify-between gap-3">
+                    <div class="text-sm bf-text-info flex items-center gap-2">
+                        <i class="bi bi-funnel-fill"></i>
+                        @if (UserId.HasValue)
+                        {
+                            <span>@Localizer["ShowingLogsFor"] <strong>@(userDisplayName ?? UserId.ToString())</strong></span>
+                        }
+                        else if (!string.IsNullOrEmpty(EntityName))
+                        {
+                            var url = GetEntityUrl(EntityName, EntityId);
+                            if (!string.IsNullOrEmpty(url))
+                            {
+                                <span>@Localizer["ShowingEntityLogs"] <a href="@url" class="font-bold underline">@Localizer[$"Entity_{EntityName}"]</a></span>
+                            }
+                            else
+                            {
+                                <span>@Localizer["ShowingEntityLogs"] <strong>@Localizer[$"Entity_{EntityName}"]</strong></span>
+                            }
+                        }
+                    </div>
+                    <button @onclick="ResetLogs" class="inline-flex items-center gap-2 py-1.5 px-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium flex-shrink-0">
+                        <i class="bi bi-x-circle"></i>
+                        <span>@Localizer["Reset"]</span>
+                    </button>
+                </div>
+            }
+
+            <!-- Filters -->
+            <div class="mb-6 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                <div class="flex flex-wrap items-center gap-3 p-4">
+                    <div class="flex-1 min-w-[200px]">
+                        <SearchInput @bind-Value="searchTerm"
+                                     OnSearch="HandleSearch"
+                                     Placeholder="@Localizer["SearchLogs"]" />
+                    </div>
+                    @if (!string.IsNullOrEmpty(SearchQuery))
+                    {
+                        <button @onclick="ResetFilters" class="inline-flex items-center gap-2 py-2 px-4 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                            <i class="bi bi-x-circle"></i>
+                            <span>@Localizer["ResetFilters"]</span>
+                        </button>
+                    }
+                </div>
+            </div>
+
+            @if (isLoading)
+            {
+                <Spinner Size="Spinner.SpinnerSize.Lg" Centered="true" />
+            }
+            else if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="p-4 bf-bg-danger-50 border bf-border-danger rounded-lg flex items-start gap-3">
+                    <i class="bi bi-exclamation-triangle-fill bf-icon-danger text-lg mt-0.5"></i>
+                    <span class="bf-text-danger">@errorMessage</span>
+                </div>
+            }
+            else if (logs == null || !logs.Any())
+            {
+                <div class="text-center py-12">
+                    <i class="bi bi-inbox text-6xl text-gray-300 mb-4"></i>
+                    <p class="text-gray-500 text-lg">@Localizer["NoLogsFound"]</p>
+                </div>
+            }
+            else
+            {
+                <div class="overflow-x-auto border border-gray-200 rounded-lg">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-start text-xs font-semibold text-gray-600 uppercase tracking-wider">@Localizer["DateTime"]</th>
+                                <th class="px-4 py-3 text-start text-xs font-semibold text-gray-600 uppercase tracking-wider">@Localizer["User"]</th>
+                                <th class="px-4 py-3 text-start text-xs font-semibold text-gray-600 uppercase tracking-wider">@Localizer["Action"]</th>
+                                <th class="px-4 py-3 text-start text-xs font-semibold text-gray-600 uppercase tracking-wider">@Localizer["Entity"]</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-100">
+                            @foreach (var log in logs)
+                            {
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" title="@log.Timestamp.ToLocal().ToString("yyyy-MM-dd HH:mm:ss")">
+                                        <div>@log.Timestamp.ToLocal().ToString("yyyy-MM-dd")</div>
+                                        <div class="text-xs text-gray-400">@log.Timestamp.ToLocal().ToString("hh:mm:ss tt")</div>
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm">
+                                        <span class="font-medium text-gray-900">@log.UserName</span>
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <span class="@GetActionBadgeClass(log.Action)">
+                                            @Localizer[$"Action_{log.Action}"]
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm">
+                                        @if (!string.IsNullOrEmpty(log.EntityName))
+                                        {
+                                            var entityUrl = GetEntityUrl(log.EntityName, log.EntityId);
+                                            if (!string.IsNullOrEmpty(entityUrl))
+                                            {
+                                                <a href="@entityUrl" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-bf-primary hover:underline">@GetEntityLabel(log)</a>
+                                            }
+                                            else
+                                            {
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bf-bg-info-100 bf-text-info">@GetEntityLabel(log)</span>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="text-gray-400">—</span>
+                                        }
+                                    </td>
+
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <Pagination PageIndex="@pageIndex" 
+                            TotalPages="@totalPages" 
+                            TotalCount="@totalCount" 
+                            PageSize="@pageSize" 
+                            OnPageChanged="@OnPageChanged" />
+            }
+</div>
+
+@code {
+    private List<UserLogDto> logs = new();
+    private bool isLoading = true;
+    private string errorMessage = string.Empty;
+
+    // Search
+    private string searchTerm = string.Empty;
+
+    private static readonly string[] knownEntityTypes = new[]
+    {
+        "Product", "Unit", "Category", "User", "Role", "Lookup",
+        "Supplier", "Promotion", "Warehouse", "Terminal", "Cashier",
+        "Branch", "Order", "Shift", "GoodsReceivingNote", "StockAdjustment", "StockTransfer", "Request"
+    };
+
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public Guid? UserId { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? EntityName { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? EntityId { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "search")]
+    public string? SearchQuery { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public int? Page { get; set; }
+
+    private string? userDisplayName;
+
+    // Pagination
+    private int pageIndex = 1;
+    private int pageSize = 20;
+    private int totalPages = 1;
+    private int totalCount = 0;
+
+    private Guid? _prevUserId;
+    private string? _prevEntityName;
+    private string? _prevEntityId;
+    private string? _prevSearch;
+    private int? _prevPage;
+    private bool _firstLoad = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Only reload when query parameters actually change
+        if (!_firstLoad && UserId == _prevUserId && EntityName == _prevEntityName && EntityId == _prevEntityId && SearchQuery == _prevSearch && Page == _prevPage)
+            return;
+
+        _firstLoad = false;
+        _prevUserId = UserId;
+        _prevEntityName = EntityName;
+        _prevEntityId = EntityId;
+        _prevSearch = SearchQuery;
+        _prevPage = Page;
+
+        searchTerm = SearchQuery ?? string.Empty;
+
+        pageIndex = Page ?? 1;
+        await LoadLogs();
+    }
+
+    private async Task LoadLogs()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var searchFilter = !string.IsNullOrEmpty(SearchQuery) ? SearchQuery : null;
+            string? matchActions = null;
+            string? matchEntities = null;
+
+            if (!string.IsNullOrEmpty(searchFilter))
+            {
+                var term = searchFilter;
+                var actions = Enum.GetValues<Web.Models.Enums.AuditAction>()
+                    .Where(a => Localizer[$"Action_{a}"].Contains(term, StringComparison.OrdinalIgnoreCase)
+                             || a.ToString().Contains(term, StringComparison.OrdinalIgnoreCase))
+                    .Select(a => a.ToString());
+                var entities = knownEntityTypes
+                    .Where(e => Localizer[$"Entity_{e}"].Contains(term, StringComparison.OrdinalIgnoreCase)
+                             || e.Contains(term, StringComparison.OrdinalIgnoreCase));
+                matchActions = string.Join(',', actions);
+                matchEntities = string.Join(',', entities);
+                if (string.IsNullOrEmpty(matchActions)) matchActions = null;
+                if (string.IsNullOrEmpty(matchEntities)) matchEntities = null;
+            }
+
+            var result = await LogService.GetLogsAsync(pageIndex, pageSize, UserId, EntityName, EntityId, System.Globalization.CultureInfo.CurrentUICulture.Name, searchFilter, matchActions, matchEntities);
+            logs = result.Items;
+            totalPages = result.TotalPages;
+            totalCount = result.TotalCount;
+
+            // If filtering by user, determine display name: prefer log snapshot, fallback to DB user record
+            if (UserId.HasValue)
+            {
+                userDisplayName = logs.FirstOrDefault()?.UserName;
+                if (string.IsNullOrWhiteSpace(userDisplayName))
+                {
+                    var user = await UserService.GetUserByIdAsync(UserId.Value);
+                    if (user != null)
+                    {
+                        userDisplayName = !string.IsNullOrWhiteSpace(user.FullName) ? user.FullName : user.Email;
+                    }
+                }
+            }
+            else
+            {
+                userDisplayName = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = Localizer["FailedToLoadLogs"] + $": {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OnPageChanged(int newPageIndex)
+    {
+        NavigateWithFilters(newPageIndex);
+    }
+
+    private void HandleSearch(string term)
+    {
+        searchTerm = term;
+        NavigateWithFilters(1);
+    }
+
+    private void ResetFilters()
+    {
+        searchTerm = string.Empty;
+        var uri = Navigation.GetUriWithQueryParameters(new Dictionary<string, object?>
+        {
+            ["page"] = null,
+            ["userId"] = UserId,
+            ["entityName"] = EntityName,
+            ["entityId"] = EntityId,
+            ["search"] = null
+        });
+        Navigation.NavigateTo(uri);
+    }
+
+    private void NavigateWithFilters(int page)
+    {
+        var uri = Navigation.GetUriWithQueryParameters(new Dictionary<string, object?>
+        {
+            ["page"] = page > 1 ? page : null,
+            ["userId"] = UserId,
+            ["entityName"] = EntityName,
+            ["entityId"] = EntityId,
+            ["search"] = !string.IsNullOrEmpty(searchTerm) ? searchTerm : null
+        });
+        
+        Navigation.NavigateTo(uri);
+    }
+
+    private string GetActionBadgeClass(string action)
+    {
+        const string baseClass = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ";
+
+        if (string.IsNullOrEmpty(action))
+            return baseClass + "bf-bg-info-100 bf-text-info";
+
+        switch (action.Trim().ToLowerInvariant())
+        {
+            // Success outcomes — green
+            case "created":
+            case "approvedrequest":
+            case "emailverified":
+            case "email verified":
+                return baseClass + "bf-bg-success-100 bf-text-success";
+
+            // Destructive / failure outcomes — red
+            case "deleted":
+            case "rejectedrequest":
+            case "requesteddeletion":
+                return baseClass + "bf-bg-danger-100 bf-text-danger";
+
+            // Everything else (updates, request-creation, set-details, login/out,
+            // password changes, 2FA, default) — theme blue
+            default:
+                return baseClass + "bf-bg-info-100 bf-text-info";
+        }
+    }
+
+    private string? GetEntityUrl(string? entityName, string? entityId)
+    {
+        if (string.IsNullOrWhiteSpace(entityName) || string.IsNullOrWhiteSpace(entityId))
+            return null;
+
+        var name = entityName.Trim().ToLowerInvariant();
+
+        // Map known entity names to admin UI routes using the edit path pattern
+        return name switch
+        {
+            "user" or "users" => $"/admin/users/edit/{entityId}",
+            "role" or "roles" => $"/admin/roles/edit/{entityId}",
+            "lookup" or "lookups" => $"/admin/lookups/edit/{entityId}",
+            "category" or "categories" => $"/admin/categories/edit/{entityId}",
+            "product" or "products" => Guid.TryParse(entityId, out _) ? $"/admin/products/edit/{entityId}" : "/admin/catalog/products",
+            "unit" or "units" => Guid.TryParse(entityId, out _) ? $"/admin/catalog/units/edit/{entityId}" : "/admin/catalog/units",
+            "promotion" or "promotions" => $"/admin/promotions/edit/{entityId}",
+            "supplier" or "suppliers" => $"/admin/suppliers/edit/{entityId}",
+            "warehouse" or "warehouses" => $"/admin/warehouses/edit/{entityId}",
+            "terminal" or "terminals" => $"/admin/terminals/edit/{entityId}",
+            "cashier" or "cashiers" => $"/admin/users/edit/{entityId}",
+            "branch" or "branches" => $"/admin/branches/edit/{entityId}",
+            "order" or "orders" => "/admin/orders",
+            "shift" or "shifts" => "/admin/shifts",
+            "request" or "requests" => "/admin/requests",
+            "goodsreceivingnote" or "goodsreceiving" or "grn" => $"/admin/inventory/grn?id={entityId}",
+            "stockadjustment" => $"/admin/inventory/adjustments?id={entityId}",
+            "stocktransfer" => $"/admin/inventory/transfers?id={entityId}",
+            _ => null
+        };
+    }
+
+    private string GetEntityLabel(UserLogDto log)
+    {
+        var entityType = string.IsNullOrWhiteSpace(log.EntityName)
+            ? string.Empty
+            : Localizer[$"Entity_{log.EntityName}"];
+
+        if (!string.IsNullOrWhiteSpace(log.EntityDisplayName))
+        {
+            return $"{entityType} ({log.EntityDisplayName})";
+        }
+
+        return entityType;
+    }
+
+    private void ResetLogs()
+    {
+        Navigation.NavigateTo("/admin/logs");
+    }
+
+
+}

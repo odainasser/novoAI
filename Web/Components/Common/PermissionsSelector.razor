@@ -1,0 +1,192 @@
+@using System.Globalization
+@using Web.Models.Roles
+@inject IJsonStringLocalizer Localizer
+
+@* Reusable role-permission selector: title, search, per-module group + "select all" toggle. *@
+
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+    @{
+        var totalPermissions = Permissions.Count;
+        var selectedCount = SelectedIds.Count;
+        var groups = GetFilteredGroups().ToList();
+    }
+
+    <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-gray-900">
+            @Title
+            <span class="text-gray-400 font-normal ms-1">(@selectedCount/@totalPermissions)</span>
+        </h2>
+        @if (!Disabled && totalPermissions > 0)
+        {
+            <button type="button" @onclick="@(selectedCount == totalPermissions ? ClearAll : SelectAll)"
+                    class="text-xs font-medium text-bf-primary hover:underline">
+                @(selectedCount == totalPermissions ? Localizer["ClearAll"] : Localizer["SelectAll"])
+            </button>
+        }
+    </div>
+
+    <div class="relative mb-3">
+        <i class="bi bi-search absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+        <input type="text"
+               value="@searchTerm"
+               @oninput="OnSearchChanged"
+               placeholder="@Localizer["SearchPermissions"]"
+               class="w-full ps-9 pe-9 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent text-sm" />
+        @if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            <button type="button" @onclick="ClearSearch"
+                    class="absolute end-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600">
+                <i class="bi bi-x-lg text-xs"></i>
+            </button>
+        }
+    </div>
+
+    <div class="max-h-96 overflow-y-auto border border-gray-200 rounded-lg p-4">
+        @if (totalPermissions == 0)
+        {
+            <p class="text-gray-500 text-sm text-center py-4">@Localizer["NoPermissionsAvailable"]</p>
+        }
+        else if (!groups.Any())
+        {
+            <p class="text-gray-500 text-sm text-center py-4">@Localizer["NoPermissionsMatchSearch"]</p>
+        }
+        else
+        {
+            @foreach (var group in groups)
+            {
+                var moduleKey = group.Key;
+                var moduleList = group.ToList();
+                var moduleSelected = moduleList.Count(p => SelectedIds.Contains(p.Id));
+                var moduleTotal = moduleList.Count;
+                var allSelected = moduleSelected == moduleTotal;
+                var someSelected = moduleSelected > 0 && moduleSelected < moduleTotal;
+
+                <div class="mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                            <i class="bi bi-folder text-bf-primary"></i>
+                            @Localizer[$"Module_{moduleKey}"]
+                            <span class="text-xs font-normal text-gray-400">(@moduleSelected/@moduleTotal)</span>
+                        </h3>
+                        @if (!Disabled)
+                        {
+                            <input type="checkbox"
+                                   checked="@allSelected"
+                                   indeterminate="@someSelected"
+                                   @onchange="@((ChangeEventArgs e) => ToggleModule(moduleList, (bool)(e.Value ?? false)))"
+                                   title="@Localizer["SelectAll"]"
+                                   class="h-4 w-4 text-bf-primary border-gray-300 rounded focus:ring-bf-primary cursor-pointer" />
+                        }
+                    </div>
+                    <div class="space-y-2 ml-6">
+                        @foreach (var permission in moduleList)
+                        {
+                            <label class="flex items-start p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
+                                <Checkbox Value="@SelectedIds.Contains(permission.Id)"
+                                          ValueChanged="@((val) => Toggle(permission.Id, val))"
+                                          Class="mt-1"
+                                          Disabled="@Disabled" />
+                                <div class="ms-3 flex-1">
+                                    <span class="text-sm font-medium text-gray-700">@(isAr ? permission.NameAr : permission.NameEn)</span>
+                                    @if (!string.IsNullOrEmpty(isAr ? permission.DescriptionAr : permission.DescriptionEn))
+                                    {
+                                        <p class="text-xs text-gray-500 mt-1">@(isAr ? permission.DescriptionAr : permission.DescriptionEn)</p>
+                                    }
+                                </div>
+                            </label>
+                        }
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<PermissionDto> Permissions { get; set; } = new();
+    [Parameter] public List<Guid> SelectedIds { get; set; } = new();
+    [Parameter] public EventCallback<List<Guid>> SelectedIdsChanged { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? Title { get; set; }
+
+    private string searchTerm = string.Empty;
+    private bool isAr;
+
+    protected override void OnInitialized()
+    {
+        isAr = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("ar", StringComparison.OrdinalIgnoreCase);
+        if (string.IsNullOrEmpty(Title)) Title = Localizer["Permissions"];
+    }
+
+    private void OnSearchChanged(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? string.Empty;
+    }
+
+    private void ClearSearch() => searchTerm = string.Empty;
+
+    private IEnumerable<IGrouping<string, PermissionDto>> GetFilteredGroups()
+    {
+        var query = (IEnumerable<PermissionDto>)Permissions;
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var term = searchTerm.Trim();
+            query = query.Where(p =>
+                (p.NameEn?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (p.NameAr?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (p.Code?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (p.DescriptionEn?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (p.DescriptionAr?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (p.Module?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+        return query.GroupBy(p => p.Module ?? "Other");
+    }
+
+    private async Task Toggle(Guid permissionId, bool isChecked)
+    {
+        if (Disabled) return;
+
+        var next = new List<Guid>(SelectedIds);
+        if (isChecked)
+        {
+            if (!next.Contains(permissionId)) next.Add(permissionId);
+        }
+        else
+        {
+            next.Remove(permissionId);
+        }
+        await SelectedIdsChanged.InvokeAsync(next);
+    }
+
+    private async Task SelectAll()
+    {
+        if (Disabled) return;
+        await SelectedIdsChanged.InvokeAsync(Permissions.Select(p => p.Id).ToList());
+    }
+
+    private async Task ClearAll()
+    {
+        if (Disabled) return;
+        await SelectedIdsChanged.InvokeAsync(new List<Guid>());
+    }
+
+    private async Task ToggleModule(List<PermissionDto> modulePermissions, bool select)
+    {
+        if (Disabled) return;
+
+        var next = new List<Guid>(SelectedIds);
+        var ids = modulePermissions.Select(p => p.Id).ToList();
+        if (select)
+        {
+            foreach (var id in ids)
+            {
+                if (!next.Contains(id)) next.Add(id);
+            }
+        }
+        else
+        {
+            foreach (var id in ids) next.Remove(id);
+        }
+        await SelectedIdsChanged.InvokeAsync(next);
+    }
+}

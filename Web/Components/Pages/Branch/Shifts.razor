@@ -1,0 +1,464 @@
+@page "/branch/shifts"
+@layout BranchLayout
+@attribute [Authorize]
+@attribute [RequirePermission(Permissions.ShiftsRead)]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.WebUtilities
+@using System.Globalization
+@using Web.Authorization
+@using Web.Components.Common
+@using Web.Models.Cashiers
+@using Web.Models.Enums
+@using Web.Models.Shifts
+@using Web.Models.Warehouses
+@inject IShiftService ShiftService
+@inject ICashierManagementService CashierManagementService
+@inject IWarehouseService WarehouseService
+@inject ActiveBranchContext ActiveBranch
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<PageTitle>@Localizer["Shifts"]</PageTitle>
+
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-6">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+                        <i class="bi bi-people-fill text-purple-600"></i>
+                        @Localizer["Shifts"]
+                    </h1>
+                    <p class="text-gray-600 mt-2 text-sm sm:text-base">@Localizer["ManageShifts"]</p>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="mb-6 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                <div class="flex flex-wrap items-center gap-3 p-4">
+                    <div class="flex-1 min-w-[200px]">
+                        <SearchInput @bind-Value="searchTerm" OnSearch="ApplyFilters" Placeholder="@Localizer["SearchShifts"]" />
+                    </div>
+
+                    <button @onclick="() => showFiltersPanel = !showFiltersPanel"
+                            class="@($"inline-flex items-center gap-2 py-2 px-4 rounded-lg border transition-all duration-200 font-medium text-sm {(showFiltersPanel ? "bg-purple-50 border-purple-300 text-purple-700" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50")}")">
+                        <i class="bi bi-funnel"></i>
+                        <span>@Localizer["Filters"]</span>
+                        @if (ActiveFilterCount > 0)
+                        {
+                            <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-purple-600 rounded-full">@ActiveFilterCount</span>
+                        }
+                        <i class="@($"bi bi-chevron-{(showFiltersPanel ? "up" : "down")} text-xs")"></i>
+                    </button>
+
+                    @if (HasActiveFilters())
+                    {
+                        <button @onclick="ResetFilters" class="inline-flex items-center gap-2 py-2 px-4 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                            <i class="bi bi-x-circle"></i>
+                            <span>@Localizer["ResetFilters"]</span>
+                        </button>
+                    }
+
+                    <button @onclick="ExportToExcel"
+                            disabled="@(isExporting || totalCount == 0)"
+                            class="inline-flex items-center gap-2 py-2 px-4 bf-bg-success-600 bf-hover-bg-success-700 bf-border-success rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                        @if (isExporting)
+                        {
+                            <Spinner Size="Spinner.SpinnerSize.Xs" Color="Spinner.SpinnerColor.White" />
+                            <span>@Localizer["Exporting"]</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-file-earmark-excel"></i>
+                            <span>@Localizer["ExportToExcel"]</span>
+                        }
+                    </button>
+                </div>
+
+                @if (showFiltersPanel)
+                {
+                    <div class="px-4 pb-4 pt-0 border-t border-gray-200">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4">
+                            <div>
+                                <SearchableDropdown TItem="CashierResponse"
+                                                    TValue="string"
+                                                    Items="cashiers"
+                                                    @bind-Value="SelectedCashierFilter"
+                                                    DisplayText="c => c.FullName"
+                                                    SearchText="c => c.FullName"
+                                                    ItemValue="c => c.Id.ToString()"
+                                                    Label='@Localizer["Cashier"]'
+                                                    Placeholder='@Localizer["AllCashiers"]'
+                                                    Compact="true" />
+                            </div>
+                            <div>
+                                <SearchableDropdown TItem="WarehouseDto"
+                                                    TValue="string"
+                                                    Items="warehouses"
+                                                    @bind-Value="SelectedWarehouseFilter"
+                                                    DisplayText="w => isAr ? w.NameAr : w.NameEn"
+                                                    SearchText='w => $"{w.NameEn} {w.NameAr}"'
+                                                    ItemValue="w => w.Id.ToString()"
+                                                    Label='@Localizer["Store"]'
+                                                    Placeholder='@Localizer["AllStores"]'
+                                                    Compact="true" />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">@Localizer["Status"]</label>
+                                <div class="relative">
+                                    <select @bind="SelectedStatus" class="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2 px-3 pe-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-bf-primary text-sm">
+                                        <option value="">@Localizer["AllStatuses"]</option>
+                                        <option value="Active">@Localizer["ShiftStatus_Active"]</option>
+                                        <option value="Completed">@Localizer["ShiftStatus_Completed"]</option>
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 end-0 flex items-center px-2 text-gray-400"><svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+            </div>
+
+            @if (!ActiveBranch.IsSelected)
+            {
+                <Alert Type="Alert.AlertType.Warning"
+                       Message="@Localizer["NoBranchSelected"]"
+                       Dismissible="false" />
+            }
+            else if (isLoading)
+            {
+                <Spinner Size="Spinner.SpinnerSize.Lg" Centered="true" />
+            }
+            else if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="p-4 bf-bg-danger-50 border bf-border-danger rounded-lg flex items-start gap-3">
+                    <i class="bi bi-exclamation-triangle-fill bf-icon-danger text-lg mt-0.5"></i>
+                    <span class="bf-text-danger">@errorMessage</span>
+                </div>
+            }
+            else if (shifts == null || !shifts.Any())
+            {
+                <div class="text-center py-12">
+                    <i class="bi bi-clock-history text-6xl text-gray-300 mb-4"></i>
+                    <p class="text-gray-500 text-lg">@Localizer["NoShiftsFound"]</p>
+                </div>
+            }
+            else
+            {
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["Cashier"]</th>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["Store"]</th>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["StartTime"]</th>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["EndTime"]</th>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["TotalSales"]</th>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["CashIn"]</th>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["CashOut"]</th>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["Status"]</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            @foreach (var s in shifts)
+                            {
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 text-sm text-gray-700">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-100 text-cyan-800">
+                                            @s.CashierName
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-700">
+                                        @{
+                                            var storeName = isAr ? s.WarehouseNameAr : s.WarehouseNameEn;
+                                        }
+                                        @if (s.WarehouseId.HasValue && !string.IsNullOrEmpty(storeName))
+                                        {
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+                                                @storeName
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-gray-400">-</span>
+                                        }
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-700">@s.StartTime.ToLocal().ToString("g")</td>
+                                    <td class="px-6 py-4 text-sm text-gray-700">@(s.EndTime.HasValue ? s.EndTime.Value.ToLocal().ToString("g") : "-")</td>
+                                    <td class="px-6 py-4 text-sm text-gray-700">@s.TotalSales.ToString("N2") @Localizer["CurrencyUnit"]</td>
+                                    <td class="px-6 py-4 text-sm text-gray-700">@s.CashIn.ToString("N2") @Localizer["CurrencyUnit"]</td>
+                                    <td class="px-6 py-4 text-sm text-gray-700">@s.CashOut.ToString("N2") @Localizer["CurrencyUnit"]</td>
+                                    <td class="px-6 py-4 text-sm text-gray-700">
+                                        <StatusBadge Text="@Localizer[$"ShiftStatus_{s.Status}"]" Type="@GetBadgeType(s.Status)" Size="StatusBadge.BadgeSize.Small" />
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-4">
+                    <Pagination PageIndex="@pageIndex" TotalPages="@totalPages" TotalCount="@totalCount" PageSize="@pageSize" OnPageChanged="@OnPageChanged" />
+                </div>
+            }
+</div>
+
+@code {
+    private List<ShiftDto> shifts = new();
+    private List<CashierResponse> cashiers = new();
+    private List<WarehouseDto> warehouses = new();
+    private bool isLoading = true;
+    private bool isAr = false;
+    private int pageIndex = 1;
+    private int pageSize = 20;
+    private int totalPages = 1;
+    private int totalCount = 0;
+
+    // Filters
+    private string searchTerm = string.Empty;
+    private string selectedStatus = string.Empty;
+    private Guid? selectedCashierId;
+    private Guid? selectedWarehouseId;
+    private bool showFiltersPanel = false;
+
+    private bool HasActiveFilters() => !string.IsNullOrEmpty(selectedStatus) || selectedCashierId.HasValue || selectedWarehouseId.HasValue;
+    private int ActiveFilterCount => (string.IsNullOrEmpty(selectedStatus) ? 0 : 1) + (selectedCashierId.HasValue ? 1 : 0) + (selectedWarehouseId.HasValue ? 1 : 0);
+
+    private string SelectedStatus
+    {
+        get => selectedStatus;
+        set
+        {
+            if (selectedStatus != value)
+            {
+                selectedStatus = value;
+                _ = OnFilterChanged();
+            }
+        }
+    }
+
+    private string SelectedCashierFilter
+    {
+        get => selectedCashierId?.ToString() ?? string.Empty;
+        set
+        {
+            var newValue = string.IsNullOrEmpty(value) ? (Guid?)null : Guid.Parse(value);
+            if (selectedCashierId != newValue)
+            {
+                selectedCashierId = newValue;
+                _ = OnFilterChanged();
+            }
+        }
+    }
+
+    private string SelectedWarehouseFilter
+    {
+        get => selectedWarehouseId?.ToString() ?? string.Empty;
+        set
+        {
+            var newValue = string.IsNullOrEmpty(value) ? (Guid?)null : Guid.Parse(value);
+            if (selectedWarehouseId != newValue)
+            {
+                selectedWarehouseId = newValue;
+                _ = OnFilterChanged();
+            }
+        }
+    }
+
+    private string? errorMessage;
+
+    private async Task ResetFilters()
+    {
+        searchTerm = string.Empty;
+        selectedStatus = string.Empty;
+        selectedCashierId = null;
+        selectedWarehouseId = null;
+        pageIndex = 1;
+        await LoadShifts();
+    }
+
+    private async Task ApplyFilters(string? term = null)
+    {
+        // term parameter is from SearchInput's OnSearch
+        if (term != null) searchTerm = term;
+        pageIndex = 1;
+        await LoadShifts();
+    }
+
+    private async Task OnFilterChanged()
+    {
+        pageIndex = 1;
+        await LoadShifts();
+    }
+
+    private StatusBadge.BadgeType GetBadgeType(ShiftStatus status)
+    {
+        return status switch
+        {
+            ShiftStatus.Active => StatusBadge.BadgeType.Success,
+            ShiftStatus.Completed => StatusBadge.BadgeType.Info,
+            _ => StatusBadge.BadgeType.Gray,
+        };
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        isAr = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("ar", StringComparison.OrdinalIgnoreCase);
+
+        ActiveBranch.OnChanged += OnBranchChanged;
+
+        if (!ActiveBranch.IsSelected)
+        {
+            Navigation.NavigateTo("/branch/select", replace: true);
+            return;
+        }
+
+        // read querystring for optional search filter
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("search", out var q))
+        {
+            searchTerm = q.ToString();
+        }
+
+        await LoadFilterOptions();
+        await LoadShifts();
+    }
+
+    private async Task LoadFilterOptions()
+    {
+        if (!ActiveBranch.BranchId.HasValue) return;
+        var branchId = ActiveBranch.BranchId.Value;
+
+        try
+        {
+            // Scope the store dropdown to MS warehouses under the active branch only.
+            var allWarehouses = await WarehouseService.GetActiveWarehousesAsync();
+            warehouses = allWarehouses
+                .Where(w => w.WarehouseTypeCode == "MS" && w.BranchId == branchId)
+                .ToList();
+        }
+        catch { warehouses = new List<WarehouseDto>(); }
+
+        try
+        {
+            // Scope the cashier dropdown to those assigned to any of this branch's warehouses.
+            // The cashier endpoint doesn't accept branchId, so we filter client-side. Cap 500
+            // is enough for typical organisations and mirrors the admin page.
+            var branchWarehouseIds = warehouses.Select(w => w.Id).ToHashSet();
+            var cashierResult = await CashierManagementService.GetAllCashiersAsync(1, 500);
+            cashiers = cashierResult.Items
+                .Where(c => (c.WarehouseId.HasValue && branchWarehouseIds.Contains(c.WarehouseId.Value))
+                            || c.AssignedWarehouses.Any(a => branchWarehouseIds.Contains(a.Id)))
+                .ToList();
+        }
+        catch { cashiers = new List<CashierResponse>(); }
+    }
+
+    private async Task LoadShifts()
+    {
+        if (!ActiveBranch.BranchId.HasValue) return;
+        isLoading = true;
+        errorMessage = null;
+        try
+        {
+            // normalize status: if numeric (1/2) convert to enum name (Active/Completed) so server receives a stable value
+            string? statusParam = null;
+            if (!string.IsNullOrEmpty(selectedStatus))
+            {
+                if (int.TryParse(selectedStatus, out var si) && Enum.IsDefined(typeof(ShiftStatus), si))
+                {
+                    statusParam = Enum.GetName(typeof(ShiftStatus), si);
+                }
+                else
+                {
+                    statusParam = selectedStatus;
+                }
+            }
+
+            var result = await ShiftService.GetAllShiftsAsync(
+                pageIndex, pageSize,
+                statusParam, searchTerm,
+                selectedCashierId, selectedWarehouseId,
+                branchId: ActiveBranch.BranchId.Value);
+            shifts = result.Items;
+            totalCount = result.TotalCount;
+            totalPages = result.TotalPages;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            shifts = new List<ShiftDto>();
+            totalCount = 0;
+            totalPages = 1;
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnPageChanged(int newPage)
+    {
+        pageIndex = newPage;
+        await LoadShifts();
+    }
+
+    private void OnBranchChanged()
+    {
+        pageIndex = 1;
+        _ = InvokeAsync(async () =>
+        {
+            await LoadFilterOptions();
+            await LoadShifts();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        ActiveBranch.OnChanged -= OnBranchChanged;
+    }
+
+    // Export
+    private bool isExporting = false;
+
+    private async Task ExportToExcel()
+    {
+        if (isExporting || !ActiveBranch.BranchId.HasValue) return;
+        isExporting = true;
+        try
+        {
+            string? statusParam = null;
+            if (!string.IsNullOrEmpty(selectedStatus))
+            {
+                if (int.TryParse(selectedStatus, out var si) && Enum.IsDefined(typeof(ShiftStatus), si))
+                    statusParam = Enum.GetName(typeof(ShiftStatus), si);
+                else
+                    statusParam = selectedStatus;
+            }
+
+            var bytes = await ShiftService.ExportShiftsToExcelAsync(
+                statusParam,
+                searchTerm,
+                selectedCashierId,
+                selectedWarehouseId,
+                isAr,
+                ActiveBranch.BranchId.Value);
+
+            var base64 = Convert.ToBase64String(bytes);
+            var filename = $"shifts-{DateTime.Now:yyyyMMdd-HHmm}.xlsx";
+            await JSRuntime.InvokeAsync<bool>("App.downloadFile", filename,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", base64);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"{Localizer["ExportFailed"]}: {ex.Message}";
+        }
+        finally
+        {
+            isExporting = false;
+        }
+    }
+}

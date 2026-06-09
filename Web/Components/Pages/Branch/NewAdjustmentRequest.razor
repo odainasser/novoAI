@@ -1,0 +1,281 @@
+@page "/branch/requests/new-adjustment"
+@layout BranchLayout
+@attribute [Authorize]
+@attribute [RequirePermission(Permissions.RequestsWrite)]
+@using Microsoft.AspNetCore.Authorization
+@using System.Globalization
+@using Web.Authorization
+@using Web.Components.Common
+@using Web.Models.Branches
+@using Web.Models.Inventory
+@using Web.Models.Requests
+@using Web.Models.Units
+@inject IBranchService BranchService
+@inject IRequestService RequestService
+@inject IUnitService UnitService
+@inject ActiveBranchContext ActiveBranch
+@inject NavigationManager Navigation
+
+<PageTitle>@Localizer["NewAdjustmentRequest"]</PageTitle>
+
+@if (isLoading)
+{
+    <Spinner Size="Spinner.SpinnerSize.Lg" Centered="true" />
+}
+else if (warehouse is null)
+{
+    <div class="p-4 bf-bg-warning-50 border bf-border-warning rounded-lg flex items-start gap-3">
+        <i class="bi bi-exclamation-triangle-fill bf-icon-warning text-lg mt-0.5"></i>
+        <span class="bf-text-warning">@Localizer["BranchWarehouseNotConfigured"]</span>
+    </div>
+}
+else
+{
+    <EditForm Model="@model" OnValidSubmit="HandleSubmit" FormName="adjustmentRequestForm">
+        <FormToolbar Title="@Localizer["NewAdjustmentRequest"]"
+                     OnBack="Cancel"
+                     OnCancel="Cancel"
+                     SubmitText="@Localizer["Submit"]"
+                     IsSubmitting="isSubmitting" />
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+                <i class="bi bi-exclamation-triangle-fill text-red-600 text-lg mt-0.5"></i>
+                <span class="text-red-800 text-sm">@errorMessage</span>
+            </div>
+        }
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <!-- Main column -->
+            <div class="lg:col-span-2 space-y-5">
+                <!-- Card: Header -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                            @Localizer["AdjustmentType"] <span class="text-red-500">*</span>
+                        </label>
+                        <select @bind="model.AdjustmentType"
+                                class="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2 px-3 pe-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-bf-primary text-sm">
+                            <option value="">@Localizer["SelectType"]</option>
+                            @foreach (var t in AdjustmentTypes)
+                            {
+                                <option value="@t">@Localizer[t]</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">@Localizer["Explanation"]</label>
+                        <textarea @bind="model.Explanation"
+                                  rows="3"
+                                  placeholder="@Localizer["AdjustmentExplanationPlaceholder"]"
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"></textarea>
+                    </div>
+                </div>
+
+                <!-- Card: Lines -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-sm font-semibold text-gray-900">
+                            @Localizer["Items"] <span class="text-red-500">*</span>
+                        </h2>
+                        <button type="button" @onclick="AddLine"
+                                class="inline-flex items-center gap-1.5 py-1.5 px-3 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                            <i class="bi bi-plus-circle"></i>
+                            <span>@Localizer["AddLine"]</span>
+                        </button>
+                    </div>
+
+                    @if (model.Lines.Count == 0)
+                    {
+                        <div class="text-center py-6 border-2 border-dashed border-gray-200 rounded-lg">
+                            <i class="bi bi-box text-3xl text-gray-300"></i>
+                            <p class="text-sm text-gray-500 mt-2">@Localizer["NoLinesAddedYet"]</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="space-y-3">
+                            @for (int i = 0; i < model.Lines.Count; i++)
+                            {
+                                var index = i;
+                                var line = model.Lines[index];
+                                <div class="grid grid-cols-1 md:grid-cols-12 gap-2 items-start p-3 border border-gray-200 rounded-lg">
+                                    <div class="md:col-span-6">
+                                        <label class="block text-xs font-medium text-gray-500 mb-1">@Localizer["Item"]</label>
+                                        <SearchableDropdown TItem="UnitDto"
+                                                            TValue="Guid?"
+                                                            Items="availableUnits"
+                                                            Value="line.UnitId == Guid.Empty ? (Guid?)null : line.UnitId"
+                                                            ValueChanged='id => OnUnitSelected(index, id)'
+                                                            DisplayText='u => isAr ? $"{u.ProductNameAr} — {u.UnitOfMeasureNameAr}" : $"{u.ProductNameEn} — {u.UnitOfMeasureNameEn}"'
+                                                            SearchText='u => $"{u.ProductNameEn} {u.ProductNameAr} {u.Barcode}"'
+                                                            ItemValue="u => (Guid?)u.Id"
+                                                            Placeholder='@Localizer["SearchUnit"]'
+                                                            Compact="true" />
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label class="block text-xs font-medium text-gray-500 mb-1">@Localizer["Quantity"]</label>
+                                        <input type="number" @bind="line.AdjustmentQuantity"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                                    </div>
+                                    <div class="md:col-span-3">
+                                        <label class="block text-xs font-medium text-gray-500 mb-1">@Localizer["Note"]</label>
+                                        <input type="text" @bind="line.Notes"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                                    </div>
+                                    <div class="md:col-span-1 flex md:justify-end md:pt-5">
+                                        <button type="button" @onclick="() => RemoveLine(index)"
+                                                class="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg"
+                                                title="@Localizer["Remove"]">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="space-y-5">
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <h2 class="text-sm font-semibold text-gray-900 mb-3">@Localizer["Warehouse"]</h2>
+                    <div class="text-sm text-gray-700">@(isAr ? warehouse!.NameAr : warehouse!.NameEn)</div>
+                    <p class="text-xs text-gray-500 mt-2">@Localizer["WarehouseAutoResolvedFromBranch"]</p>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <h2 class="text-sm font-semibold text-gray-900 mb-3">@Localizer["Branch"]</h2>
+                    <div class="text-sm text-gray-700">@(isAr ? ActiveBranch.BranchNameAr : ActiveBranch.BranchNameEn)</div>
+                </div>
+                <div class="p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-3">
+                    <i class="bi bi-info-circle text-blue-600 text-lg mt-0.5"></i>
+                    <span class="text-blue-800 text-xs">@Localizer["AdjustmentRequestApprovalNote"]</span>
+                </div>
+            </div>
+        </div>
+    </EditForm>
+}
+
+@code {
+    private bool isLoading = true;
+    private bool isSubmitting = false;
+    private string errorMessage = string.Empty;
+    private BranchWarehouseDto? warehouse;
+    private List<UnitDto> availableUnits = new();
+    private FormModel model = new();
+    private bool isAr => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("ar", StringComparison.OrdinalIgnoreCase);
+
+    private static readonly string[] AdjustmentTypes =
+    {
+        "Damage", "Loss", "Theft", "Expiry", "CorrectionAdd", "CorrectionRemove"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!ActiveBranch.IsSelected)
+        {
+            Navigation.NavigateTo("/branch/select", replace: true);
+            return;
+        }
+
+        try
+        {
+            warehouse = await BranchService.GetBranchWarehouseAsync(ActiveBranch.BranchId!.Value);
+            // Load all active units in a single page for the dropdown. The
+            // BranchManager role typically has units.read via inventory.read;
+            // if the call 403s the picker stays empty and the user is told
+            // via the empty state.
+            var unitPage = await UnitService.GetAllAsync(1, 500, isActive: true);
+            availableUnits = unitPage.Items;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OnUnitSelected(int index, Guid? unitId)
+    {
+        if (index >= 0 && index < model.Lines.Count)
+        {
+            model.Lines[index].UnitId = unitId ?? Guid.Empty;
+        }
+    }
+
+    private void AddLine() => model.Lines.Add(new CreateStockAdjustmentLineRequest { AdjustmentQuantity = 1 });
+
+    private void RemoveLine(int index)
+    {
+        if (index >= 0 && index < model.Lines.Count)
+        {
+            model.Lines.RemoveAt(index);
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        errorMessage = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(model.AdjustmentType))
+        {
+            errorMessage = Localizer["AdjustmentTypeRequired"];
+            return;
+        }
+        if (model.Lines.Count == 0 || model.Lines.Any(l => l.UnitId == Guid.Empty || l.AdjustmentQuantity == 0))
+        {
+            errorMessage = Localizer["InvalidLines"];
+            return;
+        }
+        if (warehouse is null)
+        {
+            errorMessage = Localizer["BranchWarehouseNotConfigured"];
+            return;
+        }
+
+        isSubmitting = true;
+        try
+        {
+            var dto = new CreateInventoryAdjustmentRequest
+            {
+                Data = new CreateStockAdjustmentRequest
+                {
+                    // WarehouseId is overridden server-side from the active branch — see BranchPanelEndpoints POST /requests/adjustment.
+                    WarehouseId = warehouse.Id,
+                    AdjustmentType = model.AdjustmentType,
+                    Explanation = model.Explanation,
+                    Lines = model.Lines
+                },
+                Note = model.Explanation
+            };
+            await RequestService.CreateAddStockAdjustmentRequestAsync(dto, branchId: ActiveBranch.BranchId!.Value);
+            Navigation.NavigateTo("/branch/requests");
+        }
+        catch (Web.Services.ServerValidationException ex)
+        {
+            errorMessage = string.Join(" ", ex.Errors.Values.SelectMany(v => v).Select(e => Localizer[e]));
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void Cancel() => Navigation.NavigateTo("/branch/requests");
+
+    private class FormModel
+    {
+        public string AdjustmentType { get; set; } = string.Empty;
+        public string? Explanation { get; set; }
+        public List<CreateStockAdjustmentLineRequest> Lines { get; set; } = new();
+    }
+}

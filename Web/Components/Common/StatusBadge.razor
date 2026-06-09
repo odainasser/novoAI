@@ -1,0 +1,73 @@
+@* Reusable status badge component *@
+<span class="@GetBadgeClass()">
+    @if (!string.IsNullOrEmpty(Icon))
+    {
+        <i class="bi bi-@Icon @IconClass"></i>
+    }
+    @Text
+</span>
+
+@code {
+    [Parameter] public string Text { get; set; } = "Status";
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public string IconClass { get; set; } = "mr-1";
+    [Parameter] public BadgeType Type { get; set; } = BadgeType.Default;
+    [Parameter] public BadgeSize Size { get; set; } = BadgeSize.Small;
+    [Parameter] public string? CustomClass { get; set; }
+
+    private string GetBadgeClass()
+    {
+        var baseClass = "inline-flex items-center rounded-full font-medium";
+        
+        var sizeClass = Size switch
+        {
+            BadgeSize.ExtraSmall => "px-2 py-0.5 text-xs",
+            BadgeSize.Small => "px-2.5 py-0.5 text-xs",
+            BadgeSize.Medium => "px-3 py-1 text-sm",
+            BadgeSize.Large => "px-4 py-1.5 text-sm",
+            _ => "px-2.5 py-0.5 text-xs"
+        };
+
+        var colorClass = Type switch
+        {
+            BadgeType.Success => "bf-bg-success-100 bf-text-success",
+            BadgeType.Error   => "bf-bg-danger-100 bf-text-danger",
+            BadgeType.Warning => "bf-bg-warning-100 bf-text-warning",
+            BadgeType.Info    => "bf-bg-info-100 bf-text-info",
+            BadgeType.Purple  => "bf-bg-info-100 bf-text-info",
+            BadgeType.Indigo  => "bf-bg-info-100 bf-text-info",
+            BadgeType.Pink    => "bf-bg-info-100 bf-text-info",
+            BadgeType.Gray    => "bg-gray-100 text-gray-800",
+            BadgeType.Orange  => "bf-bg-info-100 bf-text-info",
+            BadgeType.Teal    => "bf-bg-info-100 bf-text-info",
+            BadgeType.Cyan    => "bf-bg-info-100 bf-text-info",
+            _ => "bg-gray-100 text-gray-800"
+        };
+
+        return $"{baseClass} {sizeClass} {colorClass} {CustomClass}".Trim();
+    }
+
+    public enum BadgeType
+    {
+        Default,
+        Success,
+        Error,
+        Warning,
+        Info,
+        Purple,
+        Indigo,
+        Pink,
+        Gray,
+        Orange,
+        Teal,
+        Cyan
+    }
+
+    public enum BadgeSize
+    {
+        ExtraSmall,
+        Small,
+        Medium,
+        Large
+    }
+}

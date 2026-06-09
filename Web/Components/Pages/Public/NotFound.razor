@@ -1,0 +1,48 @@
+@page "/not-found"
+@layout PublicLayout
+@inject NavigationManager Navigation
+
+<PageTitle>@Localizer["PageNotFound"]</PageTitle>
+
+<div class="min-h-screen bg-gray-50 flex flex-col justify-center items-center px-4 py-12">
+    <div class="text-center max-w-lg">
+        <div class="mb-8 relative">
+            <div class="text-9xl font-black text-gray-200 select-none">404</div>
+            <div class="absolute inset-0 flex items-center justify-center">
+                <i class="bi bi-exclamation-triangle text-6xl text-bf-primary opacity-50"></i>
+            </div>
+        </div>
+        
+        <h1 class="text-4xl font-bold text-gray-900 mb-4">@Localizer["PageNotFound"]</h1>
+        <p class="text-lg text-gray-600 mb-8">
+            @Localizer["PageNotFoundMessage"]
+        </p>
+
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <button @onclick="GoHome" 
+                    class="w-full sm:w-auto px-8 py-3 bg-bf-primary text-white rounded-lg hover:opacity-90 transition-all duration-200 font-medium flex items-center justify-center gap-2 shadow-lg">
+                <i class="bi bi-house-door"></i>
+                <span>@Localizer["GoToHome"]</span>
+            </button>
+            <button @onclick="GoBack" 
+                    class="w-full sm:w-auto px-8 py-3 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 font-medium flex items-center justify-center gap-2">
+                <i class="bi bi-arrow-left"></i>
+                <span>@Localizer["Back"]</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private void GoHome()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private async Task GoBack()
+    {
+        await JSRuntime.InvokeVoidAsync("history.back");
+    }
+
+    [Inject] IJSRuntime JSRuntime { get; set; } = default!;
+}

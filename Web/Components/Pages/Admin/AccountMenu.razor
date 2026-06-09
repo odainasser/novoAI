@@ -1,0 +1,17 @@
+@inject NavigationManager Navigation
+
+<nav class="flex flex-col gap-1">
+    <NavLink href="/admin/account" 
+             class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition-all duration-200"
+             ActiveClass="bg-purple-100 text-purple-700 font-medium">
+        <i class="bi bi-person"></i>
+        <span>@Localizer["Profile"]</span>
+    </NavLink>
+
+    <NavLink href="/admin/account/change-password" 
+             class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition-all duration-200"
+             ActiveClass="bg-purple-100 text-purple-700 font-medium">
+        <i class="bi bi-key"></i>
+        <span>@Localizer["ChangePassword"]</span>
+    </NavLink>
+</nav>

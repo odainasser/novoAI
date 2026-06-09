@@ -1,0 +1,54 @@
+<footer class="@GetFooterClass()">
+    <div class="@ContainerClass">
+        @if (ChildContent != null)
+        {
+            @ChildContent
+        }
+        else
+        {
+            <div class="@GetContentClass()">
+                <div class="text-sm font-medium">
+                    <span class="text-sm text-bf-primary">&copy; @DateTime.Now.Year&nbsp;@CopyrightText</span>
+                </div>
+                @if (ShowHomeLink)
+                {
+                    <div class="flex items-center gap-4 text-sm text-gray-700">
+                        <a href="/" class="inline-flex items-center gap-2 hover:bg-bf-primary hover:text-bf-primary-contrast px-2 py-1 rounded-md">
+                            <span>@Localizer["Home"]</span>
+                            <i class="bi bi-house"></i>
+                        </a>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</footer>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string CopyrightText { get; set; } = "";
+    [Parameter] public bool ShowHomeLink { get; set; } = true;
+    [Parameter] public FooterStyle Style { get; set; } = FooterStyle.Fixed;
+    [Parameter] public string ContainerClass { get; set; } = "max-w-7xl mx-auto px-6 py-3";
+
+    private string GetFooterClass() => Style switch
+    {
+        FooterStyle.Fixed => "fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-sm z-40",
+        FooterStyle.Static => "bg-white border-t border-gray-200 shadow-sm",
+        FooterStyle.Dark => "bg-gray-900 text-gray-400 py-12",
+        _ => "fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-sm z-40"
+    };
+
+    private string GetContentClass() => Style switch
+    {
+        FooterStyle.Dark => "border-t border-gray-800 pt-8 text-center text-sm",
+        _ => "flex items-center justify-between"
+    };
+
+    public enum FooterStyle
+    {
+        Fixed,
+        Static,
+        Dark
+    }
+}

@@ -1,0 +1,245 @@
+@using Web.Models.Products
+@using System.Globalization
+
+<!-- Category Tabs -->
+<div class="bg-white border-b border-gray-200 px-4 py-3">
+    <div class="flex gap-2 overflow-x-auto">
+        <button @onclick="() => OnCategorySelected.InvokeAsync(null)"
+                class="@GetCategoryClass(null) px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200">
+            <i class="bi bi-grid-3x3-gap-fill me-2"></i>@Localizer["All"]
+        </button>
+        @foreach (var category in Categories)
+        {
+            <button @onclick="() => OnCategorySelected.InvokeAsync(category.Id)"
+                    class="@GetCategoryClass(category.Id) px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 relative">
+                <i class="bi bi-folder me-2"></i>@(IsAr ? category.NameAr : category.NameEn)
+                @if (category.HasPromotion)
+                {
+                    <span class="absolute -top-1 -end-1 flex h-5 w-5">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-5 w-5 bg-red-500 text-white text-[10px] font-bold items-center justify-center">
+                            @if (category.DiscountPercentage.HasValue)
+                            {
+                                <span>@category.DiscountPercentage%</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-percent"></i>
+                            }
+                        </span>
+                    </span>
+                }
+            </button>
+        }
+    </div>
+</div>
+
+<!-- Stock Status Filter -->
+<div class="bg-white border-b border-gray-200 px-4 py-2">
+    <div class="flex gap-2 overflow-x-auto">
+        <button type="button" @onclick='() => OnStockFilterChanged.InvokeAsync("all")'
+                class="@GetStockFilterClass("all") px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 inline-flex items-center gap-1.5">
+            <i class="bi bi-grid"></i>@Localizer["All"]
+            <span class="text-[10px] bg-white/40 px-1.5 py-0.5 rounded-full font-semibold">@CountAll</span>
+        </button>
+        <button type="button" @onclick='() => OnStockFilterChanged.InvokeAsync("in")'
+                class="@GetStockFilterClass("in") px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 inline-flex items-center gap-1.5">
+            <i class="bi bi-check-circle"></i>@Localizer["InStock"]
+            <span class="text-[10px] bg-white/40 px-1.5 py-0.5 rounded-full font-semibold">@CountIn</span>
+        </button>
+        <button type="button" @onclick='() => OnStockFilterChanged.InvokeAsync("low")'
+                class="@GetStockFilterClass("low") px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 inline-flex items-center gap-1.5">
+            <i class="bi bi-exclamation-triangle"></i>@Localizer["LowStock"]
+            <span class="text-[10px] bg-white/40 px-1.5 py-0.5 rounded-full font-semibold">@CountLow</span>
+        </button>
+        <button type="button" @onclick='() => OnStockFilterChanged.InvokeAsync("out")'
+                class="@GetStockFilterClass("out") px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 inline-flex items-center gap-1.5">
+            <i class="bi bi-x-circle"></i>@Localizer["OutOfStock"]
+            <span class="text-[10px] bg-white/40 px-1.5 py-0.5 rounded-full font-semibold">@CountOut</span>
+        </button>
+    </div>
+</div>
+
+<!-- Search Bar -->
+<div class="p-4 bg-white border-b border-gray-200">
+    <div class="relative">
+        <i class="bi bi-search absolute start-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+        <input type="text"
+               value="@SearchQuery"
+               @oninput="OnSearchInput"
+               placeholder="@Localizer["SearchProductsPlaceholder"]"
+               class="w-full ps-10 pe-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent" />
+    </div>
+</div>
+
+<!-- Product Grid -->
+<div class="flex-1 overflow-y-auto p-4">
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        @foreach (var product in VisibleProducts)
+        {
+            var isOutOfStock = HasAnyOutOfStockUnit(product);
+            var isLowStock = HasAnyLowStockUnit(product);
+            // Card stays clickable as long as at least one unit can be sold, even if
+            // another unit on the same product is OOS — the cashier can pick the sellable
+            // unit from the modal. Only fully out-of-stock products are disabled.
+            var fullyUnavailable = !IsProductSellable(product);
+            <button @onclick="() => OnProductClicked.InvokeAsync(product)"
+                    disabled="@fullyUnavailable"
+                    class="bg-white border border-gray-200 rounded-xl text-start transition-all duration-150 flex flex-col overflow-hidden disabled:cursor-not-allowed relative group hover:shadow-md hover:border-gray-300">
+                <!-- Image / placeholder area -->
+                <div class="w-full aspect-square bg-gray-100 flex items-center justify-center overflow-hidden relative rounded-t-xl">
+                    @if (!string.IsNullOrEmpty(product.ImageUrl))
+                    {
+                        <img src="@product.ImageUrl" alt="@(IsAr ? product.NameAr : product.NameEn)" class="w-full h-full object-cover @(fullyUnavailable ? "grayscale opacity-60" : "")" />
+                    }
+                    else
+                    {
+                        <i class="bi bi-bag text-3xl text-gray-300 group-hover:text-gray-400 transition-colors"></i>
+                    }
+                    <div class="absolute top-1.5 end-1.5 flex flex-col items-end gap-1">
+                        @if (isOutOfStock)
+                        {
+                            <span class="text-[10px] font-semibold bf-bg-danger-500 px-2 py-0.5 rounded-full leading-none shadow whitespace-nowrap">@Localizer[fullyUnavailable ? "OutOfStock" : "HasOutOfStock"]</span>
+                        }
+                        @if (isLowStock)
+                        {
+                            <span class="text-[10px] font-semibold bf-bg-warning-500 px-2 py-0.5 rounded-full leading-none shadow whitespace-nowrap">@Localizer["HasLowStock"]</span>
+                        }
+                    </div>
+                </div>
+                <!-- Product info -->
+                <div class="px-3 py-2 flex flex-col gap-0.5">
+                    <p class="text-xs font-medium text-gray-800 leading-snug line-clamp-2">@(IsAr ? product.NameAr : product.NameEn)</p>
+                    <div class="flex flex-wrap items-center gap-1">
+                        @if (isOutOfStock)
+                        {
+                            <span class="inline-flex items-center gap-1 text-[10px] font-semibold bf-bg-danger-100 bf-text-danger border bf-border-danger px-1.5 py-0.5 rounded leading-none">
+                                <i class="bi bi-x-circle-fill"></i>@Localizer[fullyUnavailable ? "OutOfStock" : "HasOutOfStock"]
+                            </span>
+                        }
+                        @if (isLowStock)
+                        {
+                            <span class="inline-flex items-center gap-1 text-[10px] font-semibold bf-bg-warning-100 bf-text-warning border bf-border-warning px-1.5 py-0.5 rounded leading-none">
+                                <i class="bi bi-exclamation-triangle-fill"></i>@Localizer["HasLowStock"]
+                            </span>
+                        }
+                    </div>
+                    @if (product.Units.Any())
+                    {
+                        var unitPrices = product.Units.Select(su => {
+                            var pi = GetBestPromotionForUnit(product, su);
+                            return pi.HasPromotion ? pi.DiscountedPrice : su.SellingPrice;
+                        }).ToList();
+                        var hasAnyPromo = product.Units.Any(su => GetBestPromotionForUnit(product, su).HasPromotion);
+                        var minPrice = unitPrices.Min();
+                        var maxPrice = unitPrices.Max();
+                        @if (hasAnyPromo)
+                        {
+                            <div class="flex items-center gap-1">
+                                <span class="text-[10px] bg-red-500 text-white px-1 py-0.5 rounded font-bold leading-none">@Localizer["OnPromotion"]</span>
+                            </div>
+                        }
+                        @if (minPrice == maxPrice)
+                        {
+                            <span class="text-sm font-bold text-indigo-600">@minPrice.ToString("N2", CultureInfo) @Localizer["CurrencyUnit"]</span>
+                        }
+                        else
+                        {
+                            <span class="text-sm font-bold text-indigo-600">@minPrice.ToString("N2", CultureInfo) - @maxPrice.ToString("N2", CultureInfo) @Localizer["CurrencyUnit"]</span>
+                        }
+                    }
+                    else
+                    {
+                        <span class="text-sm font-bold text-gray-400">@Localizer["NoPriceAvailable"]</span>
+                    }
+                </div>
+            </button>
+        }
+    </div>
+    
+    @if (!VisibleProducts.Any())
+    {
+        <div class="flex flex-col items-center justify-center h-full text-gray-400">
+            <i class="bi bi-search text-5xl mb-3"></i>
+            <p class="text-sm">@Localizer["NoProductsFound"]</p>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public IEnumerable<CategoryDto> Categories { get; set; } = Array.Empty<CategoryDto>();
+    [Parameter] public IEnumerable<ProductDto> Products { get; set; } = Array.Empty<ProductDto>();
+
+    // Snapshot of Products after every parameter change so counts and rendering iterate
+    // the same materialized list instead of re-running the (lazy) source enumerable.
+    private List<ProductDto> _materialized = new();
+    protected override void OnParametersSet()
+    {
+        _materialized = Products?.ToList() ?? new List<ProductDto>();
+    }
+    [Parameter] public Guid? SelectedCategoryId { get; set; }
+    [Parameter] public string SearchQuery { get; set; } = "";
+    [Parameter] public bool IsAr { get; set; }
+    [Parameter] public CultureInfo CultureInfo { get; set; } = default!;
+    [Parameter] public Func<ProductDto, ProductUnitDto, (bool HasPromotion, decimal DiscountedPrice, Web.Models.Promotions.DiscountType DiscountType, decimal DiscountValue, string PromotionName)> GetBestPromotionForUnit { get; set; } = default!;
+    
+    [Parameter] public string StockFilter { get; set; } = "all";
+
+    [Parameter] public EventCallback<Guid?> OnCategorySelected { get; set; }
+    [Parameter] public EventCallback<string> OnSearchQueryChanged { get; set; }
+    [Parameter] public EventCallback<ProductDto> OnProductClicked { get; set; }
+    [Parameter] public EventCallback<string> OnStockFilterChanged { get; set; }
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString() ?? string.Empty;
+        await OnSearchQueryChanged.InvokeAsync(value);
+    }
+
+    private string GetCategoryClass(Guid? categoryId)
+    {
+        return SelectedCategoryId == categoryId
+            ? "bg-bf-primary text-bf-primary-contrast shadow-md"
+            : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200";
+    }
+
+    private string GetStockFilterClass(string status)
+    {
+        var active = (StockFilter ?? "all") == status;
+        return status switch
+        {
+            "in" => active ? "bf-bg-success-500 shadow-md" : "bf-bg-success-50 bf-text-success bf-hover-bg-success-100 border bf-border-success",
+            "low" => active ? "bf-bg-warning-500 shadow-md" : "bf-bg-warning-50 bf-text-warning bf-hover-bg-warning-100 border bf-border-warning",
+            "out" => active ? "bf-bg-danger-500 shadow-md" : "bf-bg-danger-50 bf-text-danger bf-hover-bg-danger-100 border bf-border-danger",
+            _ => active ? "bg-bf-primary text-bf-primary-contrast shadow-md" : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+        };
+    }
+
+    private static bool IsUnitSellable(ProductUnitDto u) =>
+        u.IsActive && u.Quantity > 0 && u.AvailableQuantity >= u.Quantity;
+
+    private static bool IsProductSellable(ProductDto p) =>
+        p.Units.Any(IsUnitSellable);
+
+    private static bool HasAnyOutOfStockUnit(ProductDto p) =>
+        p.Units.Any(u => u.IsActive && u.Quantity > 0 && u.AvailableQuantity < u.Quantity);
+
+    private static bool HasAnyLowStockUnit(ProductDto p) =>
+        p.Units.Any(u => u.IsActive && u.Quantity > 0
+                      && u.AvailableQuantity >= u.Quantity
+                      && u.AvailableQuantity <= u.LowStockThreshold);
+
+    private IEnumerable<ProductDto> VisibleProducts =>
+        StockFilter switch
+        {
+            "in" => _materialized.Where(p => IsProductSellable(p) && !HasAnyOutOfStockUnit(p) && !HasAnyLowStockUnit(p)),
+            "low" => _materialized.Where(HasAnyLowStockUnit),
+            "out" => _materialized.Where(HasAnyOutOfStockUnit),
+            _ => _materialized
+        };
+
+    private int CountAll => _materialized.Count;
+    private int CountIn => _materialized.Count(p => IsProductSellable(p) && !HasAnyOutOfStockUnit(p) && !HasAnyLowStockUnit(p));
+    private int CountLow => _materialized.Count(HasAnyLowStockUnit);
+    private int CountOut => _materialized.Count(HasAnyOutOfStockUnit);
+}

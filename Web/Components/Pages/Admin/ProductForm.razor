@@ -1,0 +1,2062 @@
+@page "/admin/products/create"
+@page "/admin/products/edit/{ProductId:guid}"
+@attribute [Authorize]
+@attribute [RequirePermission(Permissions.ProductsWrite)]
+@using Microsoft.AspNetCore.Authorization
+@using Web.Authorization
+@using System.Globalization
+@using System.Text.Json
+@using Web.Components.Common
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.JSInterop
+@using Web.Services
+@using Web.Services.Barcode
+@using Web.Models.Units
+@using Web.Models.Lookups
+@using Web.Models.Enums
+@using Web.Models.Requests
+@using Web.Models.Suppliers
+@using Web.Models.Promotions
+@inject IProductService ProductService
+@inject ICategoryService CategoryService
+@inject IMediaService MediaService
+@inject IUnitService UnitService
+@inject ILookupService LookupService
+@inject IRequestService RequestService
+@inject ISupplierService SupplierService
+@inject IPromotionService PromotionService
+@inject NavigationManager Navigation
+@inject IJsonStringLocalizer Localizer
+@inject IJSRuntime JSRuntime
+
+<PageTitle>@(IsEditMode ? Localizer["EditProduct"] : Localizer["CreateProduct"])</PageTitle>
+
+@if (isLoading)
+{
+    <Spinner Size="Spinner.SpinnerSize.Lg" Centered="true" />
+}
+else
+{
+    <EditForm Model="@model" OnValidSubmit="@HandleSubmit" FormName="productForm">
+        <LocalizedDataAnnotationsValidator />
+        <ServerValidator @ref="serverValidator" />
+
+        <!-- Shopify-style sticky top bar -->
+        <div class="form-sticky-toolbar sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 mb-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <button type="button" @onclick="NavigateBack" class="p-2 -ml-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                        <i class="bi bi-arrow-left text-lg"></i>
+                    </button>
+                    <h1 class="text-xl font-semibold text-gray-900">
+                        @(IsEditMode ? Localizer["EditProduct"] : Localizer["CreateProduct"])
+                    </h1>
+                    @if (IsEditMode && model.Status != default)
+                    {
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium @(model.IsActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600")">
+                            @(model.IsActive ? Localizer["Active"] : Localizer["Inactive"])
+                        </span>
+                    }
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" @onclick="NavigateBack" class="form-cancel-btn px-4 py-2 text-sm font-medium rounded-lg transition-colors">
+                        @Localizer["Cancel"]
+                    </button>
+                    <button type="submit" disabled="@isSaving" class="px-4 py-2 text-sm font-medium bg-bf-primary text-bf-primary-contrast rounded-lg hover:opacity-90 transition-all disabled:opacity-50 inline-flex items-center gap-2">
+                        @if (isSaving)
+                        {
+                            <Spinner Size="Spinner.SpinnerSize.Xs" Color="Spinner.SpinnerColor.White" />
+                        }
+                        <span>@(IsEditMode ? Localizer["Update"] : Localizer["Create"])</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+                <i class="bi bi-exclamation-triangle-fill text-red-600 text-lg mt-0.5"></i>
+                <span class="text-red-800 text-sm">@errorMessage</span>
+            </div>
+        }
+
+        <!-- Two-column Shopify-style layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+            <!-- ========== MAIN COLUMN (2/3) ========== -->
+            <div class="lg:col-span-2 space-y-5">
+
+                <!-- Card: Title & Description -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="nameEn" class="block text-sm font-medium text-gray-700 mb-1.5">
+                                    @Localizer["ProductNameEn"] <span class="text-red-500">*</span>
+                                </label>
+                                <InputText @bind-Value="model.NameEn"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent text-sm transition-all"
+                                    id="nameEn"
+                                    placeholder="@Localizer["EnterProductNameEn"]" />
+                                <ValidationMessage For="@(() => model.NameEn)" class="text-red-600 text-xs mt-1" />
+                            </div>
+                            <div>
+                                <label for="nameAr" class="block text-sm font-medium text-gray-700 mb-1.5">
+                                    @Localizer["ProductNameAr"] <span class="text-red-500">*</span>
+                                </label>
+                                <InputText @bind-Value="model.NameAr"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent text-sm transition-all"
+                                    id="nameAr"
+                                    dir="rtl"
+                                    placeholder="@Localizer["EnterProductNameAr"]" />
+                                <ValidationMessage For="@(() => model.NameAr)" class="text-red-600 text-xs mt-1" />
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="descriptionEn" class="block text-sm font-medium text-gray-700 mb-1.5">@Localizer["ProductDescriptionEn"]</label>
+                                <InputTextArea @bind-Value="model.DescriptionEn"
+                                    class="w-full min-h-[140px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent text-sm transition-all resize-y"
+                                    id="descriptionEn"
+                                    rows="6"
+                                    placeholder="@Localizer["EnterDescriptionEn"]" />
+                                <ValidationMessage For="@(() => model.DescriptionEn)" class="text-red-600 text-xs mt-1" />
+                            </div>
+                            <div>
+                                <label for="descriptionAr" class="block text-sm font-medium text-gray-700 mb-1.5">@Localizer["ProductDescriptionAr"]</label>
+                                <InputTextArea @bind-Value="model.DescriptionAr"
+                                    class="w-full min-h-[140px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent text-sm transition-all resize-y"
+                                    id="descriptionAr"
+                                    rows="6"
+                                    dir="rtl"
+                                    placeholder="@Localizer["EnterDescriptionAr"]" />
+                                <ValidationMessage For="@(() => model.DescriptionAr)" class="text-red-600 text-xs mt-1" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card: Media -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <h2 class="text-sm font-semibold text-gray-900 mb-3">@Localizer["ProductImages"]</h2>
+                    @if (galleryImages.Any() || pendingImages.Any())
+                    {
+                        <div class="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-4">
+                            @foreach (var image in galleryImages)
+                            {
+                                <div class="relative group">
+                                    <div class="w-full aspect-square border rounded-lg overflow-hidden bg-gray-50 @(image.IsMain ? "ring-2 ring-bf-primary" : "")">
+                                        <img src="@MediaService.GetMediaUrl(image)" alt="@image.FileName" class="w-full h-full object-cover" />
+                                    </div>
+                                    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all rounded-lg flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
+                                        @if (!image.IsMain)
+                                        {
+                                            <button type="button" @onclick="() => SetMainImage(image.Id)" title="@Localizer["SetAsMain"]"
+                                                    class="p-1.5 bg-white text-bf-primary rounded-full hover:opacity-80 transition-colors text-xs">
+                                                <i class="bi bi-star"></i>
+                                            </button>
+                                        }
+                                        <button type="button" @onclick="() => RemoveGalleryImage(image.Id)" title="@Localizer["Remove"]"
+                                                class="p-1.5 bg-white text-red-600 rounded-full hover:bg-red-100 transition-colors text-xs">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                    @if (image.IsMain)
+                                    {
+                                        <div class="absolute top-1.5 left-1.5 bg-bf-primary text-bf-primary-contrast text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                            <i class="bi bi-star-fill"></i>
+                                            <span>@Localizer["Main"]</span>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            @foreach (var pending in pendingImages)
+                            {
+                                <div class="relative group">
+                                    <div class="w-full aspect-square border rounded-lg overflow-hidden bg-gray-50 @(pending.IsMain ? "ring-2 ring-bf-primary" : "")">
+                                        <img src="@pending.PreviewUrl" alt="@pending.FileName" class="w-full h-full object-cover" />
+                                    </div>
+                                    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all rounded-lg flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
+                                        @if (!pending.IsMain)
+                                        {
+                                            <button type="button" @onclick="() => SetPendingMainImage(pending)" title="@Localizer["SetAsMain"]"
+                                                    class="p-1.5 bg-white text-bf-primary rounded-full hover:opacity-80 transition-colors text-xs">
+                                                <i class="bi bi-star"></i>
+                                            </button>
+                                        }
+                                        <button type="button" @onclick="() => RemovePendingImage(pending)" title="@Localizer["Remove"]"
+                                                class="p-1.5 bg-white text-red-600 rounded-full hover:bg-red-100 transition-colors text-xs">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                    @if (pending.IsMain)
+                                    {
+                                        <div class="absolute top-1.5 left-1.5 bg-bf-primary text-bf-primary-contrast text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                            <i class="bi bi-star-fill"></i>
+                                            <span>@Localizer["Main"]</span>
+                                        </div>
+                                    }
+                                    <div class="absolute top-1.5 right-1.5 bg-yellow-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                                        @Localizer["Pending"]
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center text-gray-400 mb-3">
+                            <i class="bi bi-images text-3xl mb-2 block"></i>
+                            <p class="text-sm">@Localizer["NoImagesUploaded"]</p>
+                        </div>
+                    }
+                    <div>
+                        <InputFile OnChange="OnImagesSelected" accept="image/*" multiple class="hidden" id="productImagesInput" />
+                        <label for="productImagesInput" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-bf-primary border border-bf-primary rounded-lg hover:bg-bf-primary hover:text-bf-primary-contrast transition-colors cursor-pointer">
+                            <i class="bi bi-plus-lg"></i>
+                            <span>@Localizer["AddImages"]</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Card: Units (Edit Mode Only) -->
+                @if (IsEditMode)
+                {
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                                <i class="bi bi-upc-scan text-purple-600"></i>
+                                @Localizer["ProductUnits"]
+                            </h2>
+                            <button type="button" @onclick="ShowAddUnitForm"
+                                    class="px-3 py-1.5 text-sm bg-bf-primary text-bf-primary-contrast rounded-lg hover:opacity-90 transition-colors font-medium inline-flex items-center gap-1.5">
+                                <i class="bi bi-plus-lg text-xs"></i>
+                                @Localizer["AddUnit"]
+                            </button>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(unitErrorMessage))
+                        {
+                            <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                                <i class="bi bi-exclamation-triangle-fill text-red-600 mt-0.5"></i>
+                                <span class="text-red-800 text-sm">@unitErrorMessage</span>
+                            </div>
+                        }
+
+                        <!-- Units Table -->
+                        @if (isLoadingUnits)
+                        {
+                            <Spinner Size="Spinner.SpinnerSize.Md" Centered="true" />
+                        }
+                        else if (productUnits.Any())
+                        {
+                            <div class="overflow-x-auto -mx-5">
+                                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-4 py-2.5 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["UnitOfMeasure"]</th>
+                                            <th class="px-4 py-2.5 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["UnitType"]</th>
+                                            <th class="px-4 py-2.5 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["BaseUnits"]</th>
+                                            <th class="px-4 py-2.5 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["SellingPrice"]</th>
+                                            <th class="px-4 py-2.5 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Cost"]</th>
+                                            <th class="px-4 py-2.5 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Status"]</th>
+                                            <th class="px-4 py-2.5 text-end text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Actions"]</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-100">
+                                        @foreach (var unit in productUnits)
+                                        {
+                                            <tr class="hover:bg-gray-50/50 transition-colors">
+                                                <td class="px-4 py-2.5 whitespace-nowrap">
+                                                    <div class="flex items-center gap-2">
+                                                        <div class="flex-shrink-0 h-7 w-7 bg-purple-100 rounded flex items-center justify-center">
+                                                            <i class="bi bi-upc-scan text-purple-600 text-xs"></i>
+                                                        </div>
+                                                        <div>
+                                                            <span class="font-medium text-gray-900 text-sm">@(isAr ? unit.UnitOfMeasureNameAr : unit.UnitOfMeasureNameEn)</span>
+                                                            @if (unitIdsNeedingAction.Contains(unit.Id))
+                                                            {
+                                                                <div class="mt-1">
+                                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                                                                        <i class="bi bi-exclamation-circle-fill me-1"></i>@Localizer["NeedsAction"]
+                                                                    </span>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="px-4 py-2.5 whitespace-nowrap">
+                                                    <div class="flex flex-wrap gap-1">
+                                                        @foreach (var ut in unit.UnitTypes)
+                                                        {
+                                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">
+                                                                @(isAr ? ut.NameAr : ut.NameEn)
+                                                            </span>
+                                                        }
+                                                    </div>
+                                                </td>
+                                                <td class="px-4 py-2.5 whitespace-nowrap text-gray-600 text-sm">@unit.Quantity</td>
+                                                <td class="px-4 py-2.5 whitespace-nowrap">
+                                                    @{
+                                                        var promoInfo = GetBestPromotion(unit);
+                                                    }
+                                                    @if (promoInfo.HasPromotion)
+                                                    {
+                                                        <div class="flex flex-col">
+                                                            <span class="font-semibold text-green-700 text-sm">@promoInfo.DiscountedPrice.ToString("N2")</span>
+                                                            <span class="text-xs text-gray-400 line-through">@unit.SellingPrice.ToString("N2")</span>
+                                                            <span class="inline-flex items-center mt-0.5 px-1 py-0.5 rounded text-[10px] font-medium bg-orange-100 text-orange-700 w-fit">
+                                                                <i class="bi bi-tag-fill me-1"></i>
+                                                                @if (promoInfo.DiscountType == DiscountType.Percentage)
+                                                                { @($"-{promoInfo.DiscountValue:0.##}%") }
+                                                                else
+                                                                { @($"-{promoInfo.DiscountValue:N2}") }
+                                                            </span>
+                                                        </div>
+                                                    }
+                                                    else if (unit.SellingPrice > 0)
+                                                    {
+                                                        <span class="font-medium text-gray-900 text-sm">@unit.SellingPrice.ToString("N2")</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-gray-400">-</span>
+                                                    }
+                                                </td>
+                                                <td class="px-4 py-2.5 whitespace-nowrap">
+                                                    @if (unit.UnitTypes.Any(ut => ut.Code == "UT_LOGISTICS"))
+                                                    {
+                                                        @if (unit.Cost > 0)
+                                                        {
+                                                            <span class="font-medium text-gray-900 text-sm">@unit.Cost.ToString("N2")</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-gray-400">-</span>
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-gray-400">-</span>
+                                                    }
+                                                </td>
+                                                <td class="px-4 py-2.5 whitespace-nowrap">
+                                                    @if (unit.IsActive)
+                                                    {
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                            <i class="bi bi-check-circle-fill me-1"></i> @Localizer["Active"]
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                            <i class="bi bi-x-circle-fill me-1"></i> @Localizer["Inactive"]
+                                                        </span>
+                                                    }
+                                                </td>
+                                                <td class="px-4 py-2.5 whitespace-nowrap text-end">
+                                                    @if (unit.Status == ItemStatus.Active)
+                                                    {
+                                                        <AuthorizeView Policy="Permission:units.price">
+                                                            <Authorized Context="priceAuth">
+                                                                @if (unit.UnitTypes.Any(ut => ut.Code == "UT_SELLING"))
+                                                                {
+                                                                    <button type="button" @onclick="() => OpenSellingDetailsModal(unit)" class="text-green-600 hover:text-green-800 me-2" title="@Localizer["SetSellingDetails"]">
+                                                                        <i class="bi bi-currency-dollar"></i>
+                                                                    </button>
+                                                                }
+                                                            </Authorized>
+                                                            <NotAuthorized Context="priceNoAuth">
+                                                                @if (unit.UnitTypes.Any(ut => ut.Code == "UT_SELLING"))
+                                                                {
+                                                                    <button type="button" disabled class="text-gray-300 me-2 cursor-not-allowed"><i class="bi bi-currency-dollar"></i></button>
+                                                                }
+                                                            </NotAuthorized>
+                                                        </AuthorizeView>
+                                                        <AuthorizeView Policy="Permission:units.logistics">
+                                                            <Authorized Context="logAuth">
+                                                                @if (unit.UnitTypes.Any(ut => ut.Code == "UT_LOGISTICS"))
+                                                                {
+                                                                    <button type="button" @onclick="() => OpenLogisticsDetailsModal(unit)" class="text-cyan-600 hover:text-cyan-800 me-2" title="@Localizer["SetLogisticsDetails"]">
+                                                                        <i class="bi bi-truck"></i>
+                                                                    </button>
+                                                                }
+                                                            </Authorized>
+                                                            <NotAuthorized Context="logNoAuth">
+                                                                @if (unit.UnitTypes.Any(ut => ut.Code == "UT_LOGISTICS"))
+                                                                {
+                                                                    <button type="button" disabled class="text-gray-300 me-2 cursor-not-allowed"><i class="bi bi-truck"></i></button>
+                                                                }
+                                                            </NotAuthorized>
+                                                        </AuthorizeView>
+                                                        <AuthorizeView Policy="Permission:requests.write" Context="reqAuth">
+                                                            <Authorized Context="reqAuth">
+                                                                @if (unit.UnitTypes.Any(ut => ut.Code == "UT_SELLING"))
+                                                                {
+                                                                    <button type="button" @onclick="() => OpenChangePriceModal(unit)" class="text-amber-600 hover:text-amber-800 me-2" title="@Localizer["ChangePriceRequest"]">
+                                                                        <i class="bi bi-tag"></i>
+                                                                    </button>
+                                                                }
+                                                            </Authorized>
+                                                            <NotAuthorized Context="reqNoAuth">
+                                                                @if (unit.UnitTypes.Any(ut => ut.Code == "UT_SELLING"))
+                                                                {
+                                                                    <button type="button" disabled class="text-gray-300 me-2 cursor-not-allowed"><i class="bi bi-tag"></i></button>
+                                                                }
+                                                            </NotAuthorized>
+                                                        </AuthorizeView>
+                                                        <AuthorizeView Policy="Permission:requests.write" Context="logReqAuth">
+                                                            <Authorized Context="logReqAuth">
+                                                                @if (unit.UnitTypes.Any(ut => ut.Code == "UT_LOGISTICS"))
+                                                                {
+                                                                    <button type="button" @onclick="() => OpenLogisticsRequestModal(unit)" class="text-teal-600 hover:text-teal-800 me-2" title="@Localizer["SetLogisticsDetailsRequest"]">
+                                                                        <i class="bi bi-box-seam"></i>
+                                                                    </button>
+                                                                }
+                                                            </Authorized>
+                                                            <NotAuthorized Context="logReqNoAuth">
+                                                                @if (unit.UnitTypes.Any(ut => ut.Code == "UT_LOGISTICS"))
+                                                                {
+                                                                    <button type="button" disabled class="text-gray-300 me-2 cursor-not-allowed"><i class="bi bi-box-seam"></i></button>
+                                                                }
+                                                            </NotAuthorized>
+                                                        </AuthorizeView>
+                                                    }
+                                                    <AuthorizeView Policy="Permission:units.write">
+                                                        <Authorized Context="writeAuth">
+                                                            @if (unit.Status != ItemStatus.Rejected)
+                                                            {
+                                                                <button type="button" @onclick="() => EditUnit(unit)" class="text-purple-600 hover:text-purple-900 me-2" title="@Localizer["Edit"]">
+                                                                    <i class="bi bi-pencil-square"></i>
+                                                                </button>
+                                                            }
+                                                            else
+                                                            {
+                                                                <button type="button" disabled class="text-gray-400 me-2 cursor-not-allowed"><i class="bi bi-pencil-square"></i></button>
+                                                            }
+                                                        </Authorized>
+                                                        <NotAuthorized Context="writeNoAuth">
+                                                            <button type="button" disabled class="text-gray-400 me-2 cursor-not-allowed"><i class="bi bi-pencil-square"></i></button>
+                                                        </NotAuthorized>
+                                                    </AuthorizeView>
+                                                    <AuthorizeView Policy="Permission:units.delete">
+                                                        <Authorized Context="deleteAuth">
+                                                            <button type="button" @onclick="() => ConfirmDeleteUnit(unit.Id)" class="text-red-600 hover:text-red-900" title="@Localizer["Delete"]">
+                                                                <i class="bi bi-trash"></i>
+                                                            </button>
+                                                        </Authorized>
+                                                        <NotAuthorized Context="deleteNoAuth">
+                                                            <button type="button" disabled class="text-gray-400 cursor-not-allowed"><i class="bi bi-trash"></i></button>
+                                                        </NotAuthorized>
+                                                    </AuthorizeView>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-8 text-gray-400">
+                                <i class="bi bi-upc-scan text-3xl mb-2 block"></i>
+                                <p class="text-sm">@Localizer["NoUnitsFound"]</p>
+                            </div>
+                        }
+                    </div>
+                }
+
+            </div><!-- end main column -->
+
+            <!-- ========== SIDEBAR (1/3) ========== -->
+            <div class="space-y-5">
+
+                <!-- Card: Status -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <h2 class="text-sm font-semibold text-gray-900 mb-3">@Localizer["Status"]</h2>
+                    <ToggleSwitch @bind-Value="model.IsActive" Label="@Localizer["Active"]" />
+                </div>
+
+                <!-- Card: Product Organization -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <h2 class="text-sm font-semibold text-gray-900 mb-3">@Localizer["ProductOrganization"]</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <SearchableDropdown TItem="CategoryDto" TValue="Guid?"
+                                               Items="categories"
+                                               @bind-Value="model.CategoryId"
+                                               DisplayText="@(c => isAr ? c.NameAr : c.NameEn)"
+                                               ItemValue="@(c => (Guid?)c.Id)"
+                                               Label="@Localizer["Category"]"
+                                               Placeholder="@Localizer["SelectCategory"]"
+                                               Required="true" />
+                            <ValidationMessage For="@(() => model.CategoryId)" class="text-red-600 text-xs mt-1" />
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- end sidebar -->
+
+        </div><!-- end two-column grid -->
+
+        <!-- Modals (outside the grid) -->
+        @if (IsEditMode)
+        {
+            <ConfirmModal IsVisible="@showDeleteUnitConfirm"
+                          Title='@Localizer["DeleteUnit"]'
+                          Message='@Localizer["ConfirmDeleteUnit"]'
+                          ConfirmText='@Localizer["Delete"]'
+                          CancelText='@Localizer["Cancel"]'
+                          IsDanger="true"
+                          OnConfirm="DeleteUnit"
+                          OnCancel="@(() => showDeleteUnitConfirm = false)" />
+
+            <ProductUnitModal IsVisible="@showUnitForm"
+                              EditingUnit="@editingUnit"
+                              ProductId="@ProductId!.Value"
+                              UnitsOfMeasure="unitsOfMeasure"
+                              UnitTypes="unitTypes"
+                              OnCancel="CancelUnitForm"
+                              OnSaved="OnUnitSaved" />
+
+            <!-- Set Selling Details Modal -->
+            @if (showSellingModal)
+            {
+                <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @onclick="CloseSellingModal">
+                    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md" @onclick:stopPropagation>
+                        <div class="p-5 border-b border-gray-200">
+                            <h3 class="text-base font-semibold text-gray-900 flex items-center gap-2">
+                                <i class="bi bi-currency-dollar text-green-600"></i>
+                                @Localizer["SetSellingDetails"]
+                            </h3>
+                        </div>
+                        <div class="p-5 space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["UnitOfMeasure"]</label>
+                                <div class="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-600 text-sm">@(isAr ? sellingUomNameAr : sellingUomNameEn)</div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["SellingPrice"] <span class="text-red-500">*</span></label>
+                                <input type="number" step="0.01" min="0" @bind="sellingNewPrice"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["SellingBarcode"]</label>
+                                @{
+                                    var canPrintSellingBarcode = !string.IsNullOrWhiteSpace(sellingBarcodeSaved);
+                                }
+                                <div class="flex gap-2">
+                                    <input type="text" @bind="sellingBarcode"
+                                           class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                           placeholder="@Localizer["EnterSellingBarcode"]" />
+                                    <button type="button" @onclick="GenerateRandomSellingBarcodeForModal" class="px-3 py-2 border border-green-200 text-green-700 rounded-lg hover:bg-green-50 transition-colors" title="@Localizer["GenerateRandomBarcode"]">
+                                        <i class="bi bi-shuffle"></i>
+                                    </button>
+                                    @if (canPrintSellingBarcode)
+                                    {
+                                        <button type="button" @onclick="PrintSellingModalBarcodeAsync" class="px-3 py-2 border border-green-200 text-green-700 rounded-lg hover:bg-green-50 transition-colors" title="@Localizer["PrintSellingBarcode"]">
+                                            <i class="bi bi-printer"></i>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" disabled class="px-3 py-2 border border-gray-200 text-gray-300 rounded-lg cursor-not-allowed" title="@Localizer["BarcodeRequired"]">
+                                            <i class="bi bi-printer"></i>
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["LowStockThreshold"]</label>
+                                <input type="number" min="0" @bind="sellingLowStockThreshold"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm" />
+                                <p class="text-xs text-gray-400 mt-1">@Localizer["LowStockThresholdHint"]</p>
+                            </div>
+                            @if (!string.IsNullOrEmpty(sellingError))
+                            {
+                                <div class="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">@sellingError</div>
+                            }
+                        </div>
+                        <div class="p-5 border-t border-gray-200 flex justify-end gap-2 flex-shrink-0">
+                            <button type="button" @onclick="CloseSellingModal" class="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">@Localizer["Cancel"]</button>
+                            <button type="button" @onclick="SubmitSellingDetails" disabled="@sellingSubmitting"
+                                    class="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 inline-flex items-center gap-2">
+                                @if (sellingSubmitting)
+                                {
+                                    <Spinner Size="Spinner.SpinnerSize.Xs" Color="Spinner.SpinnerColor.White" />
+                                }
+                                <span>@Localizer["Save"]</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Set Logistics Details Modal -->
+            @if (showLogisticsModal)
+            {
+                <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @onclick="CloseLogisticsModal">
+                    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg" @onclick:stopPropagation>
+                        <div class="p-5 border-b border-gray-200">
+                            <h3 class="text-base font-semibold text-gray-900 flex items-center gap-2">
+                                <i class="bi bi-truck text-cyan-600"></i>
+                                @Localizer["SetLogisticsDetails"]
+                            </h3>
+                        </div>
+                        <div class="p-5 space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["UnitOfMeasure"]</label>
+                                <div class="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-600 text-sm">@(isAr ? logisticsUomNameAr : logisticsUomNameEn)</div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["CurrentCost"]</label>
+                                <div class="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-600 text-sm">@logisticsCurrentCost.ToString("N2") @Localizer["CurrencyUnit"]</div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["NewCost"] <span class="text-red-500">*</span></label>
+                                <input type="number" step="0.01" min="0" @bind="logisticsNewCost"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["LowStockThreshold"]</label>
+                                <input type="number" min="0" @bind="logisticsLowStockThreshold"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm" />
+                                <p class="text-xs text-gray-400 mt-1">@Localizer["LowStockThresholdHint"]</p>
+                            </div>
+                            <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <label class="block text-sm font-medium text-gray-700">@Localizer["Suppliers"]</label>
+                                    <button type="button" @onclick="AddLogisticsSupplierRow" class="text-xs text-cyan-600 hover:text-cyan-800 font-medium">
+                                        <i class="bi bi-plus-circle me-1"></i>@Localizer["AddSupplier"]
+                                    </button>
+                                </div>
+                                @for (int i = 0; i < logisticsSuppliers.Count; i++)
+                                {
+                                    var idx = i;
+                                    var lsSavedBarcode = logisticsSupplierBarcodesSaved.TryGetValue(logisticsSuppliers[idx].SupplierId, out var lsb) ? lsb : string.Empty;
+                                    var canPrintSupplierBarcode = !string.IsNullOrWhiteSpace(lsSavedBarcode);
+                                    <div class="flex gap-2 mb-2">
+                                        <select @bind="logisticsSuppliers[idx].SupplierId" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm">
+                                            <option value="">@Localizer["SelectSupplier"]</option>
+                                            @foreach (var s in logisticsAvailableSuppliers)
+                                            {
+                                                <option value="@s.Id">@(isAr ? s.NameAr : s.NameEn)</option>
+                                            }
+                                        </select>
+                                             <input type="text" @bind="logisticsSuppliers[idx].Barcode" placeholder="@Localizer["Barcode"]"
+                                                 class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm" />
+                                        <button type="button" @onclick="() => GenerateLogisticsSupplierBarcode(idx)" class="text-cyan-600 hover:text-cyan-800 px-2 self-center" title="@Localizer["GenerateRandomBarcode"]">
+                                            <i class="bi bi-shuffle"></i>
+                                        </button>
+                                        @if (canPrintSupplierBarcode)
+                                        {
+                                            <button type="button" @onclick="() => PrintBarcodeNowAsync(lsSavedBarcode)" class="text-cyan-600 hover:text-cyan-800 px-2 self-center" title="@Localizer["PrintLogisticsBarcode"]">
+                                                <i class="bi bi-printer"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" disabled class="text-gray-300 px-2 cursor-not-allowed" title="@Localizer["BarcodeRequired"]">
+                                                <i class="bi bi-printer"></i>
+                                            </button>
+                                        }
+                                        <button type="button" @onclick="() => RemoveLogisticsSupplierRow(idx)" class="text-red-500 hover:text-red-700 px-2">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                            @if (!string.IsNullOrEmpty(logisticsError))
+                            {
+                                <div class="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">@logisticsError</div>
+                            }
+                        </div>
+                        <div class="p-5 border-t border-gray-200 flex justify-end gap-2">
+                            <button type="button" @onclick="CloseLogisticsModal" class="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">@Localizer["Cancel"]</button>
+                            <button type="button" @onclick="SubmitLogisticsDetails" disabled="@logisticsSubmitting"
+                                    class="px-4 py-2 text-sm bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors disabled:opacity-50 inline-flex items-center gap-2">
+                                @if (logisticsSubmitting) { <Spinner Size="Spinner.SpinnerSize.Xs" Color="Spinner.SpinnerColor.White" /> }
+                                <span>@Localizer["Save"]</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Change Price Request Modal -->
+            @if (showChangePriceModal)
+            {
+                <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @onclick="CloseChangePriceModal">
+                    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md" @onclick:stopPropagation>
+                        <div class="p-5 border-b border-gray-200">
+                            <h3 class="text-base font-semibold text-gray-900 flex items-center gap-2">
+                                <i class="bi bi-tag text-amber-600"></i>
+                                @Localizer["SetSellingDetailsRequest"]
+                            </h3>
+                        </div>
+                        <div class="p-5 space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["UnitOfMeasure"]</label>
+                                <div class="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-600 text-sm">@(isAr ? changePriceUomNameAr : changePriceUomNameEn)</div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["SellingPrice"] <span class="text-red-500">*</span></label>
+                                <input type="number" step="0.01" min="0" @bind="changePriceNewPrice"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["SellingBarcode"]</label>
+                                @{
+                                    var canPrintChangePriceBarcode = !string.IsNullOrWhiteSpace(changePriceBarcodeSaved);
+                                }
+                                <div class="flex gap-2">
+                                    <input type="text" @bind="changePriceBarcode"
+                                           class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm"
+                                           placeholder="@Localizer["EnterSellingBarcode"]" />
+                                    <button type="button" @onclick="GenerateRandomSellingBarcodeForRequestModal" class="px-3 py-2 border border-amber-200 text-amber-700 rounded-lg hover:bg-amber-50 transition-colors" title="@Localizer["GenerateRandomBarcode"]">
+                                        <i class="bi bi-shuffle"></i>
+                                    </button>
+                                    @if (canPrintChangePriceBarcode)
+                                    {
+                                        <button type="button" @onclick="PrintChangePriceModalBarcodeAsync" class="px-3 py-2 border border-amber-200 text-amber-700 rounded-lg hover:bg-amber-50 transition-colors" title="@Localizer["PrintSellingBarcode"]">
+                                            <i class="bi bi-printer"></i>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" disabled class="px-3 py-2 border border-gray-200 text-gray-300 rounded-lg cursor-not-allowed" title="@Localizer["BarcodeRequired"]">
+                                            <i class="bi bi-printer"></i>
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["LowStockThreshold"]</label>
+                                <input type="number" min="0" @bind="changePriceLowStockThreshold"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm" />
+                                <p class="text-xs text-gray-400 mt-1">@Localizer["LowStockThresholdHint"]</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["Reason"]</label>
+                                <textarea @bind="changePriceReason" rows="2"
+                                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none text-sm"
+                                          placeholder="@Localizer["ReasonOptional"]"></textarea>
+                            </div>
+                            @if (!string.IsNullOrEmpty(changePriceError))
+                            {
+                                <div class="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">@changePriceError</div>
+                            }
+                        </div>
+                        <div class="p-5 border-t border-gray-200 flex justify-end gap-2">
+                            <button type="button" @onclick="CloseChangePriceModal" class="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">@Localizer["Cancel"]</button>
+                            <button type="button" @onclick="SubmitChangePriceRequest" disabled="@changePriceSubmitting"
+                                    class="px-4 py-2 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50 inline-flex items-center gap-2">
+                                @if (changePriceSubmitting) { <Spinner Size="Spinner.SpinnerSize.Xs" Color="Spinner.SpinnerColor.White" /> }
+                                <span>@Localizer["SubmitRequest"]</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Set Logistics Details Request Modal -->
+            @if (showLogisticsRequestModal)
+            {
+                <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @onclick="CloseLogisticsRequestModal">
+                    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl" @onclick:stopPropagation>
+                        <div class="p-5 border-b border-gray-200">
+                            <h3 class="text-base font-semibold text-gray-900 flex items-center gap-2">
+                                <i class="bi bi-box-seam text-teal-600"></i>
+                                @Localizer["SetLogisticsDetailsRequest"]
+                            </h3>
+                        </div>
+                        <div class="p-5 space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["UnitOfMeasure"]</label>
+                                <div class="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-600 text-sm">@(isAr ? logReqUomNameAr : logReqUomNameEn)</div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["Cost"] <span class="text-red-500">*</span></label>
+                                <input type="number" step="0.01" min="0" @bind="logReqNewCost"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["LowStockThreshold"]</label>
+                                <input type="number" min="0" @bind="logReqLowStockThreshold"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm" />
+                                <p class="text-xs text-gray-400 mt-1">@Localizer["LowStockThresholdHint"]</p>
+                            </div>
+                            <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <label class="block text-sm font-medium text-gray-700">@Localizer["Suppliers"]</label>
+                                    <button type="button" @onclick="AddLogReqSupplierRow" class="text-xs text-teal-600 hover:text-teal-800 font-medium">
+                                        <i class="bi bi-plus-circle me-1"></i>@Localizer["AddSupplier"]
+                                    </button>
+                                </div>
+                                @for (int i = 0; i < logReqSuppliers.Count; i++)
+                                {
+                                    var idx = i;
+                                    var lrSavedBarcode = logReqSupplierBarcodesSaved.TryGetValue(logReqSuppliers[idx].SupplierId, out var lrb) ? lrb : string.Empty;
+                                    var canPrintSupplierBarcode = !string.IsNullOrWhiteSpace(lrSavedBarcode);
+                                    <div class="flex gap-2 mb-2">
+                                        <select @bind="logReqSuppliers[idx].SupplierId" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm">
+                                            <option value="">@Localizer["SelectSupplier"]</option>
+                                            @foreach (var s in logReqAvailableSuppliers)
+                                            {
+                                                <option value="@s.Id">@(isAr ? s.NameAr : s.NameEn)</option>
+                                            }
+                                        </select>
+                                             <input type="text" @bind="logReqSuppliers[idx].Barcode" placeholder="@Localizer["Barcode"]"
+                                                 class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm" />
+                                        <button type="button" @onclick="() => GenerateLogReqSupplierBarcode(idx)" class="text-teal-600 hover:text-teal-800 px-2 self-center" title="@Localizer["GenerateRandomBarcode"]">
+                                            <i class="bi bi-shuffle"></i>
+                                        </button>
+                                        @if (canPrintSupplierBarcode)
+                                        {
+                                            <button type="button" @onclick="() => PrintBarcodeNowAsync(lrSavedBarcode)" class="text-teal-600 hover:text-teal-800 px-2 self-center" title="@Localizer["PrintLogisticsBarcode"]">
+                                                <i class="bi bi-printer"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" disabled class="text-gray-300 px-2 cursor-not-allowed" title="@Localizer["BarcodeRequired"]">
+                                                <i class="bi bi-printer"></i>
+                                            </button>
+                                        }
+                                        <button type="button" @onclick="() => RemoveLogReqSupplierRow(idx)" class="text-red-500 hover:text-red-700 px-2">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["Reason"]</label>
+                                <textarea @bind="logReqReason" rows="2"
+                                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none text-sm"
+                                          placeholder="@Localizer["ReasonOptional"]"></textarea>
+                            </div>
+                            @if (!string.IsNullOrEmpty(logReqError))
+                            {
+                                <div class="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">@logReqError</div>
+                            }
+                        </div>
+                        <div class="p-5 border-t border-gray-200 flex justify-end gap-2">
+                            <button type="button" @onclick="CloseLogisticsRequestModal" class="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">@Localizer["Cancel"]</button>
+                            <button type="button" @onclick="SubmitLogisticsRequest" disabled="@logReqSubmitting"
+                                    class="px-4 py-2 text-sm bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 inline-flex items-center gap-2">
+                                @if (logReqSubmitting) { <Spinner Size="Spinner.SpinnerSize.Xs" Color="Spinner.SpinnerColor.White" /> }
+                                <span>@Localizer["SubmitRequest"]</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public Guid? ProductId { get; set; }
+
+    private bool IsEditMode => ProductId.HasValue && ProductId.Value != Guid.Empty;
+    
+    private ProductFormModel model = new();
+    private List<CategoryDto> categories = new();
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private string errorMessage = string.Empty;
+    private bool isAr = false;
+    private ServerValidator serverValidator = null!;
+    private string? originalCode;
+    private List<MediaDto> galleryImages = new();
+    private List<PendingImage> pendingImages = new();
+    private Guid? pendingProductRequestId;
+    private RequestDto? pendingProductRequestNameForTracking; // Store full request to access OldDataJson
+    private HashSet<Guid> removedGalleryImageIds = new();
+    private HashSet<Guid> requestGalleryImageIds = new();
+    private Guid? selectedExistingMainImageId;
+
+    // Unit management
+    private List<UnitDto> productUnits = new();
+    private List<LookupDto> unitsOfMeasure = new();
+    private List<LookupDto> unitTypes = new();
+    private List<PromotionDto> promotions = new();
+    private bool isLoadingUnits = true;
+    private bool showUnitForm = false;
+    private bool showDeleteUnitConfirm = false;
+    private UnitDto? editingUnit = null;
+    private Guid unitToDelete;
+    private string unitErrorMessage = string.Empty;
+    private HashSet<Guid> unitIdsNeedingAction = new();
+
+    // Selling Details Modal
+    private bool showSellingModal = false;
+    private bool sellingSubmitting = false;
+    private string sellingError = string.Empty;
+    private Guid sellingUnitId;
+    private string sellingUomNameEn = string.Empty, sellingUomNameAr = string.Empty;
+    private decimal sellingNewPrice;
+    private string sellingBarcode = string.Empty;
+    private string sellingBarcodeSaved = string.Empty;
+    private bool sellingBarcodeReadOnly;
+    private int sellingLowStockThreshold = 10;
+
+    // Logistics Details Modal
+    private bool showLogisticsModal = false;
+    private bool logisticsSubmitting = false;
+    private string logisticsError = string.Empty;
+    private Guid logisticsUnitId;
+    private string logisticsUomNameEn = string.Empty, logisticsUomNameAr = string.Empty;
+    private decimal logisticsCurrentCost;
+    private decimal logisticsNewCost;
+    private List<UnitSupplierItem> logisticsSuppliers = new();
+    private List<SupplierDto> logisticsAvailableSuppliers = new();
+    private HashSet<int> logisticsBarcodeReadOnlyRows = new();
+    private Dictionary<Guid, string> logisticsSupplierBarcodesSaved = new();
+    private int logisticsLowStockThreshold = 10;
+
+    // Change Price Request Modal
+    private bool showChangePriceModal = false;
+    private bool changePriceSubmitting = false;
+    private string changePriceError = string.Empty;
+    private Guid changePriceUnitId;
+    private string changePriceUomNameEn = string.Empty, changePriceUomNameAr = string.Empty;
+    private decimal changePriceNewPrice;
+    private string changePriceBarcode = string.Empty;
+    private string changePriceBarcodeSaved = string.Empty;
+    private bool changePriceBarcodeReadOnly;
+    private string changePriceReason = string.Empty;
+    private int changePriceLowStockThreshold = 10;
+
+    // Logistics Details Request Modal
+    private bool showLogisticsRequestModal = false;
+    private bool logReqSubmitting = false;
+    private string logReqError = string.Empty;
+    private Guid logReqUnitId;
+    private string logReqUomNameEn = string.Empty, logReqUomNameAr = string.Empty;
+    private decimal logReqNewCost;
+    private List<UnitSupplierItem> logReqSuppliers = new();
+    private List<SupplierDto> logReqAvailableSuppliers = new();
+    private HashSet<int> logReqBarcodeReadOnlyRows = new();
+    private Dictionary<Guid, string> logReqSupplierBarcodesSaved = new();
+    private string logReqReason = string.Empty;
+    private int logReqLowStockThreshold = 10;
+    private class PendingImage
+    {
+        public Guid TempId { get; set; } = Guid.NewGuid();
+        public string FileName { get; set; } = string.Empty;
+        public string ContentType { get; set; } = string.Empty;
+        public byte[] FileData { get; set; } = Array.Empty<byte>();
+        public string PreviewUrl { get; set; } = string.Empty;
+        public bool IsMain { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        isAr = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("ar", StringComparison.OrdinalIgnoreCase);
+        
+        if (IsEditMode)
+        {
+            // Phase 1: Load essential data to show the form quickly
+            await Task.WhenAll(
+                LoadCategories(),
+                LoadProduct()
+            );
+            isLoading = false;
+
+            // Phase 2: Load secondary data independently so slower calls do not block
+            // gallery/units from appearing.
+            StartBackgroundLoad(LoadGalleryImages);
+            StartBackgroundLoad(LoadProductUnits);
+            StartBackgroundLoad(LoadUnitsOfMeasure);
+            StartBackgroundLoad(LoadUnitTypes);
+            StartBackgroundLoad(LoadPromotions);
+        }
+        else
+        {
+            await LoadCategories();
+            isLoading = false;
+        }
+    }
+
+    private void StartBackgroundLoad(Func<Task> loader)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                await loader();
+            }
+            catch
+            {
+                // Loader methods already handle and report their own failures.
+            }
+
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadCategories()
+    {
+        try
+        {
+            var result = await CategoryService.GetAllCategoriesAsync(1, 200, isActive: true);
+            categories = result.Items;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load categories: {ex.Message}";
+        }
+    }
+
+    private async Task LoadProduct()
+    {
+        try
+        {
+            var product = await ProductService.GetProductByIdAsync(ProductId!.Value);
+            if (product != null)
+            {
+                if (product.Status == Web.Models.Enums.ItemStatus.Rejected)
+                {
+                    Navigation.NavigateTo("/admin/catalog/products");
+                    return;
+                }
+
+                model = new ProductFormModel
+                {
+                    NameEn = product.NameEn,
+                    NameAr = product.NameAr,
+                    DescriptionEn = product.DescriptionEn,
+                    DescriptionAr = product.DescriptionAr,
+                    Code = product.Code,
+                    CategoryId = product.CategoryId,
+                    IsActive = product.IsActive,
+                    Status = product.Status
+                };
+                
+                originalCode = product.Code;
+                selectedExistingMainImageId = null;
+                removedGalleryImageIds.Clear();
+                requestGalleryImageIds.Clear();
+
+                var pendingRequest = await RequestService.GetPendingProductUpdateRequestAsync(product.Id);
+                if (pendingRequest != null)
+                {
+                    pendingProductRequestId = pendingRequest.Id;
+                    pendingProductRequestNameForTracking = pendingRequest; // Store full request to access OldDataJson
+                    ApplyPendingProductRequest(pendingRequest);
+                }
+                else
+                {
+                    pendingProductRequestId = null;
+                    pendingProductRequestNameForTracking = null;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"{Localizer["FailedToLoadProduct"]}: {ex.Message}";
+        }
+    }
+
+    private void ApplyPendingProductRequest(RequestDto pendingRequest)
+    {
+        // DO NOT apply pending changes to the form model
+        // The form should always show the CURRENT product state
+        // Pending changes are only visible in the request detail view (Requests tab)
+        // This way, the user always sees what they're currently editing, not what's pending approval
+    }
+
+    private async Task LoadGalleryImages()
+    {
+        try
+        {
+            requestGalleryImageIds.Clear();
+
+            // If there's a pending update request, show the OLD gallery (from snapshot in OldDataJson)
+            // This shows what the images were BEFORE the pending changes
+            if (pendingProductRequestId.HasValue && !string.IsNullOrEmpty(pendingProductRequestNameForTracking?.OldDataJson))
+            {
+                // Load old images from the pending request's OldDataJson snapshot
+                galleryImages = GetOldImagesFromRequest(pendingProductRequestNameForTracking);
+            }
+            else
+            {
+                // No pending request: show current product media
+                var productMedia = (await MediaService.GetMediaForEntityAsync(ProductId!.Value, "Product", "image"))
+                    .Where(media => !removedGalleryImageIds.Contains(media.Id))
+                    .ToList();
+
+                galleryImages = productMedia;
+            }
+
+            // Normalize to a single main image in UI, even if source data has multiple mains.
+            NormalizeSingleMain(galleryImages, selectedExistingMainImageId);
+            selectedExistingMainImageId = galleryImages.FirstOrDefault(img => img.IsMain)?.Id;
+        }
+        catch
+        {
+            galleryImages = new List<MediaDto>();
+        }
+    }
+
+    private async Task OnImagesSelected(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            long maxFileSize = 10 * 1024 * 1024; // 10MB max per file
+            var files = e.GetMultipleFiles(10).ToList(); // Max 10 files at once
+
+            foreach (var file in files)
+            {
+                try
+                {
+                    // Read file data into memory (for both preview and upload)
+                    using var memoryStream = new MemoryStream();
+                    await using var stream = file.OpenReadStream(maxFileSize);
+                    await stream.CopyToAsync(memoryStream);
+                    var buffer = memoryStream.ToArray();
+                    
+                    var base64 = Convert.ToBase64String(buffer);
+                    var previewUrl = $"data:{file.ContentType};base64,{base64}";
+
+                    pendingImages.Add(new PendingImage
+                    {
+                        FileName = file.Name,
+                        ContentType = file.ContentType,
+                        FileData = buffer,
+                        PreviewUrl = previewUrl
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to process image {file.Name}: {ex.Message}");
+                }
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to process images: {ex.Message}";
+        }
+    }
+
+    private void RemovePendingImage(PendingImage pending)
+    {
+        pendingImages.Remove(pending);
+        // If removed image was main, clear the main selection
+        if (pending.IsMain && !galleryImages.Any(g => g.IsMain))
+        {
+            // Auto-select next pending as main if available
+            var nextPending = pendingImages.FirstOrDefault();
+            if (nextPending != null)
+            {
+                nextPending.IsMain = true;
+            }
+        }
+    }
+
+    private async Task SetPendingMainImage(PendingImage pending)
+    {
+        // Clear main from all gallery and pending images
+        foreach (var img in galleryImages)
+        {
+            img.IsMain = false;
+        }
+        foreach (var p in pendingImages)
+        {
+            p.IsMain = false;
+        }
+        pending.IsMain = true;
+        selectedExistingMainImageId = null;
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RemoveGalleryImage(Guid mediaId)
+    {
+        try
+        {
+            // All gallery images are now product images only (not pending request images)
+            // Mark them for removal in the update request
+            removedGalleryImageIds.Add(mediaId);
+            if (selectedExistingMainImageId == mediaId)
+                selectedExistingMainImageId = null;
+
+            galleryImages.RemoveAll(m => m.Id == mediaId);
+
+            if (!galleryImages.Any(image => image.IsMain))
+            {
+                var nextImage = galleryImages.FirstOrDefault();
+                if (nextImage != null)
+                {
+                    selectedExistingMainImageId = nextImage.Id;
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to delete image: {ex.Message}";
+        }
+    }
+
+    private async Task SetMainImage(Guid mediaId)
+    {
+        if (!IsEditMode || !ProductId.HasValue) return;
+
+        try
+        {
+            // All gallery images are product images, track main image selection
+            selectedExistingMainImageId = mediaId;
+            
+            // Update local state - clear main from all gallery and pending images
+            foreach (var image in galleryImages)
+            {
+                image.IsMain = image.Id == mediaId;
+            }
+            foreach (var pending in pendingImages)
+            {
+                pending.IsMain = false;
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to set main image: {ex.Message}";
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        isSaving = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            ProductDto result;
+            
+            if (IsEditMode)
+            {
+                var updateRequest = new UpdateProductRequest
+                {
+                    NameEn = model.NameEn,
+                    NameAr = model.NameAr,
+                    DescriptionEn = model.DescriptionEn,
+                    DescriptionAr = model.DescriptionAr,
+                    Code = model.Code,
+                    CategoryId = model.CategoryId,
+                    Status = model.IsActive ? Web.Models.Enums.ItemStatus.Active : Web.Models.Enums.ItemStatus.Inactive,
+                    RemovedImageIds = removedGalleryImageIds.ToList(),
+                    MainImageId = selectedExistingMainImageId
+                };
+                
+                result = await ProductService.UpdateProductAsync(ProductId!.Value, updateRequest);
+
+                // A pending request ID is required only when we have new images to upload
+                // to the Request entity. If no request exists yet, create one on-demand.
+                if (pendingImages.Any())
+                {
+                    await EnsurePendingProductRequestAsync(updateRequest);
+                }
+            }
+            else
+            {
+                model.Code = await GenerateUniqueCodeAsync();
+
+                var createRequest = new CreateProductRequest
+                {
+                    NameEn = model.NameEn,
+                    NameAr = model.NameAr,
+                    DescriptionEn = model.DescriptionEn,
+                    DescriptionAr = model.DescriptionAr,
+                    Code = model.Code,
+                    CategoryId = model.CategoryId ?? Guid.Empty,
+                    Status = model.IsActive ? Web.Models.Enums.ItemStatus.Active : Web.Models.Enums.ItemStatus.Inactive
+                };
+                
+                result = await ProductService.CreateProductAsync(createRequest);
+            }
+
+            // Upload pending images
+            if (pendingImages.Any())
+            {
+                var targetEntityId = result.Id;
+                var targetEntityType = "Product";
+
+                if (IsEditMode)
+                {
+                    if (!pendingProductRequestId.HasValue)
+                        throw new InvalidOperationException("Pending product update request was not created.");
+
+                    targetEntityId = pendingProductRequestId.Value;
+                    targetEntityType = "Request";
+                }
+
+                await UploadPendingImages(targetEntityId, targetEntityType);
+            }
+
+            Navigation.NavigateTo("/admin/catalog/products");
+        }
+        catch (ServerValidationException ex)
+        {
+            serverValidator.DisplayErrors(ex.Errors);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"{Localizer["FailedToSaveProduct"]}: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task<string> GenerateUniqueCodeAsync()
+    {
+        const int maxAttempts = 20;
+
+        for (var i = 0; i < maxAttempts; i++)
+        {
+            var candidate = $"PRD-{DateTime.UtcNow:yyyyMMddHHmmss}-{Random.Shared.Next(100, 999)}";
+            var exists = await ProductService.CheckCodeExistsAsync(candidate);
+            if (!exists)
+            {
+                return candidate;
+            }
+        }
+
+        throw new InvalidOperationException("Unable to generate a unique product code.");
+    }
+
+    private async Task UploadPendingImages(Guid entityId, string entityType)
+    {
+        if (!pendingImages.Any()) return;
+
+        try
+        {
+            bool hasExistingMain = galleryImages.Any(g => g.IsMain);
+            Guid? uploadedMainId = null;
+
+            foreach (var pending in pendingImages.ToList())
+            {
+                using var uploadStream = new MemoryStream(pending.FileData);
+                var uploaded = await MediaService.UploadMediaAsync(entityId, entityType, uploadStream, pending.FileName, pending.ContentType, "image");
+                
+                // Track the main image to set it after all uploads
+                if (pending.IsMain)
+                {
+                    uploadedMainId = uploaded.Id;
+                }
+            }
+
+            // Set main image: either user-selected pending main, or first image if no main exists
+            if (uploadedMainId.HasValue)
+            {
+                await MediaService.SetMainMediaAsync(uploadedMainId.Value, entityId, entityType, "image");
+            }
+            else if (!hasExistingMain && !selectedExistingMainImageId.HasValue)
+            {
+                // If no main was selected and no existing main, set first uploaded as main
+                var allMedia = await MediaService.GetMediaForEntityAsync(entityId, entityType, "image");
+                var first = allMedia.FirstOrDefault();
+                if (first != null && !allMedia.Any(m => m.IsMain))
+                {
+                    await MediaService.SetMainMediaAsync(first.Id, entityId, entityType, "image");
+                }
+            }
+
+            pendingImages.Clear();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to upload images: {ex.Message}");
+            errorMessage = $"Failed to upload images: {ex.Message}";
+        }
+    }
+
+    private async Task EnsurePendingProductRequestAsync(UpdateProductRequest? seedRequest = null)
+    {
+        if (!ProductId.HasValue)
+            return;
+
+        var pendingRequest = await RequestService.GetPendingProductUpdateRequestAsync(ProductId.Value);
+
+        if (pendingRequest == null && seedRequest != null)
+        {
+            // Force-create a pending update request for image uploads when the original update
+            // call produced no request (e.g., image-only add with no field diffs).
+            var fallbackRequest = new UpdateProductRequest
+            {
+                NameEn = seedRequest.NameEn,
+                NameAr = seedRequest.NameAr,
+                DescriptionEn = seedRequest.DescriptionEn,
+                DescriptionAr = seedRequest.DescriptionAr,
+                Code = seedRequest.Code,
+                CategoryId = seedRequest.CategoryId,
+                Status = seedRequest.Status,
+                RemovedImageIds = seedRequest.RemovedImageIds?.ToList() ?? new List<Guid>(),
+                MainImageId = seedRequest.MainImageId
+                    ?? galleryImages.FirstOrDefault(g => g.IsMain)?.Id
+                    ?? galleryImages.FirstOrDefault()?.Id
+                    ?? Guid.Empty
+            };
+
+            await ProductService.UpdateProductAsync(ProductId.Value, fallbackRequest);
+            pendingRequest = await RequestService.GetPendingProductUpdateRequestAsync(ProductId.Value);
+        }
+
+        if (pendingRequest == null)
+            throw new InvalidOperationException("Pending product update request was not found.");
+
+        pendingProductRequestId = pendingRequest.Id;
+        pendingProductRequestNameForTracking = pendingRequest;
+    }
+
+    private static HashSet<Guid> ReadGuidSet(System.Text.Json.JsonElement data, string propertyName)
+    {
+        if (!data.TryGetProperty(propertyName, out var property) || property.ValueKind != System.Text.Json.JsonValueKind.Array)
+            return new HashSet<Guid>();
+
+        var values = new HashSet<Guid>();
+        foreach (var item in property.EnumerateArray())
+        {
+            if (item.ValueKind == System.Text.Json.JsonValueKind.String && Guid.TryParse(item.GetString(), out var parsed))
+                values.Add(parsed);
+        }
+
+        return values;
+    }
+
+    private static void NormalizeSingleMain(List<MediaDto> images, Guid? preferredMainId = null)
+    {
+        if (images.Count == 0)
+            return;
+
+        Guid mainId;
+        if (preferredMainId.HasValue && images.Any(i => i.Id == preferredMainId.Value))
+        {
+            mainId = preferredMainId.Value;
+        }
+        else
+        {
+            mainId = images.FirstOrDefault(i => i.IsMain)?.Id ?? images[0].Id;
+        }
+
+        foreach (var image in images)
+            image.IsMain = image.Id == mainId;
+    }
+
+    private void NavigateBack()
+    {
+        Navigation.NavigateTo("/admin/catalog/products");
+    }
+
+    private async Task PrintSellingModalBarcodeAsync()
+    {
+        if (string.IsNullOrWhiteSpace(sellingBarcodeSaved))
+            return;
+
+        await PrintBarcodeNowAsync(sellingBarcodeSaved);
+    }
+
+    private async Task PrintChangePriceModalBarcodeAsync()
+    {
+        if (string.IsNullOrWhiteSpace(changePriceBarcodeSaved))
+            return;
+
+        await PrintBarcodeNowAsync(changePriceBarcodeSaved);
+    }
+
+    private void GenerateRandomSellingBarcodeForModal()
+    {
+        sellingBarcode = GenerateRandomBarcodeValue(GetExistingBarcodes());
+    }
+
+    private void GenerateRandomSellingBarcodeForRequestModal()
+    {
+        changePriceBarcode = GenerateRandomBarcodeValue(GetExistingBarcodes());
+    }
+
+    private void GenerateLogisticsSupplierBarcode(int index)
+    {
+        logisticsSuppliers[index].Barcode = GenerateRandomBarcodeValue(GetExistingBarcodes());
+    }
+
+    private void GenerateLogReqSupplierBarcode(int index)
+    {
+        logReqSuppliers[index].Barcode = GenerateRandomBarcodeValue(GetExistingBarcodes());
+    }
+
+    private static HashSet<int> BuildReadOnlyBarcodeRows(List<UnitSupplierItem> suppliers)
+    {
+        var readOnlyRows = new HashSet<int>();
+        for (var i = 0; i < suppliers.Count; i++)
+        {
+            if (!string.IsNullOrWhiteSpace(suppliers[i].Barcode))
+                readOnlyRows.Add(i);
+        }
+
+        return readOnlyRows;
+    }
+
+    private static void ReindexReadOnlyRows(HashSet<int> readOnlyRows, int removedIndex)
+    {
+        if (readOnlyRows.Count == 0)
+            return;
+
+        var updated = readOnlyRows
+            .Where(i => i != removedIndex)
+            .Select(i => i > removedIndex ? i - 1 : i)
+            .ToHashSet();
+
+        readOnlyRows.Clear();
+        foreach (var i in updated)
+            readOnlyRows.Add(i);
+    }
+
+    private HashSet<string> GetExistingBarcodes()
+    {
+        var existing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var unit in productUnits)
+        {
+            if (!string.IsNullOrWhiteSpace(unit.SellingBarcode))
+                existing.Add(unit.SellingBarcode.Trim());
+
+            if (!string.IsNullOrWhiteSpace(unit.Barcode))
+                existing.Add(unit.Barcode.Trim());
+        }
+
+        return existing;
+    }
+
+    private static string GenerateRandomBarcodeValue(HashSet<string> existing)
+    {
+        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        Span<char> buffer = stackalloc char[12];
+
+        for (var attempt = 0; attempt < 25; attempt++)
+        {
+            for (var i = 0; i < buffer.Length; i++)
+            {
+                buffer[i] = chars[Random.Shared.Next(chars.Length)];
+            }
+
+            var candidate = new string(buffer);
+            if (!existing.Contains(candidate))
+                return candidate;
+        }
+
+        // Very unlikely fallback path
+        return $"SB{DateTime.UtcNow:yyMMddHHmmss}";
+    }
+
+    private async Task PrintLogisticsSupplierBarcodeAsync(UnitSupplierItem supplier)
+    {
+        if (string.IsNullOrWhiteSpace(supplier.Barcode))
+            return;
+
+        await PrintBarcodeNowAsync(supplier.Barcode);
+    }
+
+    private async Task PrintBarcodeNowAsync(string barcode)
+    {
+        var normalizedBarcode = (barcode ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalizedBarcode))
+            return;
+
+        var svgMarkup = Code128SvgGenerator.Generate(normalizedBarcode);
+        await JSRuntime.InvokeVoidAsync("AppUtils.printBarcodeNow", normalizedBarcode, svgMarkup);
+    }
+
+    // --- Unit CRUD Methods ---
+
+    private async Task LoadProductUnits()
+    {
+        try
+        {
+            isLoadingUnits = true;
+            var result = await UnitService.GetAllAsync(1, 100, productId: ProductId!.Value);
+            productUnits = result.Items
+                .Where(unit => unit.Status != ItemStatus.Rejected)
+                .ToList();
+            await LoadUnitPendingRequestFlagsAsync();
+        }
+        catch
+        {
+            productUnits = new List<UnitDto>();
+            unitIdsNeedingAction.Clear();
+        }
+        finally
+        {
+            isLoadingUnits = false;
+        }
+    }
+
+    private async Task LoadUnitsOfMeasure()
+    {
+        try
+        {
+            unitsOfMeasure = await LookupService.GetLookupsByParentAsync("UNIT_OF_MEASURE");
+        }
+        catch
+        {
+            unitsOfMeasure = new List<LookupDto>();
+        }
+    }
+
+    private async Task LoadUnitTypes()
+    {
+        try
+        {
+            unitTypes = await LookupService.GetLookupsByParentAsync("UNIT_TYPE");
+        }
+        catch
+        {
+            unitTypes = new List<LookupDto>();
+        }
+    }
+
+    private async Task LoadPromotions()
+    {
+        try
+        {
+            promotions = await PromotionService.GetActivePromotionsAsync();
+        }
+        catch
+        {
+            promotions = new List<PromotionDto>();
+        }
+    }
+
+    private void ShowAddUnitForm()
+    {
+        editingUnit = null;
+        unitErrorMessage = string.Empty;
+        showUnitForm = true;
+    }
+
+    private void EditUnit(UnitDto unit)
+    {
+        editingUnit = unit;
+        unitErrorMessage = string.Empty;
+        showUnitForm = true;
+    }
+
+    private void CancelUnitForm()
+    {
+        showUnitForm = false;
+        editingUnit = null;
+        unitErrorMessage = string.Empty;
+    }
+
+    private async Task OnUnitSaved()
+    {
+        showUnitForm = false;
+        editingUnit = null;
+        await LoadProductUnits();
+    }
+
+    private void ConfirmDeleteUnit(Guid unitId)
+    {
+        unitToDelete = unitId;
+        showDeleteUnitConfirm = true;
+    }
+
+    private async Task DeleteUnit()
+    {
+        try
+        {
+            var unit = productUnits.FirstOrDefault(u => u.Id == unitToDelete);
+            if (unit != null && unit.Status == ItemStatus.Draft)
+                await UnitService.DeleteAsync(unitToDelete);
+            else
+                await RequestService.CreateDeleteUnitRequestAsync(new CreateDeleteUnitRequest { UnitId = unitToDelete });
+            showDeleteUnitConfirm = false;
+            await LoadProductUnits();
+        }
+        catch (Exception ex)
+        {
+            unitErrorMessage = $"{Localizer["FailedToDeleteUnit"]}: {ex.Message}";
+            showDeleteUnitConfirm = false;
+        }
+    }
+
+    private async Task LoadUnitPendingRequestFlagsAsync()
+    {
+        unitIdsNeedingAction.Clear();
+        if (!productUnits.Any()) return;
+
+        var visibleUnitIds = productUnits.Select(unit => unit.Id).ToHashSet();
+        var pendingRequests = new List<RequestDto>();
+
+        try
+        {
+            var pending = await RequestService.GetAllRequestsAsync(1, 1000, null, null, RequestStatus.Pending);
+            pendingRequests = pending.Items;
+        }
+        catch
+        {
+            try
+            {
+                var pendingMine = await RequestService.GetMyRequestsAsync(1, 1000, null, null, RequestStatus.Pending);
+                pendingRequests = pendingMine.Items;
+            }
+            catch
+            {
+                return;
+            }
+        }
+
+        foreach (var req in pendingRequests)
+        {
+            if (req.UnitId.HasValue && visibleUnitIds.Contains(req.UnitId.Value))
+            {
+                unitIdsNeedingAction.Add(req.UnitId.Value);
+                continue;
+            }
+
+            var unitId = ExtractEntityIdFromRequest(req.NewDataJson, req.OldDataJson, "UnitId", "unitId", "Id", "id");
+            if (unitId.HasValue && visibleUnitIds.Contains(unitId.Value))
+                unitIdsNeedingAction.Add(unitId.Value);
+        }
+    }
+
+    private static Guid? ExtractEntityIdFromRequest(string? newDataJson, string? oldDataJson, params string[] keys)
+    {
+        return ExtractGuid(newDataJson, keys) ?? ExtractGuid(oldDataJson, keys);
+    }
+
+    private static Guid? ExtractGuid(string? json, params string[] keys)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return ExtractGuidFromElement(doc.RootElement, keys);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static Guid? ExtractGuidFromElement(JsonElement element, params string[] keys)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var prop in element.EnumerateObject())
+            {
+                if (keys.Contains(prop.Name, StringComparer.OrdinalIgnoreCase)
+                    && prop.Value.ValueKind == JsonValueKind.String
+                    && Guid.TryParse(prop.Value.GetString(), out var parsed))
+                {
+                    return parsed;
+                }
+
+                var nested = ExtractGuidFromElement(prop.Value, keys);
+                if (nested.HasValue)
+                    return nested;
+            }
+        }
+        else if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in element.EnumerateArray())
+            {
+                var nested = ExtractGuidFromElement(item, keys);
+                if (nested.HasValue)
+                    return nested;
+            }
+        }
+
+        return null;
+    }
+
+    // --- Promotion Helper ---
+    private (bool HasPromotion, decimal DiscountedPrice, DiscountType DiscountType, decimal DiscountValue, string PromotionName, Guid PromotionId) GetBestPromotion(UnitDto unit)
+    {
+        if (!promotions.Any() || !unit.UnitTypes.Any(ut => ut.Code == "UT_SELLING"))
+            return (false, unit.SellingPrice, default, 0, string.Empty, Guid.Empty);
+
+        var now = DateTime.UtcNow;
+        var applicable = promotions.Where(p =>
+            p.IsActive && p.StartDateTime <= now && p.EndDateTime >= now && (
+                p.ApplyTo.HasFlag(PromotionApplyTo.AllSellingUnits) ||
+                (p.ApplyTo.HasFlag(PromotionApplyTo.SpecificUnits) && p.UnitIds.Contains(unit.Id)) ||
+                (p.ApplyTo.HasFlag(PromotionApplyTo.Categories) && model.CategoryId.HasValue && p.CategoryIds.Contains(model.CategoryId.Value))
+            )).ToList();
+
+        if (!applicable.Any()) return (false, unit.SellingPrice, default, 0, string.Empty, Guid.Empty);
+
+        decimal bestPrice = unit.SellingPrice;
+        PromotionDto? bestPromo = null;
+        foreach (var promo in applicable)
+        {
+            decimal d = promo.DiscountType == DiscountType.Percentage
+                ? unit.SellingPrice * (1 - promo.DiscountValue / 100m)
+                : unit.SellingPrice - promo.DiscountValue;
+            d = Math.Max(0, d);
+            if (d < bestPrice) { bestPrice = d; bestPromo = promo; }
+        }
+
+        if (bestPromo == null) return (false, unit.SellingPrice, default, 0, string.Empty, Guid.Empty);
+        return (true, bestPrice, bestPromo.DiscountType, bestPromo.DiscountValue, isAr ? bestPromo.NameAr : bestPromo.NameEn, bestPromo.Id);
+    }
+
+    // --- Selling Details ---
+    private void OpenSellingDetailsModal(UnitDto unit)
+    {
+        sellingUnitId = unit.Id;
+        sellingUomNameEn = unit.UnitOfMeasureNameEn ?? string.Empty;
+        sellingUomNameAr = unit.UnitOfMeasureNameAr ?? string.Empty;
+        sellingNewPrice = unit.SellingPrice;
+        sellingBarcode = unit.SellingBarcode;
+        sellingBarcodeSaved = unit.SellingBarcode ?? string.Empty;
+        sellingBarcodeReadOnly = !string.IsNullOrWhiteSpace(sellingBarcode);
+        sellingLowStockThreshold = unit.LowStockThreshold;
+        sellingError = string.Empty;
+        sellingSubmitting = false;
+        showSellingModal = true;
+    }
+    private void CloseSellingModal() => showSellingModal = false;
+    private async Task SubmitSellingDetails()
+    {
+        sellingError = string.Empty;
+        if (sellingNewPrice < 0) { sellingError = Localizer["PriceGreaterThanZero"]; return; }
+        sellingSubmitting = true;
+        try
+        {
+            await RequestService.CreateSetUnitPriceRequestAsync(new CreateSetUnitPriceRequest
+            {
+                UnitId = sellingUnitId,
+                NewPrice = sellingNewPrice,
+                SellingBarcode = sellingBarcode,
+                LowStockThreshold = sellingLowStockThreshold
+            });
+            showSellingModal = false;
+            await LoadProductUnits();
+        }
+        catch (Exception ex) { sellingError = ex.Message; }
+        finally { sellingSubmitting = false; }
+    }
+
+    // --- Logistics Details ---
+    private async Task OpenLogisticsDetailsModal(UnitDto unit)
+    {
+        logisticsUnitId = unit.Id;
+        logisticsUomNameEn = unit.UnitOfMeasureNameEn ?? string.Empty;
+        logisticsUomNameAr = unit.UnitOfMeasureNameAr ?? string.Empty;
+        logisticsCurrentCost = unit.Cost;
+        logisticsNewCost = unit.Cost;
+        logisticsSuppliers = unit.Suppliers.Select(s => new UnitSupplierItem { SupplierId = s.SupplierId, Barcode = s.Barcode }).ToList();
+        logisticsBarcodeReadOnlyRows = BuildReadOnlyBarcodeRows(logisticsSuppliers);
+        logisticsSupplierBarcodesSaved = unit.Suppliers.Where(s => !string.IsNullOrWhiteSpace(s.Barcode)).ToDictionary(s => s.SupplierId, s => s.Barcode!);
+        logisticsLowStockThreshold = unit.LowStockThreshold;
+        logisticsError = string.Empty;
+        logisticsSubmitting = false;
+        try { var r = await SupplierService.GetAllSuppliersAsync(1, 1000, isActive: true); logisticsAvailableSuppliers = r.Items.ToList(); }
+        catch { logisticsAvailableSuppliers = new(); }
+        showLogisticsModal = true;
+    }
+    private void CloseLogisticsModal() => showLogisticsModal = false;
+    private void AddLogisticsSupplierRow() => logisticsSuppliers.Add(new UnitSupplierItem());
+    private void RemoveLogisticsSupplierRow(int index)
+    {
+        logisticsSuppliers.RemoveAt(index);
+        ReindexReadOnlyRows(logisticsBarcodeReadOnlyRows, index);
+    }
+    private async Task SubmitLogisticsDetails()
+    {
+        logisticsError = string.Empty;
+        if (logisticsNewCost < 0) { logisticsError = Localizer["CostGreaterThanZero"]; return; }
+        foreach (var item in logisticsSuppliers)
+        {
+            if (item.SupplierId == Guid.Empty) { logisticsError = Localizer["SelectSupplierForAllRows"]; return; }
+            if (string.IsNullOrWhiteSpace(item.Barcode)) { logisticsError = Localizer["EnterBarcodeForAllRows"]; return; }
+        }
+        if (logisticsSuppliers.GroupBy(x => x.SupplierId).Any(g => g.Count() > 1)) { logisticsError = Localizer["DuplicateSupplierNotAllowed"]; return; }
+        logisticsSubmitting = true;
+        try
+        {
+            await RequestService.CreateSetLogisticsDetailsRequestAsync(new CreateSetLogisticsDetailsRequest
+            {
+                UnitId = logisticsUnitId,
+                NewCost = logisticsNewCost,
+                Suppliers = logisticsSuppliers,
+                LowStockThreshold = logisticsLowStockThreshold
+            });
+            showLogisticsModal = false;
+            await LoadProductUnits();
+        }
+        catch (Exception ex) { logisticsError = ex.Message; }
+        finally { logisticsSubmitting = false; }
+    }
+
+    // --- Change Price Request ---
+    private void OpenChangePriceModal(UnitDto unit)
+    {
+        changePriceUnitId = unit.Id;
+        changePriceUomNameEn = unit.UnitOfMeasureNameEn ?? string.Empty;
+        changePriceUomNameAr = unit.UnitOfMeasureNameAr ?? string.Empty;
+        changePriceNewPrice = unit.SellingPrice;
+        changePriceBarcode = unit.SellingBarcode;
+        changePriceBarcodeSaved = unit.SellingBarcode ?? string.Empty;
+        changePriceBarcodeReadOnly = !string.IsNullOrWhiteSpace(changePriceBarcode);
+        changePriceLowStockThreshold = unit.LowStockThreshold;
+        changePriceReason = string.Empty;
+        changePriceError = string.Empty;
+        changePriceSubmitting = false;
+        showChangePriceModal = true;
+    }
+    private void CloseChangePriceModal() => showChangePriceModal = false;
+    private async Task SubmitChangePriceRequest()
+    {
+        changePriceError = string.Empty;
+        if (changePriceNewPrice <= 0) { changePriceError = Localizer["PriceGreaterThanZero"]; return; }
+        changePriceSubmitting = true;
+        try
+        {
+            await RequestService.CreateSetUnitPriceRequestAsync(new CreateSetUnitPriceRequest
+            {
+                UnitId = changePriceUnitId,
+                NewPrice = changePriceNewPrice,
+                SellingBarcode = changePriceBarcode,
+                LowStockThreshold = changePriceLowStockThreshold,
+                Note = string.IsNullOrWhiteSpace(changePriceReason) ? null : changePriceReason
+            });
+            showChangePriceModal = false;
+        }
+        catch (Exception ex) { changePriceError = ex.Message; }
+        finally { changePriceSubmitting = false; }
+    }
+
+    // --- Logistics Details Request ---
+    private async Task OpenLogisticsRequestModal(UnitDto unit)
+    {
+        logReqUnitId = unit.Id;
+        logReqUomNameEn = unit.UnitOfMeasureNameEn ?? string.Empty;
+        logReqUomNameAr = unit.UnitOfMeasureNameAr ?? string.Empty;
+        logReqNewCost = unit.Cost;
+        logReqSuppliers = unit.Suppliers.Select(s => new UnitSupplierItem { SupplierId = s.SupplierId, Barcode = s.Barcode }).ToList();
+        logReqBarcodeReadOnlyRows = BuildReadOnlyBarcodeRows(logReqSuppliers);
+        logReqSupplierBarcodesSaved = unit.Suppliers.Where(s => !string.IsNullOrWhiteSpace(s.Barcode)).ToDictionary(s => s.SupplierId, s => s.Barcode!);
+        logReqLowStockThreshold = unit.LowStockThreshold;
+        logReqReason = string.Empty;
+        logReqError = string.Empty;
+        logReqSubmitting = false;
+        try { var r = await SupplierService.GetAllSuppliersAsync(1, 1000, isActive: true); logReqAvailableSuppliers = r.Items.ToList(); }
+        catch { logReqAvailableSuppliers = new(); }
+
+        try
+        {
+            var pending = await RequestService.GetPendingSetLogisticsDetailsRequestAsync(unit.Id);
+            if (pending != null)
+            {
+                logReqReason = pending.Note ?? string.Empty;
+            }
+        }
+        catch { /* no pending request */ }
+
+        showLogisticsRequestModal = true;
+    }
+    private void CloseLogisticsRequestModal() => showLogisticsRequestModal = false;
+    private void AddLogReqSupplierRow() => logReqSuppliers.Add(new UnitSupplierItem());
+    private void RemoveLogReqSupplierRow(int index)
+    {
+        logReqSuppliers.RemoveAt(index);
+        ReindexReadOnlyRows(logReqBarcodeReadOnlyRows, index);
+    }
+    private async Task SubmitLogisticsRequest()
+    {
+        logReqError = string.Empty;
+        if (logReqNewCost < 0) { logReqError = Localizer["CostGreaterThanZero"]; return; }
+        foreach (var item in logReqSuppliers)
+        {
+            if (item.SupplierId == Guid.Empty) { logReqError = Localizer["SelectSupplierForAllRows"]; return; }
+            if (string.IsNullOrWhiteSpace(item.Barcode)) { logReqError = Localizer["EnterBarcodeForAllRows"]; return; }
+        }
+        if (logReqSuppliers.GroupBy(x => x.SupplierId).Any(g => g.Count() > 1)) { logReqError = Localizer["DuplicateSupplierNotAllowed"]; return; }
+        logReqSubmitting = true;
+        try
+        {
+            await RequestService.CreateSetLogisticsDetailsRequestAsync(new CreateSetLogisticsDetailsRequest
+            {
+                UnitId = logReqUnitId,
+                NewCost = logReqNewCost,
+                Suppliers = logReqSuppliers,
+                LowStockThreshold = logReqLowStockThreshold,
+                Note = string.IsNullOrWhiteSpace(logReqReason) ? null : logReqReason
+            });
+            showLogisticsRequestModal = false;
+        }
+        catch (Exception ex) { logReqError = ex.Message; }
+        finally { logReqSubmitting = false; }
+    }
+
+    private static List<MediaDto> GetOldImagesFromRequest(RequestDto? req)
+    {
+        if (string.IsNullOrEmpty(req?.OldDataJson))
+            return new List<MediaDto>();
+
+        try
+        {
+            var data = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(req.OldDataJson);
+            if (!data.TryGetProperty("Images", out var images) || images.ValueKind != System.Text.Json.JsonValueKind.Array)
+                return new List<MediaDto>();
+
+            var result = new List<MediaDto>();
+            foreach (var item in images.EnumerateArray())
+            {
+                var media = new MediaDto
+                {
+                    Id = item.TryGetProperty("Id", out var idEl) && idEl.ValueKind != System.Text.Json.JsonValueKind.Null ? idEl.GetGuid() : Guid.Empty,
+                    FileName = item.TryGetProperty("FileName", out var fileNameEl) ? fileNameEl.GetString() ?? string.Empty : string.Empty,
+                    Url = item.TryGetProperty("Path", out var pathEl) ? pathEl.GetString() ?? string.Empty : string.Empty,
+                    IsMain = item.TryGetProperty("IsMain", out var isMainEl) && isMainEl.ValueKind == System.Text.Json.JsonValueKind.True
+                };
+                result.Add(media);
+            }
+
+            return result;
+        }
+        catch
+        {
+            return new List<MediaDto>();
+        }
+    }
+
+    public class ProductFormModel
+    {
+        [Required(ErrorMessage = "NameEnRequired")]
+        [StringLength(256, ErrorMessage = "NameEnMaxLength")]
+        public string NameEn { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "NameArRequired")]
+        [StringLength(256, ErrorMessage = "NameArMaxLength")]
+        public string NameAr { get; set; } = string.Empty;
+
+        [StringLength(2000, ErrorMessage = "DescriptionMaxLength")]
+        public string? DescriptionEn { get; set; }
+
+        [StringLength(2000, ErrorMessage = "DescriptionMaxLength")]
+        public string? DescriptionAr { get; set; }
+
+        public string Code { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "CategoryIdRequired")]
+        public Guid? CategoryId { get; set; }
+
+        public bool IsActive { get; set; } = false;
+
+        public Web.Models.Enums.ItemStatus Status { get; set; } = Web.Models.Enums.ItemStatus.Draft;
+    }
+}

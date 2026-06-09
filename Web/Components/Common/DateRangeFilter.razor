@@ -1,0 +1,82 @@
+@inject IJsonStringLocalizer Localizer
+
+@*
+    Filter card with two date inputs (From / To) and a Reset button. Optional
+    ChildContent slot renders between the dates and the Reset button — used
+    by pages that also need a Status select or Search box in the same row.
+
+    Usage:
+        <DateRangeFilter @bind-FromDate="fromDate"
+                         @bind-ToDate="toDate"
+                         OnApply="ApplyFilters"
+                         OnReset="ResetFilters">
+            <select @bind="selectedStatus" @bind:after="ApplyFilters">...</select>
+        </DateRangeFilter>
+*@
+
+<div class="mb-6 bg-gray-50 rounded-lg border border-gray-200 p-4 flex flex-wrap items-end gap-3">
+    <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">@Localizer["FromDate"]</label>
+        <input type="date"
+               value="@FormatForInput(FromDate)"
+               @onchange="OnFromChanged"
+               class="bg-white border border-gray-300 text-gray-700 py-2 px-3 rounded-lg text-sm" />
+    </div>
+    <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">@Localizer["ToDate"]</label>
+        <input type="date"
+               value="@FormatForInput(ToDate)"
+               @onchange="OnToChanged"
+               class="bg-white border border-gray-300 text-gray-700 py-2 px-3 rounded-lg text-sm" />
+    </div>
+    @if (ChildContent is not null)
+    {
+        @ChildContent
+    }
+    <button type="button" @onclick="HandleReset"
+            class="inline-flex items-center gap-2 py-2 px-4 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium">
+        <i class="bi bi-x-circle"></i>
+        <span>@Localizer["Reset"]</span>
+    </button>
+</div>
+
+@code {
+    [Parameter] public DateTime? FromDate { get; set; }
+    [Parameter] public EventCallback<DateTime?> FromDateChanged { get; set; }
+    [Parameter] public DateTime? ToDate { get; set; }
+    [Parameter] public EventCallback<DateTime?> ToDateChanged { get; set; }
+    [Parameter] public EventCallback OnApply { get; set; }
+    [Parameter] public EventCallback OnReset { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private static string FormatForInput(DateTime? d) =>
+        d?.ToString("yyyy-MM-dd") ?? string.Empty;
+
+    private async Task OnFromChanged(ChangeEventArgs e)
+    {
+        var parsed = ParseDate(e.Value?.ToString());
+        FromDate = parsed;
+        await FromDateChanged.InvokeAsync(parsed);
+        await OnApply.InvokeAsync();
+    }
+
+    private async Task OnToChanged(ChangeEventArgs e)
+    {
+        var parsed = ParseDate(e.Value?.ToString());
+        ToDate = parsed;
+        await ToDateChanged.InvokeAsync(parsed);
+        await OnApply.InvokeAsync();
+    }
+
+    private static DateTime? ParseDate(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : DateTime.Parse(value);
+
+    private async Task HandleReset()
+    {
+        FromDate = null;
+        ToDate = null;
+        await FromDateChanged.InvokeAsync(null);
+        await ToDateChanged.InvokeAsync(null);
+        await OnReset.InvokeAsync();
+    }
+}

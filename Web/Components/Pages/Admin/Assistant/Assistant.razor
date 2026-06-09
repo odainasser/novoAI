@@ -1,0 +1,84 @@
+@page "/admin/assistant"
+@page "/admin/assistant/{Tab?}"
+@attribute [Authorize]
+@attribute [RequirePermission(Permissions.AssistantKeywordsRead)]
+@using Microsoft.AspNetCore.Authorization
+@using Web.Authorization
+@using Web.Models.Constants
+@inject NavigationManager Navigation
+@inject IJsonStringLocalizer Localizer
+
+<PageTitle>@Localizer["AIAssistant"]</PageTitle>
+
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-6">
+    <!-- Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <i class="bi bi-cpu text-purple-600"></i>
+            @Localizer["AIAssistant"]
+        </h1>
+        <p class="text-gray-600 mt-2 text-sm sm:text-base">@Localizer["AssistantAdminDesc"]</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="mb-6">
+        <nav class="tab-nav" aria-label="Tabs">
+            <button @onclick='() => SetActiveTab("plans")'
+                    class="tab-btn @GetTabClass("plans")">
+                <i class="bi bi-chat-square-text"></i>
+                @Localizer["PlansReview"]
+            </button>
+            <button @onclick='() => SetActiveTab("no-answers")'
+                    class="tab-btn @GetTabClass("no-answers")">
+                <i class="bi bi-slash-circle"></i>
+                @Localizer["NoAnswersQueue"]
+            </button>
+            <button @onclick='() => SetActiveTab("reported")'
+                    class="tab-btn @GetTabClass("reported")">
+                <i class="bi bi-flag"></i>
+                @Localizer["ReportedAnswers"]
+            </button>
+        </nav>
+    </div>
+
+    <!-- Tab Content -->
+    @if (activeTab == "plans")
+    {
+        <AssistantPlansTab />
+    }
+    else if (activeTab == "no-answers")
+    {
+        <AssistantNoAnswersTab />
+    }
+    else if (activeTab == "reported")
+    {
+        <AssistantReportedTab />
+    }
+</div>
+
+@code {
+    [Parameter] public string? Tab { get; set; }
+
+    private string activeTab = "plans";
+
+    private string ResolveTab() =>
+        string.IsNullOrEmpty(Tab) ? "plans" : Tab.ToLowerInvariant() switch
+        {
+            "plans" or "plans-review" or "review" => "plans",
+            "no-answers" or "noanswers" or "no-answer" or "queue" => "no-answers",
+            "reported" or "reports" or "reported-answers" => "reported",
+            _ => "plans"
+        };
+
+    protected override void OnInitialized() => activeTab = ResolveTab();
+    protected override void OnParametersSet() => activeTab = ResolveTab();
+
+    private void SetActiveTab(string tab)
+    {
+        activeTab = tab;
+        Navigation.NavigateTo($"/admin/assistant/{tab}", replace: true);
+    }
+
+    private string GetTabClass(string tab) =>
+        activeTab == tab ? "tab-btn-active" : "";
+}

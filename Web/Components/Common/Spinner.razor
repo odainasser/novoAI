@@ -1,0 +1,69 @@
+@* Modern spinner component.
+
+   Usage examples:
+       <Spinner />                                  - default Md size, brand-blue
+       <Spinner Size="SpinnerSize.Lg" Centered />   - large, full-width centered (page loading)
+       <Spinner Size="SpinnerSize.Sm" Color="SpinnerColor.White" />   - inside dark buttons
+       <Spinner Color="SpinnerColor.Danger" />      - red variant
+       <Spinner Label="Loading..." ShowLabel />     - with text next to it
+*@
+@if (Centered)
+{
+    <div class="bf-spinner-wrapper">
+        <span class="@SpinnerCssClass" role="status" aria-label="@(string.IsNullOrEmpty(Label) ? "Loading" : Label)"></span>
+        @if (!string.IsNullOrEmpty(Label) && ShowLabel)
+        {
+            <span class="bf-spinner-label @LabelCssClass">@Label</span>
+        }
+    </div>
+}
+else
+{
+    <span class="@WrapperCssClass">
+        <span class="@SpinnerCssClass" role="status" aria-label="@(string.IsNullOrEmpty(Label) ? "Loading" : Label)"></span>
+        @if (!string.IsNullOrEmpty(Label) && ShowLabel)
+        {
+            <span class="bf-spinner-label ms-2 @LabelCssClass">@Label</span>
+        }
+    </span>
+}
+
+@code {
+    public enum SpinnerSize { Xs, Sm, Md, Lg, Xl }
+
+    public enum SpinnerColor { Primary, White, Success, Danger, Warning, Muted, Inherit }
+
+    /// <summary>Spinner dimensions. Default Md.</summary>
+    [Parameter] public SpinnerSize Size { get; set; } = SpinnerSize.Md;
+
+    /// <summary>Spinner color. Default Primary (brand cyan-blue).</summary>
+    [Parameter] public SpinnerColor Color { get; set; } = SpinnerColor.Primary;
+
+    /// <summary>When true, renders the spinner inside a full-width, vertically/horizontally centered wrapper with padding — use for page/table loading. Default false (inline).</summary>
+    [Parameter] public bool Centered { get; set; } = false;
+
+    /// <summary>Optional label rendered next to the spinner (and used as aria-label when empty).</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>When true and Label is set, the label text is shown beside the spinner. Default false.</summary>
+    [Parameter] public bool ShowLabel { get; set; } = false;
+
+    /// <summary>Extra CSS classes appended to the spinner element.</summary>
+    [Parameter] public string ExtraClass { get; set; } = "";
+
+    private string SpinnerCssClass =>
+        $"bf-spinner bf-spinner-{Size.ToString().ToLowerInvariant()} bf-spinner-{Color.ToString().ToLowerInvariant()} {ExtraClass}".Trim();
+
+    private string WrapperCssClass => "inline-flex items-center";
+
+    private string LabelCssClass => Color switch
+    {
+        SpinnerColor.White => "text-white",
+        SpinnerColor.Success => "bf-text-success",
+        SpinnerColor.Danger => "bf-text-danger",
+        SpinnerColor.Warning => "bf-text-warning",
+        SpinnerColor.Muted => "text-gray-500",
+        SpinnerColor.Inherit => "",
+        _ => "bf-text-info"
+    };
+}

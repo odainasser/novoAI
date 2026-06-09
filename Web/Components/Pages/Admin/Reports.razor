@@ -1,0 +1,27 @@
+@page "/admin/reports"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+
+<PageTitle>@Localizer["Reports"]</PageTitle>
+
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+                <i class="bi bi-bar-chart-line text-purple-600"></i>
+                @Localizer["Reports"]
+            </h1>
+            <p class="text-gray-600 mt-2 text-sm sm:text-base">@Localizer["ReportsDescription"]</p>
+        </div>
+    </div>
+
+    <!-- Coming Soon -->
+    <div class="flex flex-col items-center justify-center py-24 text-center">
+        <div class="rounded-full bg-gray-100 p-6 mb-6">
+            <i class="bi bi-bar-chart-line text-5xl text-gray-400"></i>
+        </div>
+        <h2 class="text-xl font-semibold text-gray-700 mb-2">@Localizer["ComingSoon"]</h2>
+        <p class="text-gray-400 max-w-sm">@Localizer["ReportsComingSoonDescription"]</p>
+    </div>
+</div>

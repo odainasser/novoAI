@@ -1,0 +1,86 @@
+@* Reusable icon container component *@
+<div class="@GetContainerClass()">
+    <i class="bi bi-@Icon @GetIconSizeClass()"></i>
+</div>
+
+@code {
+    [Parameter] public string Icon { get; set; } = "star";
+    [Parameter] public IconSize Size { get; set; } = IconSize.Medium;
+    [Parameter] public IconColor Color { get; set; } = IconColor.Purple;
+    [Parameter] public IconShape Shape { get; set; } = IconShape.Rounded;
+    [Parameter] public string? CustomClass { get; set; }
+
+    private string GetContainerClass()
+    {
+        var sizeClass = Size switch
+        {
+            IconSize.ExtraSmall => "h-8 w-8",
+            IconSize.Small => "h-10 w-10",
+            IconSize.Medium => "h-12 w-12",
+            IconSize.Large => "h-14 w-14",
+            IconSize.ExtraLarge => "h-16 w-16",
+            _ => "h-12 w-12"
+        };
+
+        var shapeClass = Shape switch
+        {
+            IconShape.Rounded => "rounded-lg",
+            IconShape.Circle => "rounded-full",
+            IconShape.Square => "rounded-none",
+            _ => "rounded-lg"
+        };
+
+        var colorClass = Color switch
+        {
+            IconColor.Purple => "bg-purple-50 text-purple-600",
+            IconColor.Blue => "bg-blue-50 text-blue-600",
+            IconColor.Green => "bg-green-50 text-green-600",
+            IconColor.Yellow => "bg-yellow-50 text-yellow-600",
+            IconColor.Red => "bg-red-50 text-red-600",
+            IconColor.Gray => "bg-gray-50 text-gray-600",
+            IconColor.Primary => "bg-purple-50 text-bf-primary",
+            IconColor.White => "bg-white text-bf-primary",
+            _ => "bg-purple-50 text-purple-600"
+        };
+
+        return $"flex items-center justify-center {sizeClass} {shapeClass} {colorClass} {CustomClass}".Trim();
+    }
+
+    private string GetIconSizeClass() => Size switch
+    {
+        IconSize.ExtraSmall => "text-lg",
+        IconSize.Small => "text-xl",
+        IconSize.Medium => "text-2xl",
+        IconSize.Large => "text-3xl",
+        IconSize.ExtraLarge => "text-4xl",
+        _ => "text-2xl"
+    };
+
+    public enum IconSize
+    {
+        ExtraSmall,
+        Small,
+        Medium,
+        Large,
+        ExtraLarge
+    }
+
+    public enum IconColor
+    {
+        Purple,
+        Blue,
+        Green,
+        Yellow,
+        Red,
+        Gray,
+        Primary,
+        White
+    }
+
+    public enum IconShape
+    {
+        Rounded,
+        Circle,
+        Square
+    }
+}

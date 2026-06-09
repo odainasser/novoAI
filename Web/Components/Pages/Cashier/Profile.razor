@@ -1,0 +1,10 @@
+@page "/cashier/account"
+@page "/cashier/profile"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = Roles.Cashier)]
+@using Web.Components.Common
+@layout CashierLayout
+
+<PageTitle>@Localizer["MyProfile"]</PageTitle>
+
+<AccountProfile IsCashier="true" />

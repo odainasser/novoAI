@@ -1,0 +1,89 @@
+@* Reusable statistics card component *@
+<div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow duration-200">
+    <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center justify-center h-12 w-12 @GetIconBgClass() rounded-lg @GetIconColorClass()">
+            <i class="bi bi-@Icon text-2xl"></i>
+        </div>
+        @if (!string.IsNullOrEmpty(Badge))
+        {
+            <span class="text-xs font-medium bg-gray-100 text-gray-600 px-2 py-1 rounded-full">@Badge</span>
+        }
+        @if (BadgeContent != null)
+        {
+            @BadgeContent
+        }
+    </div>
+    <h3 class="text-3xl font-bold text-gray-900 mb-1">@Value</h3>
+    <p class="text-gray-500 text-sm">@Label</p>
+    @if (FooterContent != null)
+    {
+        <div class="mt-4 pt-4 border-t border-gray-50">
+            @FooterContent
+        </div>
+    }
+    @if (!string.IsNullOrEmpty(FooterText))
+    {
+        <div class="mt-4 pt-4 border-t border-gray-50">
+            <div class="flex items-center gap-2 text-sm text-gray-500">
+                @if (!string.IsNullOrEmpty(FooterLink))
+                {
+                    <a href="@FooterLink" class="flex items-center gap-2 text-sm font-medium text-bf-primary hover:opacity-80 transition-colors">
+                        <span>@FooterText</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                }
+                else
+                {
+                    <span>@FooterText</span>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Icon { get; set; } = "speedometer2";
+    [Parameter] public string Value { get; set; } = "0";
+    [Parameter] public string Label { get; set; } = "Statistic";
+    [Parameter] public string? Badge { get; set; }
+    [Parameter] public RenderFragment? BadgeContent { get; set; }
+    [Parameter] public RenderFragment? FooterContent { get; set; }
+    [Parameter] public string? FooterText { get; set; }
+    [Parameter] public string? FooterLink { get; set; }
+    [Parameter] public StatCardColor Color { get; set; } = StatCardColor.Purple;
+
+    private string GetIconBgClass() => Color switch
+    {
+        StatCardColor.Purple => "bg-purple-50",
+        StatCardColor.Blue => "bg-blue-50",
+        StatCardColor.Green => "bg-green-50",
+        StatCardColor.Yellow => "bg-yellow-50",
+        StatCardColor.Red => "bg-red-50",
+        StatCardColor.Indigo => "bg-indigo-50",
+        StatCardColor.Pink => "bg-pink-50",
+        _ => "bg-purple-50"
+    };
+
+    private string GetIconColorClass() => Color switch
+    {
+        StatCardColor.Purple => "text-bf-primary",
+        StatCardColor.Blue => "text-blue-600",
+        StatCardColor.Green => "text-green-600",
+        StatCardColor.Yellow => "text-yellow-600",
+        StatCardColor.Red => "text-red-600",
+        StatCardColor.Indigo => "text-indigo-600",
+        StatCardColor.Pink => "text-pink-600",
+        _ => "text-bf-primary"
+    };
+
+    public enum StatCardColor
+    {
+        Purple,
+        Blue,
+        Green,
+        Yellow,
+        Red,
+        Indigo,
+        Pink
+    }
+}

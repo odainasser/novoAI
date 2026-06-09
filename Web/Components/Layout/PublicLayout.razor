@@ -1,0 +1,13 @@
+@inherits LayoutComponentBase
+
+<div class="public-layout">
+    <div class="public-content">
+        @Body
+    </div>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    <span>@Localizer["ErrorOccurred"]</span>
+    <a href="." class="reload">@Localizer["Reload"]</a>
+    <button class="dismiss" onclick="document.getElementById('blazor-error-ui').style.display='none'">&times;</button>
+</div>

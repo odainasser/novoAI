@@ -1,0 +1,12 @@
+@page "/branch/transfers"
+@layout BranchLayout
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@inject NavigationManager Navigation
+
+@code {
+    protected override void OnInitialized()
+    {
+        Navigation.NavigateTo("/branch/inventory/transfers", replace: true);
+    }
+}

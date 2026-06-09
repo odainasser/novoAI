@@ -1,0 +1,538 @@
+@inherits LayoutComponentBase
+@attribute [Authorize]
+@implements IDisposable
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Routing
+@using System.Globalization
+@using Web.Components.Common
+@inject IAuthenticationService AuthService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IMediaService MediaService
+@inject ActiveBranchContext ActiveBranch
+@inject IJSRuntime JS
+
+<div class="min-h-screen bg-gray-50" data-theme="@(isDarkMode ? "dark" : "light")">
+    <!-- Top Navigation Bar -->
+    <nav class="portal-header fixed top-0 left-0 right-0 z-50 h-16 border-b border-white/10 bg-[var(--bf-header-bg)]">
+        <div class="px-4 lg:px-6 h-full">
+            <div class="flex justify-between items-center h-full">
+                <!-- Left: Menu toggle + Logo + active branch chip -->
+                <div class="flex items-center gap-2">
+                    <button @onclick="ToggleSidebarMobile"
+                            class="lg:hidden header-icon-btn">
+                        <i class="bi @(isSidebarOpen ? "bi-x-lg" : "bi-list") text-xl"></i>
+                    </button>
+                    <button @onclick="ToggleMinimized"
+                            class="hidden lg:flex header-icon-btn"
+                            title="@(isSidebarMinimized ? Localizer["ExpandSidebar"] : Localizer["CollapseSidebar"])">
+                        <i class="bi bi-list text-xl"></i>
+                    </button>
+                    <div class="header-separator hidden lg:block"></div>
+                    <a href="/branch" class="flex items-center gap-2.5">
+                        <img src="/logo.png" alt="Logo" class="h-9 w-auto" />
+                    </a>
+                    @if (ActiveBranch.IsSelected)
+                    {
+                        <button type="button" @onclick="GoToBranchSelector"
+                                class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium text-white border border-white/25 bg-white/10 hover:bg-white/20 transition-colors ms-2"
+                                title="@Localizer["SwitchBranch"]">
+                            <i class="bi bi-building"></i>
+                            <span>@Localizer["Branch"]:</span>
+                            <span class="font-semibold">@(isAr ? ActiveBranch.BranchNameAr : ActiveBranch.BranchNameEn)</span>
+                            <i class="bi bi-arrow-left-right text-[10px] opacity-70"></i>
+                        </button>
+                    }
+                </div>
+
+                <!-- Right: Actions + User Menu -->
+                <div class="flex items-center gap-1 sm:gap-1.5">
+                    <!-- Notifications Bell -->
+                    <NotificationBell />
+
+                    <!-- Dark Mode Toggle -->
+                    <button @onclick="ToggleDarkMode"
+                            class="header-icon-btn"
+                            title="@(isDarkMode ? Localizer["LightMode"] : Localizer["DarkMode"])">
+                        <i class="bi @(isDarkMode ? "bi-sun-fill" : "bi-moon-stars-fill") text-xl"></i>
+                    </button>
+
+                    <div class="header-separator hidden sm:block"></div>
+
+                    <LanguageSelector Dark="false" />
+
+                    <div class="header-separator"></div>
+
+                    <AuthorizeView Context="auth">
+                        <Authorized>
+                            @if (auth.User.Identity?.IsAuthenticated == true)
+                            {
+                                <Dropdown Alignment="right" ToggleCss="bf-dropdown-toggle bf-dropdown-compact !text-white !border-0 !px-2 !py-1.5 !rounded-xl" ToggleStyle="">
+                                    <ToggleContent>
+                                        <div class="flex items-center gap-2.5 group cursor-pointer">
+                                            @if (!string.IsNullOrEmpty(avatarUrl))
+                                            {
+                                                <img src="@avatarUrl" alt="User avatar" class="h-9 w-9 rounded-full object-cover ring-2 ring-white/50 transition-all duration-200 group-hover:ring-white/80 group-hover:scale-105" />
+                                            }
+                                            else
+                                            {
+                                                <div class="h-9 w-9 rounded-full flex items-center justify-center text-white text-sm font-bold bg-white/20 ring-2 ring-white/30 transition-all duration-200 group-hover:bg-white/30 group-hover:ring-white/50 group-hover:scale-105">
+                                                    @(displayName.Length > 0 ? displayName[0].ToString().ToUpper() : "B")
+                                                </div>
+                                            }
+                                            <div class="hidden sm:block text-left">
+                                                <p class="text-sm font-semibold text-white leading-tight tracking-tight">@displayName</p>
+                                                <p class="text-[11px] text-white/60 font-medium">@Localizer["BranchManager"]</p>
+                                            </div>
+                                            <i class="bi bi-chevron-down text-[10px] text-white/50 transition-transform duration-200"></i>
+                                        </div>
+                                    </ToggleContent>
+                                    <ChildContent>
+                                        <div class="px-4 py-3 bg-gradient-to-br from-gray-50 to-white border-b border-gray-100">
+                                            <div class="flex items-center gap-3">
+                                                @if (!string.IsNullOrEmpty(avatarUrl))
+                                                {
+                                                    <img src="@avatarUrl" alt="" class="h-10 w-10 rounded-full object-cover ring-1 ring-gray-200" />
+                                                }
+                                                else
+                                                {
+                                                    <div class="h-10 w-10 rounded-full flex items-center justify-center text-white text-sm font-bold bg-[var(--bf-primary)]">
+                                                        @(displayName.Length > 0 ? displayName[0].ToString().ToUpper() : "B")
+                                                    </div>
+                                                }
+                                                <div class="min-w-0">
+                                                    <p class="text-sm font-semibold text-gray-900 truncate">@displayName</p>
+                                                    <p class="text-xs text-gray-500 truncate">@currentUser?.Email</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="py-1">
+                                            <a href="/branch/account" class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150">
+                                                <i class="bi bi-person-circle text-gray-400"></i>
+                                                <span>@Localizer["MyProfile"]</span>
+                                            </a>
+                                            <button @onclick="GoToBranchSelector"
+                                                    class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150">
+                                                <i class="bi bi-arrow-left-right text-gray-400"></i>
+                                                <span>@Localizer["SwitchBranch"]</span>
+                                            </button>
+                                        </div>
+                                        <div class="border-t border-gray-100"></div>
+                                        <div class="py-1">
+                                            <button @onclick='() => Navigation.NavigateTo("/logout", true)'
+                                                    class="w-full flex items-center gap-3 px-4 py-2.5 text-sm !text-red-600 hover:!bg-red-50 transition-colors duration-150">
+                                                <i class="bi bi-box-arrow-right rtl:rotate-180 text-red-400"></i>
+                                                <span>@Localizer["SignOut"]</span>
+                                            </button>
+                                        </div>
+                                    </ChildContent>
+                                </Dropdown>
+                            }
+                        </Authorized>
+                        <NotAuthorized>
+                            <a href="/login" class="px-4 py-2 text-sm text-bf-primary hover:text-green-700 font-medium">
+                                @Localizer["SignIn"]
+                            </a>
+                        </NotAuthorized>
+                    </AuthorizeView>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile Sidebar Overlay -->
+    @if (isSidebarOpen)
+    {
+        <div @onclick="CloseSidebar" class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"></div>
+    }
+
+    <!-- Left Sidebar - Fixed on desktop -->
+    <aside class="@GetSidebarClasses()">
+        <nav class="px-3 py-5 space-y-1">
+            @* Dashboard — branch overview with quick-link tiles. Matches Admin's structural
+               pattern of a top-level Dashboard link before any section. NavLinkMatch.All so it's
+               only active on /branch exactly (not on /branch/orders etc). *@
+            <NavLink href="/branch"
+                     @onclick="CloseSidebar"
+                     class="sidebar-link group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium relative overflow-hidden"
+                     ActiveClass="sidebar-link-active"
+                     Match="NavLinkMatch.All">
+                <span class="sidebar-link-indicator"></span>
+                <span class="sidebar-link-icon"><i class="bi bi-columns-gap"></i></span>
+                <span class="sidebar-text">@Localizer["Dashboard"]</span>
+                <span class="sidebar-tooltip">@Localizer["Dashboard"]</span>
+            </NavLink>
+
+            <AuthorizeView Context="outerAuth">
+                <Authorized Context="outerAuth">
+                    <AuthorizeView Context="auth">
+                        <Authorized Context="auth">
+                            @{
+                                var permissions = auth.User.FindAll("permission");
+                                var hasSalesPermissions = permissions.Any(p =>
+                                    p.Value == "orders.read" || p.Value == "shifts.read" || p.Value == "cashiers.read");
+                                var hasMerchandisePermissions = permissions.Any(p =>
+                                    p.Value == "inventory.read" || p.Value == "requests.read");
+                            }
+
+                            @* === SALES === *@
+                            @if (hasSalesPermissions)
+                            {
+                                <div class="sidebar-section-header mt-5 mb-1.5">
+                                    <div class="mx-3 mb-2 border-t border-gray-100"></div>
+                                    <p class="px-3 text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                        <i class="bi bi-wallet2 text-[0.6rem]"></i>
+                                        @Localizer["Sales"]
+                                    </p>
+                                </div>
+
+                                <AuthorizeView Policy="Permission:orders.read" Context="ordersAuth">
+                                    <Authorized Context="ordersAuth">
+                                        <NavLink href="/branch/orders"
+                                                 @onclick="CloseSidebar"
+                                                 class="sidebar-link group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium relative overflow-hidden"
+                                                 ActiveClass="sidebar-link-active">
+                                            <span class="sidebar-link-indicator"></span>
+                                            <span class="sidebar-link-icon"><i class="bi bi-bag-check"></i></span>
+                                            <span class="sidebar-text">@Localizer["Orders"]</span>
+                                            <span class="sidebar-tooltip">@Localizer["Orders"]</span>
+                                        </NavLink>
+                                    </Authorized>
+                                </AuthorizeView>
+
+                                <AuthorizeView Policy="Permission:shifts.read" Context="shiftsAuth">
+                                    <Authorized Context="shiftsAuth">
+                                        <NavLink href="/branch/shifts"
+                                                 @onclick="CloseSidebar"
+                                                 class="sidebar-link group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium relative overflow-hidden"
+                                                 ActiveClass="sidebar-link-active">
+                                            <span class="sidebar-link-indicator"></span>
+                                            <span class="sidebar-link-icon"><i class="bi bi-stopwatch"></i></span>
+                                            <span class="sidebar-text">@Localizer["Shifts"]</span>
+                                            <span class="sidebar-tooltip">@Localizer["Shifts"]</span>
+                                        </NavLink>
+                                    </Authorized>
+                                </AuthorizeView>
+
+                                <AuthorizeView Policy="Permission:cashiers.read" Context="cashiersAuth">
+                                    <Authorized Context="cashiersAuth">
+                                        <NavLink href="/branch/cashiers"
+                                                 @onclick="CloseSidebar"
+                                                 class="sidebar-link group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium relative overflow-hidden"
+                                                 ActiveClass="sidebar-link-active">
+                                            <span class="sidebar-link-indicator"></span>
+                                            <span class="sidebar-link-icon"><i class="bi bi-person-badge"></i></span>
+                                            <span class="sidebar-text">@Localizer["Cashiers"]</span>
+                                            <span class="sidebar-tooltip">@Localizer["Cashiers"]</span>
+                                        </NavLink>
+                                    </Authorized>
+                                </AuthorizeView>
+                            }
+
+                            @* === MERCHANDISE === *@
+                            @if (hasMerchandisePermissions)
+                            {
+                                <div class="sidebar-section-header mt-5 mb-1.5">
+                                    <div class="mx-3 mb-2 border-t border-gray-100"></div>
+                                    <p class="px-3 text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                        <i class="bi bi-bag text-[0.6rem]"></i>
+                                        @Localizer["Merchandise"]
+                                    </p>
+                                </div>
+
+                                <AuthorizeView Policy="Permission:inventory.read" Context="inventoryAuth">
+                                    <Authorized Context="inventoryAuth">
+                                        <div class="@GroupCss("inventory", "branch/inventory")">
+                                            <button type="button" @onclick='() => ToggleGroup("inventory", "branch/inventory")'
+                                                    class="sidebar-link sidebar-group-toggle group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium relative overflow-hidden">
+                                                <span class="sidebar-link-indicator"></span>
+                                                <span class="sidebar-link-icon"><i class="bi bi-stack"></i></span>
+                                                <span class="sidebar-text">@Localizer["Inventory"]</span>
+                                                <i class="bi bi-chevron-down sidebar-chevron"></i>
+                                                <span class="sidebar-tooltip">@Localizer["Inventory"]</span>
+                                            </button>
+                                            <div class="sidebar-children">
+                                                <AuthorizeView Policy="Permission:purchase-requests.read" Context="prNav">
+                                                    <Authorized Context="prNav">
+                                                        <NavLink href="/branch/inventory/purchase-requests"
+                                                                 @onclick="CloseSidebar"
+                                                                 class="sidebar-link sidebar-link-sub group flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 relative overflow-hidden"
+                                                                 ActiveClass="sidebar-link-active">
+                                                            <span class="sidebar-link-indicator"></span>
+                                                            <span class="sidebar-link-icon"><i class="bi bi-bag-plus"></i></span>
+                                                            <span class="sidebar-text">@Localizer["PurchaseRequests"]</span>
+                                                        </NavLink>
+                                                    </Authorized>
+                                                </AuthorizeView>
+                                                <NavLink href="/branch/inventory/grn"
+                                                         @onclick="CloseSidebar"
+                                                         class="sidebar-link sidebar-link-sub group flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 relative overflow-hidden"
+                                                         ActiveClass="sidebar-link-active">
+                                                    <span class="sidebar-link-indicator"></span>
+                                                    <span class="sidebar-link-icon"><i class="bi bi-arrow-down-square"></i></span>
+                                                    <span class="sidebar-text">@Localizer["GoodsReceiving"]</span>
+                                                </NavLink>
+                                                <NavLink href="/branch/inventory/transfers"
+                                                         @onclick="CloseSidebar"
+                                                         class="sidebar-link sidebar-link-sub group flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 relative overflow-hidden"
+                                                         ActiveClass="sidebar-link-active">
+                                                    <span class="sidebar-link-indicator"></span>
+                                                    <span class="sidebar-link-icon"><i class="bi bi-arrow-down-up"></i></span>
+                                                    <span class="sidebar-text">@Localizer["StockTransfers"]</span>
+                                                </NavLink>
+                                                <NavLink href="/branch/inventory/adjustments"
+                                                         @onclick="CloseSidebar"
+                                                         class="sidebar-link sidebar-link-sub group flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 relative overflow-hidden"
+                                                         ActiveClass="sidebar-link-active">
+                                                    <span class="sidebar-link-indicator"></span>
+                                                    <span class="sidebar-link-icon"><i class="bi bi-pencil-square"></i></span>
+                                                    <span class="sidebar-text">@Localizer["StockAdjustments"]</span>
+                                                </NavLink>
+                                                <NavLink href="/branch/inventory/stocktake"
+                                                         @onclick="CloseSidebar"
+                                                         class="sidebar-link sidebar-link-sub group flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 relative overflow-hidden"
+                                                         ActiveClass="sidebar-link-active">
+                                                    <span class="sidebar-link-indicator"></span>
+                                                    <span class="sidebar-link-icon"><i class="bi bi-clipboard-data"></i></span>
+                                                    <span class="sidebar-text">@Localizer["Stocktake"]</span>
+                                                </NavLink>
+                                                <NavLink href="/branch/inventory/balances"
+                                                         @onclick="CloseSidebar"
+                                                         class="sidebar-link sidebar-link-sub group flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 relative overflow-hidden"
+                                                         ActiveClass="sidebar-link-active">
+                                                    <span class="sidebar-link-indicator"></span>
+                                                    <span class="sidebar-link-icon"><i class="bi bi-archive"></i></span>
+                                                    <span class="sidebar-text">@Localizer["StockBalances"]</span>
+                                                </NavLink>
+                                                <NavLink href="/branch/inventory/history"
+                                                         @onclick="CloseSidebar"
+                                                         class="sidebar-link sidebar-link-sub group flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 relative overflow-hidden"
+                                                         ActiveClass="sidebar-link-active">
+                                                    <span class="sidebar-link-indicator"></span>
+                                                    <span class="sidebar-link-icon"><i class="bi bi-activity"></i></span>
+                                                    <span class="sidebar-text">@Localizer["InventoryHistory"]</span>
+                                                </NavLink>
+                                            </div>
+                                        </div>
+                                    </Authorized>
+                                </AuthorizeView>
+
+                                <AuthorizeView Policy="Permission:requests.read" Context="requestsAuth">
+                                    <Authorized Context="requestsAuth">
+                                        <NavLink href="/branch/requests"
+                                                 @onclick="CloseSidebar"
+                                                 class="sidebar-link group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium relative overflow-hidden"
+                                                 ActiveClass="sidebar-link-active">
+                                            <span class="sidebar-link-indicator"></span>
+                                            <span class="sidebar-link-icon"><i class="bi bi-send"></i></span>
+                                            <span class="sidebar-text">@Localizer["Requests"]</span>
+                                            <span class="sidebar-tooltip">@Localizer["Requests"]</span>
+                                        </NavLink>
+                                    </Authorized>
+                                </AuthorizeView>
+                            }
+                        </Authorized>
+                    </AuthorizeView>
+                </Authorized>
+            </AuthorizeView>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="pt-16 @(isSidebarMinimized ? "lg:ms-16" : "lg:ms-60") min-h-screen flex flex-col transition-all duration-300">
+        <div class="p-4 lg:p-6 flex-1 bg-gray-50">
+            @Body
+        </div>
+
+        <!-- Branch Footer -->
+        <footer class="portal-footer border-t border-gray-200 bg-white px-4 lg:px-6 py-3">
+            <div class="flex items-center justify-end text-xs text-gray-500">
+                <span><span class="text-[var(--bf-primary)]">&copy;</span> @DateTime.Now.Year @Localizer["SystemName"]</span>
+            </div>
+        </footer>
+    </main>
+
+    @* AI assistant — hard-locked to the active branch, and only shown once one is
+       selected (scoping needs an active branch). Permissions are enforced server-side. *@
+    @if (ActiveBranch.IsSelected)
+    {
+        <AiAssistantWidget ScopeBranchId="ActiveBranch.BranchId" />
+    }
+</div>
+
+<div id="blazor-error-ui" class="fixed bottom-0 left-0 right-0 bg-red-600 text-white p-4 shadow-lg hidden" data-nosnippet>
+    <div class="flex items-center justify-between max-w-7xl mx-auto">
+        <div class="flex items-center gap-3">
+            <i class="bi bi-exclamation-triangle-fill text-xl"></i>
+            <span>@Localizer["ErrorOccurred"]</span>
+            <a href="." class="underline hover:no-underline">@Localizer["Reload"]</a>
+        </div>
+        <button class="text-white hover:text-gray-200 text-2xl" onclick="document.getElementById('blazor-error-ui').style.display='none'">&times;</button>
+    </div>
+</div>
+
+@code {
+    private UserDto currentUser = new();
+    private string? avatarUrl;
+    private string displayName = string.Empty;
+    private bool triedLoadAvatar = false;
+    private bool isSidebarOpen = false;
+    private bool isSidebarMinimized = false;
+    private bool isDarkMode = false;
+    private bool isAr => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("ar", StringComparison.OrdinalIgnoreCase);
+
+    // Multi-level nav: track per-group manual override of expansion.
+    // Default behavior: a group is open iff the current route is inside its prefix.
+    // Manual toggles persist until the next navigation, then reset.
+    private readonly HashSet<string> manuallyExpanded = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> manuallyCollapsed = new(StringComparer.OrdinalIgnoreCase);
+
+    private string CurrentRelative =>
+        Navigation.ToBaseRelativePath(Navigation.Uri).TrimEnd('/').ToLowerInvariant();
+
+    private bool IsActiveGroup(string prefix)
+    {
+        var rel = CurrentRelative;
+        prefix = prefix.Trim('/').ToLowerInvariant();
+        return rel == prefix || rel.StartsWith(prefix + "/", StringComparison.Ordinal);
+    }
+
+    private bool IsGroupOpen(string key, string prefix)
+    {
+        if (manuallyCollapsed.Contains(key)) return false;
+        if (manuallyExpanded.Contains(key)) return true;
+        return IsActiveGroup(prefix);
+    }
+
+    private void ToggleGroup(string key, string prefix)
+    {
+        var open = IsGroupOpen(key, prefix);
+        manuallyExpanded.Remove(key);
+        manuallyCollapsed.Remove(key);
+        if (open) manuallyCollapsed.Add(key);
+        else manuallyExpanded.Add(key);
+    }
+
+    private string GroupCss(string key, string prefix)
+    {
+        var open = IsGroupOpen(key, prefix);
+        var current = IsActiveGroup(prefix);
+        return $"sidebar-group{(open ? " is-open" : "")}{(current ? " is-current" : "")}";
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        manuallyExpanded.Clear();
+        manuallyCollapsed.Clear();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnBranchChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+        ActiveBranch.OnChanged -= OnBranchChanged;
+    }
+
+    private async Task ToggleDarkMode()
+    {
+        isDarkMode = !isDarkMode;
+        await JS.InvokeVoidAsync("AdminDarkMode.set", isDarkMode);
+    }
+
+    private void ToggleSidebarMobile() => isSidebarOpen = !isSidebarOpen;
+    private void ToggleMinimized() => isSidebarMinimized = !isSidebarMinimized;
+    private void CloseSidebar() => isSidebarOpen = false;
+
+    private void GoToBranchSelector() => Navigation.NavigateTo("/branch/select");
+
+    private string GetSidebarClasses()
+    {
+        var width = isSidebarMinimized ? "w-16 sidebar-mini" : "w-60";
+        var baseClasses = $"fixed top-16 {width} h-[calc(100vh-4rem)] bg-white shadow-sm border-e border-gray-200 overflow-y-auto transition-all duration-300 ease-in-out z-40";
+
+        return isSidebarOpen
+            ? $"{baseClasses} left-0 rtl:left-auto rtl:right-0 translate-x-0"
+            : $"{baseClasses} left-0 rtl:left-auto rtl:right-0 -translate-x-full rtl:translate-x-full lg:translate-x-0 lg:rtl:translate-x-0";
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+        ActiveBranch.OnChanged += OnBranchChanged;
+
+        try
+        {
+            await LoadUserInfoAsync();
+        }
+        catch
+        {
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                // Reuse the Admin dark-mode persistence key — branch managers
+                // see the same theme they last picked anywhere in the portal.
+                isDarkMode = await JS.InvokeAsync<bool>("AdminDarkMode.get");
+                if (isDarkMode) StateHasChanged();
+            }
+            catch { }
+        }
+
+        if (!triedLoadAvatar && string.IsNullOrEmpty(avatarUrl))
+        {
+            triedLoadAvatar = true;
+            try
+            {
+                await LoadUserInfoAsync();
+                StateHasChanged();
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    private async Task LoadUserInfoAsync()
+    {
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user.Identity?.IsAuthenticated == true)
+            {
+                var u = await AuthService.GetCurrentUserAsync();
+                if (u != null)
+                {
+                    currentUser = u;
+                    displayName = !string.IsNullOrEmpty(u.FirstName)
+                        ? $"{u.FirstName} {u.LastName}".Trim()
+                        : (!string.IsNullOrEmpty(u.DisplayName) ? u.DisplayName : u.Email ?? "Branch Manager");
+
+                    try
+                    {
+                        var mediaList = await MediaService.GetMediaForEntityAsync(u.Id, "User", "avatar");
+                        var avatar = mediaList.FirstOrDefault();
+                        if (avatar != null)
+                        {
+                            avatarUrl = MediaService.GetMediaUrl(avatar);
+                        }
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+        }
+        catch
+        {
+        }
+    }
+}

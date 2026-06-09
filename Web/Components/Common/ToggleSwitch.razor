@@ -1,0 +1,29 @@
+@using System.Linq.Expressions
+
+<label class="inline-flex items-center gap-3 cursor-pointer select-none @(Disabled ? "opacity-50 cursor-not-allowed" : "")">
+    <button type="button" role="switch" aria-checked="@Value.ToString().ToLower()"
+            disabled="@Disabled"
+            @onclick="Toggle"
+            class="relative inline-flex h-6 w-10 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 @(Value ? "bg-[var(--bf-primary)]" : "bg-gray-300")">
+        <span class="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm ring-0 transition-transform duration-200 ease-in-out @(Value ? "translate-x-4 rtl:-translate-x-4" : "translate-x-0")"></span>
+    </button>
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <span class="text-sm font-medium text-gray-700">@Label</span>
+    }
+</label>
+
+@code {
+    [Parameter] public bool Value { get; set; }
+    [Parameter] public EventCallback<bool> ValueChanged { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private async Task Toggle()
+    {
+        if (Disabled) return;
+        Value = !Value;
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

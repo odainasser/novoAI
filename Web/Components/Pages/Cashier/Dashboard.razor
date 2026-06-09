@@ -1,0 +1,16 @@
+@page "/cashier/dashboard"
+@layout CashierLayout
+@attribute [Authorize(Roles = Roles.Cashier)]
+@using Microsoft.AspNetCore.Authorization
+@using System.Globalization
+@inject NavigationManager Navigation
+
+<PageTitle>@Localizer["Dashboard"]</PageTitle>
+
+@code {
+    protected override void OnInitialized()
+    {
+        // Redirect to main POS page
+        Navigation.NavigateTo("/cashier", replace: true);
+    }
+}

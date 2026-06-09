@@ -1,0 +1,98 @@
+@using Web.Models.Orders
+@using System.Globalization
+
+<!-- Payment Methods -->
+<div class="grid grid-cols-3 gap-2 mb-3">
+    <button @onclick="() => OnPaymentMethodSelected.InvokeAsync(PaymentMethod.Cash)"
+            disabled="@(!HasActiveShift || !CartHasItems || IsProcessing)"
+            class="@GetPaymentButtonClass(PaymentMethod.Cash) flex flex-col items-center justify-center p-3 rounded-lg border-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+        <i class="bi bi-cash text-xl mb-1"></i>
+        <span class="text-xs font-medium">@Localizer["PayCash"]</span>
+    </button>
+    <button @onclick="() => OnPaymentMethodSelected.InvokeAsync(PaymentMethod.Card)"
+            disabled="@(!HasActiveShift || !CartHasItems || IsProcessing)"
+            class="@GetPaymentButtonClass(PaymentMethod.Card) flex flex-col items-center justify-center p-3 rounded-lg border-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+        <i class="bi bi-credit-card text-xl mb-1"></i>
+        <span class="text-xs font-medium">@Localizer["PayCard"]</span>
+    </button>
+    <button @onclick="() => OnPaymentMethodSelected.InvokeAsync(PaymentMethod.Split)"
+            disabled="@(!HasActiveShift || !CartHasItems || IsProcessing)"
+            class="@GetPaymentButtonClass(PaymentMethod.Split) flex flex-col items-center justify-center p-3 rounded-lg border-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+        <i class="bi bi-arrows-collapse text-xl mb-1"></i>
+        <span class="text-xs font-medium">@Localizer["SplitPayment"]</span>
+    </button>
+</div>
+
+@if (SelectedPaymentMethod == PaymentMethod.Split && CartHasItems)
+{
+    <div class="mb-3 p-3 bg-purple-50 border border-purple-200 rounded-lg space-y-2">
+        <p class="text-xs font-semibold text-purple-700">@Localizer["SplitPaymentAmounts"]</p>
+        <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-600 w-16">@Localizer["Cash"]</label>
+            <input type="number" min="0" step="0.01" max="@Total"
+                   value="@SplitCashAmount.ToString(CultureInfo.InvariantCulture)" @oninput="e => OnSplitCashChanged.InvokeAsync(e.Value?.ToString())"
+                   class="flex-1 border border-gray-300 rounded px-2 py-1 text-sm focus:ring-1 focus:ring-purple-400 focus:border-purple-400" />
+            <span class="text-xs text-gray-500">@Localizer["CurrencyUnit"]</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-600 w-16">@Localizer["Card"]</label>
+            <input type="number" min="0" step="0.01" max="@Total"
+                   value="@SplitCardAmount.ToString(CultureInfo.InvariantCulture)" @oninput="e => OnSplitCardChanged.InvokeAsync(e.Value?.ToString())"
+                   class="flex-1 border border-gray-300 rounded px-2 py-1 text-sm focus:ring-1 focus:ring-blue-400 focus:border-blue-400" />
+            <span class="text-xs text-gray-500">@Localizer["CurrencyUnit"]</span>
+        </div>
+        @if (Math.Abs(SplitCashAmount + SplitCardAmount - Total) > 0.01m)
+        {
+            <p class="text-xs text-red-600">@Localizer["SplitAmountsMustEqualTotal"] (@Total.ToString("N2", CultureInfo) @Localizer["CurrencyUnit"])</p>
+        }
+    </div>
+}
+
+<button @onclick="OnConfirmPayment"
+        disabled="@(!HasActiveShift || !CartHasItems || IsProcessing || SelectedPaymentMethod == null || (SelectedPaymentMethod == PaymentMethod.Split && Math.Abs(SplitCashAmount + SplitCardAmount - Total) > 0.01m))"
+        class="w-full py-4 bg-bf-primary text-bf-primary-contrast rounded-lg font-bold text-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2">
+    @if (IsProcessing)
+    {
+        <Spinner Size="Spinner.SpinnerSize.Sm" />
+        <span>@Localizer["Processing"]</span>
+    }
+    else
+    {
+        <i class="bi bi-receipt"></i>
+        <span>@Localizer["CompleteSale"]</span>
+    }
+</button>
+
+@code {
+    [Parameter] public decimal Total { get; set; }
+    [Parameter] public bool IsProcessing { get; set; }
+    [Parameter] public bool CartHasItems { get; set; }
+    [Parameter] public bool HasActiveShift { get; set; } = true;
+    [Parameter] public PaymentMethod? SelectedPaymentMethod { get; set; }
+    [Parameter] public decimal SplitCashAmount { get; set; }
+    [Parameter] public decimal SplitCardAmount { get; set; }
+    [Parameter] public CultureInfo CultureInfo { get; set; } = default!;
+
+    [Parameter] public EventCallback<PaymentMethod> OnPaymentMethodSelected { get; set; }
+    [Parameter] public EventCallback<string> OnSplitCashChanged { get; set; }
+    [Parameter] public EventCallback<string> OnSplitCardChanged { get; set; }
+    [Parameter] public EventCallback OnConfirmPayment { get; set; }
+
+    private string GetPaymentButtonClass(PaymentMethod method)
+    {
+        bool isSelected = SelectedPaymentMethod == method;
+        return method switch
+        {
+            PaymentMethod.Cash => isSelected
+                ? "border-green-600 bg-green-500 text-white"
+                : "border-green-500 text-green-600 hover:bg-green-50",
+            PaymentMethod.Card => isSelected
+                ? "border-blue-600 bg-blue-500 text-white"
+                : "border-blue-500 text-blue-600 hover:bg-blue-50",
+            PaymentMethod.Split => isSelected
+                ? "border-purple-600 bg-purple-500 text-white"
+                : "border-purple-500 text-purple-600 hover:bg-purple-50",
+            _ => "border-gray-300 text-gray-600"
+        };
+    }
+}

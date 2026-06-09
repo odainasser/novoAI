@@ -1,0 +1,206 @@
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Web.Models.Enums
+@using Web.Models.Notifications
+@inject INotificationClientService Notifications
+@inject NavigationManager Navigation
+@implements IAsyncDisposable
+
+<AuthorizeView>
+    <Authorized>
+        <Dropdown Alignment="right" ToggleCss="header-icon-btn relative" ToggleStyle="background: transparent; border: none;" MenuClass="bf-dropdown-white" MenuStyle="width: 380px; max-height: 480px;">
+            <ToggleContent>
+                <i class="bi bi-bell text-xl"></i>
+                @if (unreadCount > 0)
+                {
+                    <span class="absolute -top-0.5 -end-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold bg-red-500 text-white">
+                        @(unreadCount > 99 ? "99+" : unreadCount.ToString())
+                    </span>
+                }
+            </ToggleContent>
+            <ChildContent>
+                <div class="px-4 py-3 bg-gradient-to-br from-gray-50 to-white border-b border-gray-100 flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-semibold text-gray-900">@Localizer["Notifications"]</p>
+                        <p class="text-xs text-gray-500">
+                            @(unreadCount == 0 ? Localizer["NoUnreadNotifications"] : string.Format(Localizer["UnreadNotificationsCount"], unreadCount))
+                        </p>
+                    </div>
+                </div>
+                <div class="overflow-y-auto" style="max-height: 360px;">
+                    @if (isLoading)
+                    {
+                        <Spinner Size="Spinner.SpinnerSize.Md" Centered="true" />
+                    }
+                    else if (items.Count == 0)
+                    {
+                        <div class="p-8 text-center">
+                            <div class="h-12 w-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                <i class="bi bi-bell-slash text-gray-400 text-xl"></i>
+                            </div>
+                            <p class="text-gray-500 text-sm">@Localizer["NoNotifications"]</p>
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var n in items)
+                        {
+                            var title = isAr && !string.IsNullOrEmpty(n.TitleAr) ? n.TitleAr : n.TitleEn;
+                            var body = isAr && !string.IsNullOrEmpty(n.BodyAr) ? n.BodyAr : n.BodyEn;
+                            <div class="@($"flex gap-3 px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer {(n.IsRead ? string.Empty : "bg-emerald-50/40")}")"
+                                 @onclick="() => OnItemClick(n)">
+                                <div class="shrink-0 mt-1">
+                                    <span class="@($"flex h-2 w-2 rounded-full {(n.IsRead ? "bg-gray-300" : "bg-emerald-500")}")"></span>
+                                </div>
+                                <div class="grow min-w-0">
+                                    <div class="flex items-baseline justify-between gap-2">
+                                        <p class="text-sm font-semibold text-gray-900 truncate">@title</p>
+                                        <span class="text-[11px] text-gray-400 whitespace-nowrap shrink-0">@FormatRelativeTime(n.CreatedAt)</span>
+                                    </div>
+                                    <p class="text-xs text-gray-600 mt-0.5 line-clamp-2">@body</p>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+                <div class="px-4 py-2 border-t border-gray-100 bg-gray-50 text-center">
+                    <button type="button"
+                            class="text-xs font-medium text-bf-primary hover:underline"
+                            @onclick="GoToAllNotifications">
+                        @Localizer["ViewAllNotifications"]
+                    </button>
+                </div>
+            </ChildContent>
+        </Dropdown>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private int unreadCount = 0;
+    private bool isLoading = false;
+    private List<NotificationDto> items = new();
+    private bool initialized = false;
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+
+    private bool isAr => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthStateTask != null)
+        {
+            var state = await AuthStateTask;
+            if (state.User.Identity?.IsAuthenticated == true)
+            {
+                await InitializeAsync();
+            }
+        }
+        else
+        {
+            await InitializeAsync();
+        }
+    }
+
+    private async Task InitializeAsync()
+    {
+        if (initialized) return;
+        initialized = true;
+
+        Notifications.NotificationReceived += HandleNotificationReceivedAsync;
+        Notifications.UnreadCountChanged += HandleUnreadCountChangedAsync;
+
+        await Notifications.StartAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        StateHasChanged();
+        try
+        {
+            var page = await Notifications.GetAsync(1, 10);
+            items = page.Items;
+            unreadCount = await Notifications.GetUnreadCountAsync();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private Task HandleNotificationReceivedAsync(NotificationDto dto)
+    {
+        items.Insert(0, dto);
+        if (items.Count > 10) items.RemoveAt(items.Count - 1);
+        InvokeAsync(StateHasChanged);
+        return Task.CompletedTask;
+    }
+
+    private Task HandleUnreadCountChangedAsync(int count)
+    {
+        unreadCount = count;
+        InvokeAsync(StateHasChanged);
+        return Task.CompletedTask;
+    }
+
+    private async Task OnItemClick(NotificationDto n)
+    {
+        if (!n.IsRead)
+        {
+            await Notifications.MarkReadAsync(n.Id);
+            n.IsRead = true;
+            n.ReadAt = DateTime.UtcNow;
+        }
+        if (!string.IsNullOrEmpty(n.Link) && CanFollowLink(n.Link!))
+        {
+            Navigation.NavigateTo(n.Link!);
+        }
+    }
+
+    private bool CanFollowLink(string link)
+    {
+        var relative = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var isCashierPanel = relative.StartsWith("cashier", StringComparison.OrdinalIgnoreCase);
+        if (isCashierPanel && link.StartsWith("/admin", StringComparison.OrdinalIgnoreCase))
+            return false;
+        return true;
+    }
+
+    private void GoToAllNotifications()
+    {
+        var relative = Navigation.ToBaseRelativePath(Navigation.Uri);
+        string target;
+        if (relative.StartsWith("cashier", StringComparison.OrdinalIgnoreCase))
+        {
+            target = "/cashier/notifications";
+        }
+        else if (relative.StartsWith("branch", StringComparison.OrdinalIgnoreCase))
+        {
+            target = "/branch/notifications";
+        }
+        else
+        {
+            target = "/admin/notifications";
+        }
+        Navigation.NavigateTo(target);
+    }
+
+    private string FormatRelativeTime(DateTime utcTime)
+    {
+        var diff = DateTime.UtcNow - utcTime;
+        if (diff.TotalMinutes < 1) return Localizer["JustNow"];
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}{Localizer["MinAgo"]}";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}{Localizer["HrAgo"]}";
+        if (diff.TotalDays < 7) return $"{(int)diff.TotalDays}{Localizer["DayAgo"]}";
+        return utcTime.ToLocal().ToString("MMM dd");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Notifications.NotificationReceived -= HandleNotificationReceivedAsync;
+        Notifications.UnreadCountChanged -= HandleUnreadCountChangedAsync;
+        await Notifications.StopAsync();
+    }
+}

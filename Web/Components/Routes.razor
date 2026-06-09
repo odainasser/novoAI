@@ -1,0 +1,40 @@
+﻿@using Web.Components.Layout
+@using Microsoft.AspNetCore.Components
+
+<CascadingAuthenticationState>
+    <Router AppAssembly="typeof(Program).Assembly" AdditionalAssemblies="new[] { typeof(Web.Components._Imports).Assembly }">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="routeData" DefaultLayout="@GetLayout(routeData)">
+                <NotAuthorized>
+                    <RedirectToLogin />
+                </NotAuthorized>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(PublicLayout)">
+                <Web.Components.Pages.Public.NotFound />
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>
+
+@code {
+    private Type GetLayout(RouteData routeData)
+    {
+        var pageType = routeData?.PageType;
+        var ns = pageType?.Namespace ?? string.Empty;
+
+        if (ns.Contains(".Pages.Public", StringComparison.OrdinalIgnoreCase))
+            return typeof(PublicLayout);
+
+        if (ns.Contains(".Pages.Cashier", StringComparison.OrdinalIgnoreCase))
+            return typeof(CashierLayout);
+
+        if (ns.Contains(".Pages.Admin", StringComparison.OrdinalIgnoreCase))
+            return typeof(AdminLayout);
+
+        // Fallback
+        return typeof(AdminLayout);
+    }
+}

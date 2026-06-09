@@ -1,0 +1,44 @@
+@using System.Globalization
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+
+@{
+    var currentCulture = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.ToLowerInvariant();
+    var trackCss = Dark
+        ? "bg-white/15 border border-white/25"
+        : "bg-gray-100 border border-gray-200";
+    string SegCss(bool active) => active
+        ? (Dark ? "bg-white text-[var(--bf-primary-dark)] shadow-sm" : "bg-[var(--bf-primary)] text-white shadow-sm")
+        : (Dark ? "text-white/80 hover:text-white" : "text-gray-600 hover:text-gray-900");
+}
+
+<div class="inline-flex items-center rounded-lg p-0.5 @trackCss" role="group" aria-label="Language">
+    <button type="button"
+            class="px-2.5 py-1 text-xs font-semibold rounded-md transition-colors duration-150 @SegCss(currentCulture == "en")"
+            @onclick="@(async () => await SetCulture("en"))">
+        EN
+    </button>
+    <button type="button"
+            class="px-2.5 py-1 text-sm font-semibold rounded-md transition-colors duration-150 @SegCss(currentCulture == "ar")"
+            @onclick="@(async () => await SetCulture("ar"))">
+        &#1593;
+    </button>
+</div>
+
+@code {
+    [Parameter]
+    public bool Dark { get; set; }
+
+    private async Task SetCulture(string culture)
+    {
+        if (culture == CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.ToLowerInvariant())
+            return;
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("setCultureCookie", culture);
+            Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
+        }
+        catch { }
+    }
+}

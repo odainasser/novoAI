@@ -1,0 +1,244 @@
+@inherits LayoutComponentBase
+@attribute [Authorize]
+@implements IDisposable
+@using Microsoft.AspNetCore.Authorization
+@using System.Globalization
+@using Web.Components.Common
+@inject IAuthenticationService AuthService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IMediaService MediaService
+@inject IJSRuntime JS
+
+@* Full-screen layout used while the branch manager is picking which branch to open.
+   No sidebar, no branch chip — those don't make sense before a branch is selected.
+   Shows just the brand bar (logo, language, dark mode, account dropdown) and a
+   centered body area on a gray-50 background. *@
+<div class="min-h-screen flex flex-col bg-gray-50" data-theme="@(isDarkMode ? "dark" : "light")">
+    <!-- Top Brand Bar -->
+    <nav class="portal-header h-16 border-b border-white/10 bg-[var(--bf-header-bg)] flex-shrink-0">
+        <div class="px-4 lg:px-6 h-full">
+            <div class="flex justify-between items-center h-full">
+                <!-- Left: Logo -->
+                <div class="flex items-center gap-2">
+                    <a href="/branch/select" class="flex items-center gap-2.5">
+                        <img src="/logo.png" alt="Logo" class="h-9 w-auto" />
+                    </a>
+                </div>
+
+                <!-- Right: Actions + User Menu -->
+                <div class="flex items-center gap-1 sm:gap-1.5">
+                    <button @onclick="ToggleDarkMode"
+                            class="header-icon-btn"
+                            title="@(isDarkMode ? Localizer["LightMode"] : Localizer["DarkMode"])">
+                        <i class="bi @(isDarkMode ? "bi-sun-fill" : "bi-moon-stars-fill") text-xl"></i>
+                    </button>
+
+                    <div class="header-separator hidden sm:block"></div>
+
+                    <LanguageSelector Dark="false" />
+
+                    <div class="header-separator"></div>
+
+                    <AuthorizeView Context="auth">
+                        <Authorized>
+                            @if (auth.User.Identity?.IsAuthenticated == true)
+                            {
+                                <Dropdown Alignment="right" ToggleCss="bf-dropdown-toggle bf-dropdown-compact !text-white !border-0 !px-2 !py-1.5 !rounded-xl" ToggleStyle="">
+                                    <ToggleContent>
+                                        <div class="flex items-center gap-2.5 group cursor-pointer">
+                                            @if (!string.IsNullOrEmpty(avatarUrl))
+                                            {
+                                                <img src="@avatarUrl" alt="User avatar" class="h-9 w-9 rounded-full object-cover ring-2 ring-white/50 transition-all duration-200 group-hover:ring-white/80 group-hover:scale-105" />
+                                            }
+                                            else
+                                            {
+                                                <div class="h-9 w-9 rounded-full flex items-center justify-center text-white text-sm font-bold bg-white/20 ring-2 ring-white/30 transition-all duration-200 group-hover:bg-white/30 group-hover:ring-white/50 group-hover:scale-105">
+                                                    @(displayName.Length > 0 ? displayName[0].ToString().ToUpper() : "B")
+                                                </div>
+                                            }
+                                            <div class="hidden sm:block text-left">
+                                                <p class="text-sm font-semibold text-white leading-tight tracking-tight">@displayName</p>
+                                                <p class="text-[11px] text-white/60 font-medium">@Localizer["BranchManager"]</p>
+                                            </div>
+                                            <i class="bi bi-chevron-down text-[10px] text-white/50 transition-transform duration-200"></i>
+                                        </div>
+                                    </ToggleContent>
+                                    <ChildContent>
+                                        <div class="px-4 py-3 bg-gradient-to-br from-gray-50 to-white border-b border-gray-100">
+                                            <div class="flex items-center gap-3">
+                                                @if (!string.IsNullOrEmpty(avatarUrl))
+                                                {
+                                                    <img src="@avatarUrl" alt="" class="h-10 w-10 rounded-full object-cover ring-1 ring-gray-200" />
+                                                }
+                                                else
+                                                {
+                                                    <div class="h-10 w-10 rounded-full flex items-center justify-center text-white text-sm font-bold bg-[var(--bf-primary)]">
+                                                        @(displayName.Length > 0 ? displayName[0].ToString().ToUpper() : "B")
+                                                    </div>
+                                                }
+                                                <div class="min-w-0">
+                                                    <p class="text-sm font-semibold text-gray-900 truncate">@displayName</p>
+                                                    <p class="text-xs text-gray-500 truncate">@currentUser?.Email</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="py-1">
+                                            <a href="/branch/account" class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150">
+                                                <i class="bi bi-person-circle text-gray-400"></i>
+                                                <span>@Localizer["MyProfile"]</span>
+                                            </a>
+                                        </div>
+                                        <div class="border-t border-gray-100"></div>
+                                        <div class="py-1">
+                                            <button @onclick='() => Navigation.NavigateTo("/logout", true)'
+                                                    class="w-full flex items-center gap-3 px-4 py-2.5 text-sm !text-red-600 hover:!bg-red-50 transition-colors duration-150">
+                                                <i class="bi bi-box-arrow-right rtl:rotate-180 text-red-400"></i>
+                                                <span>@Localizer["SignOut"]</span>
+                                            </button>
+                                        </div>
+                                    </ChildContent>
+                                </Dropdown>
+                            }
+                        </Authorized>
+                    </AuthorizeView>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Body -->
+    <main class="flex-1 flex flex-col">
+        <div class="p-4 lg:p-6 flex-1 bg-gray-50">
+            @Body
+        </div>
+    </main>
+</div>
+
+<div id="blazor-error-ui" class="fixed bottom-0 left-0 right-0 bg-red-600 text-white p-4 shadow-lg hidden" data-nosnippet>
+    <div class="flex items-center justify-between max-w-7xl mx-auto">
+        <div class="flex items-center gap-3">
+            <i class="bi bi-exclamation-triangle-fill text-xl"></i>
+            <span>@Localizer["ErrorOccurred"]</span>
+            <a href="." class="underline hover:no-underline">@Localizer["Reload"]</a>
+        </div>
+        <button class="text-white hover:text-gray-200 text-2xl" onclick="document.getElementById('blazor-error-ui').style.display='none'">&times;</button>
+    </div>
+</div>
+
+@code {
+    private UserDto currentUser = new();
+    private string? avatarUrl;
+    private string displayName = string.Empty;
+    private bool triedLoadAvatar = false;
+    private bool isDarkMode = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadUserInfoAsync();
+        }
+        catch
+        {
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                isDarkMode = await JS.InvokeAsync<bool>("AdminDarkMode.get");
+                await ApplyDarkThemeToRoot();
+                if (isDarkMode) StateHasChanged();
+            }
+            catch { }
+        }
+
+        if (!triedLoadAvatar && string.IsNullOrEmpty(avatarUrl))
+        {
+            triedLoadAvatar = true;
+            try
+            {
+                await LoadUserInfoAsync();
+                StateHasChanged();
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    private async Task ToggleDarkMode()
+    {
+        isDarkMode = !isDarkMode;
+        await JS.InvokeVoidAsync("AdminDarkMode.set", isDarkMode);
+        await ApplyDarkThemeToRoot();
+    }
+
+    // Mirror the layout's data-theme onto <html> so the document background
+    // (and any chrome outside the layout's reach) tracks dark mode immediately,
+    // without relying on the CSS :has() selector. Cleared on Dispose so other
+    // layouts re-apply their own theme.
+    private async Task ApplyDarkThemeToRoot()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("eval",
+                $"document.documentElement.setAttribute('data-theme', '{(isDarkMode ? "dark" : "light")}');" +
+                $"document.body.style.backgroundColor = '{(isDarkMode ? "#0f172a" : "")}';");
+        }
+        catch { }
+    }
+
+    private async Task LoadUserInfoAsync()
+    {
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user.Identity?.IsAuthenticated == true)
+            {
+                var u = await AuthService.GetCurrentUserAsync();
+                if (u != null)
+                {
+                    currentUser = u;
+                    displayName = !string.IsNullOrEmpty(u.FirstName)
+                        ? $"{u.FirstName} {u.LastName}".Trim()
+                        : (!string.IsNullOrEmpty(u.DisplayName) ? u.DisplayName : u.Email ?? "Branch Manager");
+
+                    try
+                    {
+                        var mediaList = await MediaService.GetMediaForEntityAsync(u.Id, "User", "avatar");
+                        var avatar = mediaList.FirstOrDefault();
+                        if (avatar != null)
+                        {
+                            avatarUrl = MediaService.GetMediaUrl(avatar);
+                        }
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+        }
+        catch
+        {
+        }
+    }
+
+    public void Dispose()
+    {
+        // Clear the document-root theme stamp so the next layout (BranchLayout /
+        // AdminLayout / login) applies its own value cleanly.
+        try
+        {
+            _ = JS.InvokeVoidAsync("eval",
+                "document.documentElement.removeAttribute('data-theme'); document.body.style.backgroundColor = '';");
+        }
+        catch { }
+    }
+}

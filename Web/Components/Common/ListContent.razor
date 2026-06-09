@@ -1,0 +1,59 @@
+@inject IJsonStringLocalizer Localizer
+
+@*
+    Centralizes the loading / error / empty / data 4-branch pattern that
+    every list page reimplements inline. The page passes:
+
+    - IsLoading: bool
+    - ErrorMessage: string?
+    - IsEmpty: bool — usually `items.Count == 0`
+    - ChildContent: the table (or grid, or list) to render when there IS data
+    - EmptyMessage: text shown in the empty state (defaults to "No data found")
+    - EmptyIcon: bootstrap icon name without the bi- prefix (default "inbox")
+    - PreContent: optional render fragment shown ABOVE the branches — used
+      by pages that want a "Branch not selected" warning to show even while
+      data is technically empty.
+
+    Usage:
+        <ListContent IsLoading="isLoading"
+                     ErrorMessage="@errorMessage"
+                     IsEmpty="!items.Any()"
+                     EmptyMessage="@Localizer[\"NoOrdersFound\"]">
+            <table>...</table>
+        </ListContent>
+*@
+
+@if (PreContent is not null)
+{
+    @PreContent
+}
+
+@if (IsLoading)
+{
+    <Spinner Size="Spinner.SpinnerSize.Lg" Centered="true" />
+}
+else if (!string.IsNullOrEmpty(ErrorMessage))
+{
+    <Alert Type="Alert.AlertType.Error" Message="@ErrorMessage" Dismissible="false" />
+}
+else if (IsEmpty)
+{
+    <EmptyState Icon="@EmptyIcon" Message="@ResolvedEmptyMessage" />
+}
+else
+{
+    @ChildContent
+}
+
+@code {
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+    [Parameter] public bool IsEmpty { get; set; }
+    [Parameter] public string EmptyIcon { get; set; } = "inbox";
+    [Parameter] public string? EmptyMessage { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? PreContent { get; set; }
+
+    private string ResolvedEmptyMessage =>
+        !string.IsNullOrEmpty(EmptyMessage) ? EmptyMessage : Localizer["NoDataFound"];
+}

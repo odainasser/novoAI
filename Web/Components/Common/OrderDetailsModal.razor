@@ -1,0 +1,306 @@
+@using Web.Models.Orders
+@using Web.Models.Enums
+@inject IJsonStringLocalizer Localizer
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Authorization
+
+@if (IsVisible && Order != null)
+{
+    var currentCulture = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.ToLowerInvariant();
+    var isAr = currentCulture == "ar";
+    var cultureInfo = isAr ? new CultureInfo("ar-AE") : new CultureInfo("en-AE");
+
+    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center" @onclick="HandleBackgroundClick">
+        <div class="bg-white rounded-xl shadow-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col" @onclick:stopPropagation>
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 flex-shrink-0">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">@Localizer["OrderDetails"]</h3>
+                    <p class="text-sm text-gray-500 font-mono">@Order.OrderNumber</p>
+                </div>
+                <button @onclick="Close" class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <div class="px-5 py-4 overflow-y-auto flex-1">
+                <div class="grid grid-cols-2 gap-3 mb-5">
+                <div class="p-3 bg-gray-50 rounded-lg">
+                    <p class="text-xs text-gray-500 uppercase font-medium">@Localizer["Status"]</p>
+                    <span class="px-2 py-1 text-xs font-medium rounded-full @GetStatusClass(Order.Status)">
+                        @GetStatusText(Order.Status)
+                    </span>
+                </div>
+                <div class="p-3 bg-gray-50 rounded-lg">
+                    <p class="text-xs text-gray-500 uppercase font-medium">@Localizer["PaymentMethod"]</p>
+                    <span class="font-medium text-sm">@GetPaymentMethodText(Order.PaymentMethod)</span>
+                    @if (Order.PaymentMethod == PaymentMethod.Split)
+                    {
+                        <div class="mt-1 space-y-0.5">
+                            @if (Order.CashAmount.HasValue)
+                            {
+                                <div class="flex items-center gap-1 text-xs text-green-700">
+                                    <i class="bi bi-cash"></i>
+                                    <span>@Localizer["Cash"]: @Order.CashAmount.Value.ToString("N2", cultureInfo) @Localizer["CurrencyUnit"]</span>
+                                </div>
+                            }
+                            @if (Order.CardAmount.HasValue)
+                            {
+                                <div class="flex items-center gap-1 text-xs text-blue-700">
+                                    <i class="bi bi-credit-card"></i>
+                                    <span>@Localizer["Card"]: @Order.CardAmount.Value.ToString("N2", cultureInfo) @Localizer["CurrencyUnit"]</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+                <div class="p-3 bg-gray-50 rounded-lg">
+                    <p class="text-xs text-gray-500 uppercase font-medium">@Localizer["Store"]</p>
+                    @if (!string.IsNullOrEmpty(isAr ? Order.WarehouseNameAr : Order.WarehouseNameEn))
+                    {
+                        <span class="font-medium text-sm">@(isAr ? Order.WarehouseNameAr : Order.WarehouseNameEn)</span>
+                    }
+                    else
+                    {
+                        <span class="font-medium text-sm">-</span>
+                    }
+                </div>
+                @if (!hideCashierInfo)
+                {
+                    <div class="p-3 bg-gray-50 rounded-lg">
+                        <p class="text-xs text-gray-500 uppercase font-medium">@Localizer["Cashier"]</p>
+                        @if (Order.CashierId.HasValue && !string.IsNullOrEmpty(Order.CashierName))
+                        {
+                            <a href="/admin/users/edit/@Order.CashierId" class="font-medium text-sm text-bf-primary hover:underline">@Order.CashierName</a>
+                        }
+                        else
+                        {
+                            <span class="font-medium text-sm">-</span>
+                        }
+                    </div>
+                }
+                <div class="p-3 bg-gray-50 rounded-lg">
+                    <p class="text-xs text-gray-500 uppercase font-medium">@Localizer["OrderDate"]</p>
+                    <span class="font-medium text-sm">@Order.CreatedAt.ToLocal().ToString("g", cultureInfo)</span>
+                </div>
+
+                @if (Order.Status == OrderStatus.Refunded || Order.Status == OrderStatus.PartialRefunded)
+                {
+                    <div class="p-3 bg-gray-50 rounded-lg">
+                        <p class="text-xs text-gray-500 uppercase font-medium">@Localizer["RefundedAt"]</p>
+                        <span class="font-medium text-sm">@(Order.CancelledAt.HasValue ? Order.CancelledAt.Value.ToLocal().ToString("g", cultureInfo) : "-")</span>
+                    </div>
+                }
+                else if (Order.CompletedAt.HasValue)
+                {
+                    <div class="p-3 bg-gray-50 rounded-lg">
+                        <p class="text-xs text-gray-500 uppercase font-medium">@Localizer["CompletedAt"]</p>
+                        <span class="font-medium text-sm">@Order.CompletedAt.Value.ToLocal().ToString("g", cultureInfo)</span>
+                    </div>
+                }
+                </div>
+
+                <h4 class="text-sm font-semibold text-gray-900 mb-3">@Localizer["OrderItems"]</h4>
+                <div class="border border-gray-200 rounded-lg overflow-hidden mb-5">
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                        <tr>
+                            <th class="text-start py-3 px-4 text-xs font-medium text-gray-500 uppercase">@Localizer["Product"]</th>
+                            <th class="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">@Localizer["Unit"]</th>
+                            <th class="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">@Localizer["Quantity"]</th>
+                            <th class="text-end py-3 px-4 text-xs font-medium text-gray-500 uppercase">@Localizer["Price"]</th>
+                            <th class="text-end py-3 px-4 text-xs font-medium text-gray-500 uppercase">@Localizer["Total"]</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @foreach (var item in Order.Items)
+                        {
+                            var refundedQty = Order.Refunds?.SelectMany(r => r.Items).Where(ri => ri.OrderItemId == item.Id).Sum(ri => ri.Quantity) ?? 0;
+                            <tr class="hover:bg-gray-50">
+                                <td class="py-3 px-4">
+                                    <div>
+                                        <p class="font-medium text-sm text-gray-900">@(isAr ? item.ProductNameAr : item.ProductNameEn)</p>
+                                        <p class="text-xs text-gray-500 font-mono">@item.ProductCode</p>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-center text-sm text-gray-600">
+                                    @if (!string.IsNullOrEmpty(isAr ? item.UnitNameAr : item.UnitNameEn))
+                                    {
+                                        <span>@(isAr ? item.UnitNameAr : item.UnitNameEn)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-gray-400">-</span>
+                                    }
+                                </td>
+                                <td class="py-3 px-4 text-center text-sm text-gray-600">
+                                    <div>@item.Quantity</div>
+                                    @if (refundedQty > 0)
+                                    {
+                                        <div class="text-xs text-red-600">@Localizer["Refunded"]: @refundedQty</div>
+                                    }
+                                </td>
+                                <td class="py-3 px-4 text-end text-sm text-gray-600">@item.UnitPrice.ToString("N2", cultureInfo) @Localizer["CurrencyUnit"]</td>
+                                <td class="py-3 px-4 text-end text-sm font-medium text-gray-900">@item.Total.ToString("N2", cultureInfo) @Localizer["CurrencyUnit"]</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="space-y-2 border-t border-gray-200 pt-4">
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-500">@Localizer["Subtotal"]</span>
+                    <span class="text-gray-900">@Order.Subtotal.ToString("N2", cultureInfo) @Localizer["CurrencyUnit"]</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-500">@Localizer["VAT"] (@(Order.VatRate * 100)%)</span>
+                    <span class="text-gray-900">@Order.VatAmount.ToString("N2", cultureInfo) @Localizer["CurrencyUnit"]</span>
+                </div>
+                @if (Order.Refunds != null && Order.Refunds.Any())
+                {
+                    <div class="flex justify-between text-sm text-red-600">
+                        <span>@Localizer["Refunds"]</span>
+                        <span class="font-semibold">-@Order.Refunds.Sum(r => r.Amount).ToString("N2", cultureInfo) @Localizer["CurrencyUnit"]</span>
+                    </div>
+                }
+                <div class="flex justify-between text-lg font-bold pt-2 border-t border-gray-100">
+                    <span class="text-gray-900">@Localizer["Total"]</span>
+                    <span class="text-bf-primary">@Order.Total.ToString("N2", cultureInfo) @Localizer["CurrencyUnit"]</span>
+                </div>
+            </div>
+
+            @if (Order.Refunds != null && Order.Refunds.Any())
+            {
+                <div class="mt-6">
+                    <h4 class="font-semibold mb-3 text-gray-900 flex items-center gap-2">
+                        <i class="bi bi-arrow-counterclockwise text-red-500"></i>
+                        @Localizer["Refunds"] (@Order.Refunds.Count)
+                    </h4>
+                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="text-start py-3 px-4 text-xs font-medium text-gray-500 uppercase">@Localizer["RefundDate"]</th>
+                                    <th class="text-end py-3 px-4 text-xs font-medium text-gray-500 uppercase">@Localizer["RefundAmount"]</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                @foreach (var r in Order.Refunds.OrderByDescending(x => x.CreatedAt))
+                                {
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="py-3 px-4 text-sm text-gray-600">@r.CreatedAt.ToLocal().ToString("g", cultureInfo)</td>
+                                        <td class="py-3 px-4 text-sm font-semibold text-end text-red-600">@r.Amount.ToString("N2", cultureInfo) @Localizer["CurrencyUnit"]</td>
+                                    </tr>
+                                    @if (r.Items.Any())
+                                    {
+                                        <tr>
+                                            <td colspan="3" class="px-4 pb-3 pt-0">
+                                                <div class="ms-4 border-s-2 border-red-200 ps-3">
+                                                    <p class="text-xs font-medium text-gray-500 uppercase mb-1">@Localizer["RefundedItems"]</p>
+                                                    @foreach (var ri in r.Items)
+                                                    {
+                                                        var product = Order.Items.FirstOrDefault(i => i.Id == ri.OrderItemId);
+                                                        var productName = product != null ? (isAr ? product.ProductNameAr : product.ProductNameEn) : "";
+                                                        <div class="flex justify-between items-center text-xs text-gray-600 py-0.5">
+                                                            <div>
+                                                                <span>@productName</span>
+                                                                @if (product != null)
+                                                                {
+                                                                    <span class="text-gray-400 ms-1">(@Localizer["Quantity"]: @product.Quantity &middot; @Localizer["Price"]: @product.UnitPrice.ToString("N2", cultureInfo) @Localizer["CurrencyUnit"])</span>
+                                                                }
+                                                            </div>
+                                                            <div class="text-end flex-shrink-0 ms-2">
+                                                                    <span class="text-red-600">@ri.Total.ToString("N2", cultureInfo) @Localizer["CurrencyUnit"]</span>
+                                                                </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+
+            </div>
+
+            <div class="flex items-center justify-end px-5 py-4 border-t border-gray-200 flex-shrink-0">
+                <button @onclick="Close" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">@Localizer["Close"]</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public OrderDto? Order { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private bool hideCashierInfo = false;
+    [CascadingParameter] public Task<AuthenticationState> AuthenticationStateTask { get; set; } = null!;
+
+    private void Close()
+    {
+        OnClose.InvokeAsync();
+    }
+
+    private void HandleBackgroundClick()
+    {
+        Close();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Determine if current user is in role 'Cashier' and hide cashier info in that case
+        try
+        {
+            if (AuthenticationStateTask != null)
+            {
+                var authState = await AuthenticationStateTask;
+                var user = authState.User;
+                if (user?.Identity?.IsAuthenticated == true)
+                {
+                    // Check role claim or IsInRole (works for typical setups)
+                    hideCashierInfo = user.IsInRole("Cashier") || user.HasClaim(c => c.Type == "role" && c.Value == "Cashier");
+                }
+                else
+                {
+                    hideCashierInfo = false;
+                }
+            }
+        }
+        catch
+        {
+            hideCashierInfo = false;
+        }
+    }
+
+    private string GetStatusClass(OrderStatus status) => status switch
+    {
+        OrderStatus.Completed => "bf-bg-success-100 bf-text-success",
+        OrderStatus.Refunded => "bf-bg-danger-100 bf-text-danger",
+        OrderStatus.PartialRefunded => "bf-bg-info-100 bf-text-info",
+        _ => "bg-gray-100 text-gray-800"
+    };
+
+    private string GetStatusText(OrderStatus status) => status switch
+    {
+        OrderStatus.Completed => Localizer["StatusCompleted"],
+        OrderStatus.Refunded => Localizer["StatusRefunded"],
+        OrderStatus.PartialRefunded => Localizer["StatusPartialRefunded"],
+        _ => status.ToString()
+    };
+
+    private string GetPaymentMethodText(PaymentMethod method) => method switch
+    {
+        PaymentMethod.Cash => Localizer["PaymentCash"],
+        PaymentMethod.Card => Localizer["PaymentCard"],
+        PaymentMethod.Mobile => Localizer["PaymentMobile"],
+        PaymentMethod.Split => Localizer["SplitPayment"],
+        _ => method.ToString()
+    };
+
+
+}

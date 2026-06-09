@@ -1,0 +1,285 @@
+@using Microsoft.AspNetCore.Authorization
+@using Web.Authorization
+@using Web.Components.Common
+@using System.Globalization
+@inject IInventoryHistoryClientService InventoryHistoryService
+@inject IWarehouseService WarehouseService
+@inject NavigationManager Navigation
+@inject IJsonStringLocalizer Localizer
+
+<!-- Filters -->
+<div class="mb-6 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+    <div class="flex flex-wrap items-center gap-3 p-4">
+        <div class="flex-1 min-w-[200px]">
+            <SearchInput @bind-Value="searchTerm" OnSearch="HandleSearch" Placeholder="@Localizer["SearchUnits"]" />
+        </div>
+
+        <button @onclick="() => showFiltersPanel = !showFiltersPanel"
+                class="@($"inline-flex items-center gap-2 py-2 px-4 rounded-lg border transition-all duration-200 font-medium text-sm {(showFiltersPanel ? "bg-purple-50 border-purple-300 text-purple-700" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50")}")">
+            <i class="bi bi-funnel"></i>
+            <span>@Localizer["Filters"]</span>
+            @if (ActiveFilterCount > 0)
+            {
+                <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-purple-600 rounded-full">@ActiveFilterCount</span>
+            }
+            <i class="@($"bi bi-chevron-{(showFiltersPanel ? "up" : "down")} text-xs")"></i>
+        </button>
+
+        @if (HasActiveFilters())
+        {
+            <button @onclick="ResetFilters" class="inline-flex items-center gap-2 py-2 px-4 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                <i class="bi bi-x-circle"></i>
+                <span>@Localizer["ResetFilters"]</span>
+            </button>
+        }
+    </div>
+
+    @if (showFiltersPanel)
+    {
+        <div class="px-4 pb-4 pt-0 border-t border-gray-200">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4">
+                <div>
+                    <SearchableDropdown TItem="WarehouseDto"
+                                        TValue="string"
+                                        Items="warehouses"
+                                        @bind-Value="filterWarehouseId"
+                                        OnChanged="ApplyFilters"
+                                        DisplayText="w => isAr ? w.NameAr : w.NameEn"
+                                        SearchText='w => $"{w.NameEn} {w.NameAr}"'
+                                        ItemValue="w => w.Id.ToString()"
+                                        Label='@Localizer["Warehouse"]'
+                                        Placeholder='@Localizer["AllWarehouses"]'
+                                        Compact="true" />
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">@Localizer["StockStatus"]</label>
+                    <div class="relative">
+                        <select @bind="filterStockStatus" @bind:after="ApplyFilters" class="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2 px-3 pe-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-bf-primary text-sm">
+                            <option value="">@Localizer["AllStockStatus"]</option>
+                            <option value="instock">@Localizer["InStock"]</option>
+                            <option value="lowstock">@Localizer["LowStock"]</option>
+                            <option value="outofstock">@Localizer["OutOfStock"]</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 end-0 flex items-center px-2 text-gray-400"><svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@if (!string.IsNullOrWhiteSpace(searchTerm) && totalAvailableAllWarehouses > 0 && !isLoading)
+{
+    <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
+        <i class="bi bi-info-circle text-blue-600 text-lg"></i>
+        <span class="text-sm text-blue-800">
+            @Localizer["TotalAvailableAllWarehouses"]: <strong class="text-lg">@totalAvailableAllWarehouses</strong>
+        </span>
+    </div>
+}
+
+@if (isLoading)
+{
+    <Spinner Size="Spinner.SpinnerSize.Lg" Centered="true" />
+}
+else if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="p-4 bf-bg-danger-50 border bf-border-danger rounded-lg flex items-start gap-3">
+        <i class="bi bi-exclamation-triangle-fill bf-icon-danger text-lg mt-0.5"></i>
+        <span class="bf-text-danger">@errorMessage</span>
+    </div>
+}
+else if (!balanceList.Any())
+{
+    <div class="text-center py-12">
+        <i class="bi bi-box-seam text-6xl text-gray-300 mb-4"></i>
+        <p class="text-gray-500 text-lg">@Localizer["NoStockBalancesFound"]</p>
+    </div>
+}
+else
+{
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Product"]</th>
+                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Warehouse"]</th>
+                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Available"]</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                @foreach (var bal in balanceList)
+                {
+                    var status = ResolveStockStatus(bal);
+                    var amountColor = status == "out" ? "bf-text-danger" : "bf-text-success";
+                    <tr class="hover:bg-gray-50 transition-colors duration-150">
+                        <td class="px-6 py-4 text-sm">
+                            <a href="@($"/admin/products/edit/{bal.ProductId}")" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 hover:underline">@(isAr ? bal.ProductNameAr : bal.ProductNameEn)</a>
+                            <div class="text-xs text-gray-500 mt-1">(@(isAr ? bal.UnitOfMeasureNameAr : bal.UnitOfMeasureNameEn) - @bal.UnitBaseQuantity @Localizer["BaseUnitItems"])</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <a href="@($"/admin/warehouses/edit/{bal.WarehouseId}")" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800 hover:underline">@(isAr ? bal.WarehouseNameAr : bal.WarehouseNameEn)</a>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium @amountColor">
+                            <div class="flex items-center gap-2">
+                                <span>
+                                    @(bal.AvailableQuantity / bal.UnitBaseQuantity) @(isAr ? bal.UnitOfMeasureNameAr : bal.UnitOfMeasureNameEn)
+                                </span>
+                                @if (status == "out")
+                                {
+                                    <span class="inline-flex items-center gap-1 text-[10px] font-semibold bf-bg-danger-500 px-2 py-0.5 rounded-full">
+                                        <i class="bi bi-x-circle"></i>@Localizer["OutOfStock"]
+                                    </span>
+                                }
+                                else if (status == "low")
+                                {
+                                    <span class="inline-flex items-center gap-1 text-[10px] font-semibold bf-bg-warning-500 px-2 py-0.5 rounded-full">
+                                        <i class="bi bi-exclamation-triangle"></i>@Localizer["LowStock"]
+                                    </span>
+                                }
+                            </div>
+                            <span class="text-xs text-gray-500 block">(@bal.AvailableQuantity @Localizer["BaseUnitItems"])</span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <Pagination PageIndex="@pageIndex" TotalPages="@totalPages" TotalCount="@totalCount" PageSize="@pageSize" OnPageChanged="@OnPageChanged" />
+}
+
+@code {
+    private bool isLoading = true;
+    private string errorMessage = string.Empty;
+    private bool isAr = false;
+    private int pageIndex = 1;
+    private int pageSize = 10;
+    private int totalPages = 1;
+    private int totalCount = 0;
+
+    // Lookup Data
+    private List<WarehouseDto> warehouses = new();
+
+    // Filters
+    private string searchTerm = string.Empty;
+    private string filterWarehouseId = string.Empty;
+    private string filterStockStatus = string.Empty;
+    private bool showFiltersPanel = false;
+
+    // Stock Balances State
+    private List<StockBalanceDto> balanceList = new();
+    private int totalAvailableAllWarehouses = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isAr = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("ar", StringComparison.OrdinalIgnoreCase);
+
+        // Read query string filter parameters
+        var uri = new Uri(Navigation.Uri);
+        var queryParams = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        if (queryParams.TryGetValue("filter", out var filterParam))
+            filterStockStatus = filterParam.ToString();
+        if (queryParams.TryGetValue("search", out var searchParam))
+            searchTerm = searchParam.ToString();
+        if (queryParams.TryGetValue("warehouse", out var warehouseParam))
+            filterWarehouseId = warehouseParam.ToString();
+
+        await LoadLookupData();
+        await LoadData();
+    }
+
+    private async Task LoadLookupData()
+    {
+        try
+        {
+            warehouses = (await WarehouseService.GetActiveWarehousesAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to load lookup data: {ex.Message}");
+        }
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            Guid? warehouseId = Guid.TryParse(filterWarehouseId, out var wId) ? wId : null;
+            var balResult = await InventoryHistoryService.GetAllStockBalancesAsync(pageIndex, pageSize, searchTerm, warehouseId,
+                string.IsNullOrEmpty(filterStockStatus) ? null : filterStockStatus);
+            balanceList = balResult.Items;
+            totalPages = balResult.TotalPages;
+            totalCount = balResult.TotalCount;
+            totalAvailableAllWarehouses = !string.IsNullOrWhiteSpace(searchTerm)
+                ? await InventoryHistoryService.GetTotalAvailableBySearchAsync(searchTerm)
+                : 0;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OnPageChanged(int newPage) { pageIndex = newPage; await LoadData(); }
+    private async Task HandleSearch(string value) { searchTerm = value; pageIndex = 1; await LoadData(); UpdateUrl(); }
+    private async Task ApplyFilters() { pageIndex = 1; await LoadData(); UpdateUrl(); }
+
+    private async Task ResetFilters()
+    {
+        searchTerm = string.Empty;
+        filterWarehouseId = string.Empty;
+        filterStockStatus = string.Empty;
+        showFiltersPanel = false;
+        pageIndex = 1;
+        await LoadData();
+        UpdateUrl();
+    }
+
+    private void UpdateUrl()
+    {
+        var queryParts = new Dictionary<string, string?>();
+        if (!string.IsNullOrEmpty(searchTerm))
+            queryParts["search"] = searchTerm;
+        if (!string.IsNullOrEmpty(filterWarehouseId))
+            queryParts["warehouse"] = filterWarehouseId;
+        if (!string.IsNullOrEmpty(filterStockStatus))
+            queryParts["filter"] = filterStockStatus;
+
+        var basePath = "/admin/inventory/balances";
+        var newUrl = queryParts.Count > 0
+            ? Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString(basePath, queryParts!)
+            : basePath;
+        Navigation.NavigateTo(newUrl, replace: true, forceLoad: false);
+    }
+
+    private bool HasActiveFilters() =>
+        !string.IsNullOrEmpty(filterWarehouseId) || !string.IsNullOrEmpty(filterStockStatus);
+
+    private int ActiveFilterCount
+    {
+        get
+        {
+            int count = 0;
+            if (!string.IsNullOrEmpty(filterWarehouseId)) count++;
+            if (!string.IsNullOrEmpty(filterStockStatus)) count++;
+            return count;
+        }
+    }
+
+    // Aligned with the cashier/POS definition. A row is "sellable" only when AvailableQuantity
+    // is at least one full selling unit (UnitBaseQuantity); stragglers below that count as out.
+    private static string ResolveStockStatus(StockBalanceDto bal)
+    {
+        var perUnit = bal.UnitBaseQuantity > 0 ? bal.UnitBaseQuantity : 1;
+        if (bal.AvailableQuantity < perUnit) return "out";
+        if (bal.AvailableQuantity <= bal.LowStockThreshold) return "low";
+        return "in";
+    }
+}

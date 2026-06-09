@@ -1,0 +1,78 @@
+@page "/admin/requests"
+@page "/admin/requests/{Tab}"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Web.Authorization
+@inject NavigationManager Navigation
+
+<PageTitle>@Localizer["RequestsManagement"]</PageTitle>
+
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-6">
+    <!-- Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <i class="bi bi-send text-purple-600"></i>
+            @Localizer["RequestsManagement"]
+        </h1>
+        <p class="text-gray-600 mt-2 text-sm sm:text-base">@Localizer["ManageRequests"]</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="mb-6">
+        <nav class="tab-nav" aria-label="Tabs">
+            <button @onclick='() => SetActiveTab("all")'
+                    class="tab-btn @GetTabClass("all")">
+                <i class="bi bi-envelope-paper"></i>
+                @Localizer["Requests"]
+            </button>
+            <button @onclick='() => SetActiveTab("my")'
+                    class="tab-btn @GetTabClass("my")">
+                <i class="bi bi-file-person"></i>
+                @Localizer["MyRequests"]
+            </button>
+        </nav>
+    </div>
+
+    <!-- Tab Content -->
+    @if (activeTab == "all")
+    {
+        <RequestsAllTab />
+    }
+    else if (activeTab == "my")
+    {
+        <RequestsMyTab />
+    }
+</div>
+
+@code {
+    [Parameter] public string? Tab { get; set; }
+
+    private string activeTab = "all";
+
+    private string ResolveTab()
+    {
+        if (!string.IsNullOrEmpty(Tab))
+            return Tab.ToLower() switch { "my" => "my", _ => "all" };
+        return "all";
+    }
+
+    protected override void OnInitialized()
+    {
+        activeTab = ResolveTab();
+    }
+
+    protected override void OnParametersSet()
+    {
+        activeTab = ResolveTab();
+    }
+
+    private async Task SetActiveTab(string tab)
+    {
+        activeTab = tab;
+        Navigation.NavigateTo($"/admin/requests/{tab}", replace: true);
+        await Task.CompletedTask;
+    }
+
+    private string GetTabClass(string tab) =>
+        activeTab == tab ? "tab-btn-active" : "";
+}

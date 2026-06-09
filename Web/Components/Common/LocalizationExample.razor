@@ -1,0 +1,25 @@
+@* Example component showing how to use JSON localization *@
+@inject IJsonStringLocalizer Localizer
+
+<div class="example-localization">
+    <h2>@Localizer["Dashboard"]</h2>
+    
+    <p>@Localizer["Welcome"]</p>
+    
+    <button class="btn btn-primary">
+        @Localizer["Login"]
+    </button>
+    
+    @* Example with string formatting *@
+    <p>@Localizer["ShowingResults", 1, 10, 100]</p>
+    
+    @* Example in code *@
+    <p>@GetLocalizedStatus()</p>
+</div>
+
+@code {
+    private string GetLocalizedStatus()
+    {
+        return Localizer.GetString("Active");
+    }
+}

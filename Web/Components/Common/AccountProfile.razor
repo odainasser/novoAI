@@ -1,0 +1,483 @@
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Globalization
+@inject IAuthenticationService AuthService
+@inject IUserManagementService UserManagementService
+@inject IMediaService MediaService
+@inject ICashierManagementService CashierManagementService
+@inject NavigationManager Navigation
+
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+                <i class="bi bi-person-gear text-purple-600"></i>
+                @Localizer["Account"]
+            </h1>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="mb-6">
+        <nav class="tab-nav" aria-label="Tabs">
+            <button @onclick='() => SetActiveTab("profile")'
+                    class="tab-btn @GetTabClass("profile")">
+                <i class="bi bi-person"></i>
+                @Localizer["ProfileDetails"]
+            </button>
+            <button @onclick='() => SetActiveTab("password")'
+                    class="tab-btn @GetTabClass("password")">
+                <i class="bi bi-key"></i>
+                @Localizer["ChangePassword"]
+            </button>
+        </nav>
+    </div>
+
+        @if (activeTab == "profile")
+        {
+            @if (isLoading)
+            {
+                <Spinner Size="Spinner.SpinnerSize.Lg" Centered="true" />
+            }
+            else
+            {
+                @if (isSuccess)
+                {
+                    <div class="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+                        <i class="bi bi-check-circle-fill text-green-600 text-lg mt-0.5"></i>
+                        <div class="flex-1">
+                            <span class="text-green-800 font-medium">@Localizer["ProfileUpdatedSuccessfully"]</span>
+                            <button type="button" class="float-end text-green-600 hover:text-green-800" @onclick="() => isSuccess = false">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                        <i class="bi bi-exclamation-triangle-fill text-red-600 text-lg mt-0.5"></i>
+                        <div class="flex-1">
+                            <span class="text-red-800">@errorMessage</span>
+                            <button type="button" class="float-end text-red-600 hover:text-red-800" @onclick="() => errorMessage = string.Empty">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                }
+
+                @if (isSystemUser)
+                {
+                    <div class="mb-6 p-4 bf-bg-warning-50 border bf-border-warning rounded-lg">
+                        <div class="flex items-start gap-3">
+                            <i class="bi bi-exclamation-triangle bf-icon-warning text-lg mt-0.5"></i>
+                            <div>
+                                <p class="bf-text-warning font-medium">@Localizer["SystemUser"]</p>
+                                <p class="bf-text-warning text-sm">@Localizer["SystemAdminModifyWarning"]</p>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">@Localizer["ProfilePicture"]</label>
+                    <div class="flex items-center gap-4">
+                        @if (!string.IsNullOrEmpty(avatarUrl))
+                        {
+                            <img src="@avatarUrl" alt="@Localizer["ProfilePicture"]" class="h-20 w-20 rounded-full object-cover border border-gray-200" />
+                        }
+                        else
+                        {
+                            <div class="h-20 w-20 rounded-full bg-gray-100 flex items-center justify-center border border-gray-200">
+                                <i class="bi bi-person text-3xl text-gray-400"></i>
+                            </div>
+                        }
+
+                        <div>
+                            <InputFile OnChange="HandleFileSelected" class="block w-full text-sm text-gray-500 file:me-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed" disabled="@isSystemUser" />
+                        </div>
+                    </div>
+                </div>
+
+                <EditForm Model="@currentUser" OnValidSubmit="@UpdateProfile" FormName="clientProfileForm">
+                    <DataAnnotationsValidator />
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label for="firstName" class="block text-sm font-medium text-gray-700 mb-2">@Localizer["FirstName"]</label>
+                            <InputText @bind-Value="currentUser.FirstName" 
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed" 
+                                       id="firstName"
+                                       disabled="@isSystemUser" />
+                            <ValidationMessage For="@(() => currentUser.FirstName)" class="text-red-600 text-sm mt-1" />
+                        </div>
+
+                        <div>
+                            <label for="lastName" class="block text-sm font-medium text-gray-700 mb-2">@Localizer["LastName"]</label>
+                            <InputText @bind-Value="currentUser.LastName" 
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed" 
+                                       id="lastName"
+                                       disabled="@isSystemUser" />
+                            <ValidationMessage For="@(() => currentUser.LastName)" class="text-red-600 text-sm mt-1" />
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <label for="email" class="block text-sm font-medium text-gray-700 mb-2">@Localizer["EmailAddress"]</label>
+                        <InputText @bind-Value="currentUser.Email" 
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg disabled:bg-gray-100 disabled:cursor-not-allowed" 
+                                   id="email"
+                                   disabled="@(isSystemUser || IsCashier)" />
+                        <ValidationMessage For="@(() => currentUser.Email)" class="text-red-600 text-sm mt-1" />
+                        @if (!IsCashier)
+                        {
+                            <p class="text-xs text-gray-500 mt-1">
+                                @Localizer["ChangingEmailNote"]
+                            </p>
+                        }
+                    </div>
+
+                    @if (IsCashier && !string.IsNullOrEmpty(warehouseName))
+                    {
+                        <div class="mb-6">
+                            <label for="store" class="block text-sm font-medium text-gray-700 mb-2">@Localizer["Store"]</label>
+                            <input type="text" value="@warehouseName" 
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed" 
+                                   id="store"
+                                   disabled readonly />
+                        </div>
+                    }
+
+                    <div class="mb-6">
+                        <label for="phoneNumber" class="block text-sm font-medium text-gray-700 mb-2">@Localizer["PhoneNumber"]</label>
+                        <InputText @bind-Value="currentUser.PhoneNumber" 
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed" 
+                                   id="phoneNumber" 
+                                   placeholder="+1234567890"
+                                   disabled="@isSystemUser" />
+                        <ValidationMessage For="@(() => currentUser.PhoneNumber)" class="text-red-600 text-sm mt-1" />
+                    </div>
+
+                    <div class="flex items-center justify-end gap-3 pt-6 border-t border-gray-200 mt-6">
+                        <a href="/" class="px-6 py-3 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-bf-primary transition-colors duration-200 text-center no-underline">
+                            @Localizer["Cancel"]
+                        </a>
+                        <button type="submit"
+                                class="px-6 py-3 bg-bf-primary text-bf-primary-contrast font-medium rounded-lg hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-bf-primary transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                disabled="@(isSaving || isSystemUser)">
+                            @if (isSaving)
+                            {
+                                <Spinner Size="Spinner.SpinnerSize.Sm" Color="Spinner.SpinnerColor.White" ExtraClass="me-2" />
+                                <span>@Localizer["Processing"]</span>
+                            }
+                            else
+                            {
+                                <span>@Localizer["Save"]</span>
+                            }
+                        </button>
+                    </div>
+                </EditForm>
+            }
+        }
+        else if (activeTab == "password")
+        {
+            <EditForm Model="@passwordRequest" OnValidSubmit="@HandlePasswordSubmit" FormName="changePasswordForm">
+                <LocalizedDataAnnotationsValidator />
+
+                @if (isPasswordSuccess)
+                {
+                    <div class="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+                        <i class="bi bi-check-circle-fill text-green-600 text-lg mt-0.5"></i>
+                        <span class="text-green-800">@Localizer["PasswordChangedSuccessfully"]</span>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(passwordErrorMessage))
+                {
+                    <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                        <i class="bi bi-exclamation-triangle-fill text-red-600 text-lg mt-0.5"></i>
+                        <div class="flex-1">
+                            <span class="text-red-800">@passwordErrorMessage</span>
+                            <button type="button" class="float-end text-red-600 hover:text-red-800" @onclick="() => passwordErrorMessage = string.Empty">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                }
+
+                <div class="mb-4">
+                    <label for="currentPassword" class="block text-sm font-medium text-gray-700 mb-2">@Localizer["CurrentPassword"]</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 start-0 ps-3 flex items-center pointer-events-none">
+                            <i class="bi bi-lock text-gray-400"></i>
+                        </div>
+                        <InputText @bind-Value="passwordRequest.CurrentPassword"
+                                   type="password"
+                                   class="w-full ps-10 pe-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                   id="currentPassword" />
+                    </div>
+                    <ValidationMessage For="@(() => passwordRequest.CurrentPassword)" class="text-red-600 text-sm mt-1" />
+                </div>
+
+                <div class="mb-4">
+                    <label for="newPassword" class="block text-sm font-medium text-gray-700 mb-2">@Localizer["NewPassword"]</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 start-0 ps-3 flex items-center pointer-events-none">
+                            <i class="bi bi-lock-fill text-gray-400"></i>
+                        </div>
+                        <InputText @bind-Value="passwordRequest.NewPassword"
+                                   type="password"
+                                   class="w-full ps-10 pe-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                   id="newPassword" />
+                    </div>
+                    <ValidationMessage For="@(() => passwordRequest.NewPassword)" class="text-red-600 text-sm mt-1" />
+                    <p class="text-xs text-gray-500 mt-1">
+                        @Localizer["PasswordRequirements"]
+                    </p>
+                </div>
+
+                <div class="mb-6">
+                    <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-2">@Localizer["ConfirmPassword"]</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 start-0 ps-3 flex items-center pointer-events-none">
+                            <i class="bi bi-lock-fill text-gray-400"></i>
+                        </div>
+                        <InputText @bind-Value="passwordRequest.ConfirmPassword"
+                                   type="password"
+                                   class="w-full ps-10 pe-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                   id="confirmPassword" />
+                    </div>
+                    <ValidationMessage For="@(() => passwordRequest.ConfirmPassword)" class="text-red-600 text-sm mt-1" />
+                </div>
+
+                <div class="flex items-center justify-end pt-6 border-t border-gray-200 mt-6">
+                    <button type="submit"
+                            class="px-6 py-3 bg-bf-primary text-bf-primary-contrast font-medium rounded-lg hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-bf-primary transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            disabled="@isPasswordLoading">
+                        @if (isPasswordLoading)
+                        {
+                            <Spinner Size="Spinner.SpinnerSize.Sm" Color="Spinner.SpinnerColor.White" ExtraClass="me-2" />
+                            <span>@Localizer["Processing"]</span>
+                        }
+                        else
+                        {
+                            <span>@Localizer["Save"]</span>
+                        }
+                    </button>
+                </div>
+            </EditForm>
+        }
+</div>
+
+@code {
+    [Parameter] public bool IsCashier { get; set; }
+    [Parameter] public string ActiveTab { get; set; } = "profile";
+    [Parameter] public EventCallback<string> OnTabChanged { get; set; }
+    [Parameter] public string BasePath { get; set; } = "/admin/account";
+
+    private string activeTab = "profile";
+    private UserDto currentUser = new();
+    private ChangePasswordRequest passwordRequest = new();
+    private string? warehouseName;
+    
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private bool isPasswordLoading = false;
+    private bool isSuccess = false;
+    private bool isPasswordSuccess = false;
+    private bool isSystemUser = false;
+    
+    private string errorMessage = string.Empty;
+    private string passwordErrorMessage = string.Empty;
+    
+    private string? avatarUrl;
+    private IBrowserFile? selectedAvatarFile;
+
+    protected override async Task OnInitializedAsync()
+    {
+        activeTab = ActiveTab;
+        await LoadProfile();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (ActiveTab != activeTab)
+            activeTab = ActiveTab;
+    }
+
+    private async Task SetActiveTab(string tab)
+    {
+        activeTab = tab;
+        var urlTab = tab == "password" ? "change-password" : tab;
+        Navigation.NavigateTo($"{BasePath.TrimEnd('/')}/{urlTab}", false);
+        await OnTabChanged.InvokeAsync(tab);
+    }
+
+    private string GetTabClass(string tab) =>
+        activeTab == tab ? "tab-btn-active" : "";
+
+    private async Task LoadProfile()
+    {
+        isLoading = true;
+        try 
+        {
+            var user = await AuthService.GetCurrentUserAsync();
+            if (user != null)
+            {
+                currentUser = user;
+
+                try
+                {
+                    // Check if system user
+                    var userDetails = await UserManagementService.GetUserByIdAsync(user.Id);
+                    if (userDetails != null)
+                    {
+                        isSystemUser = userDetails.IsSystemUser;
+                    }
+                }
+                catch {}
+
+                if (IsCashier)
+                {
+                    try
+                    {
+                        var cashier = await CashierManagementService.GetCurrentCashierProfileAsync();
+                        if (cashier != null)
+                        {
+                            var isAr = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
+                            warehouseName = isAr ? cashier.WarehouseNameAr : cashier.WarehouseNameEn;
+                        }
+                    }
+                    catch {}
+                }
+
+                try {
+                    var mediaList = await MediaService.GetMediaForEntityAsync(user.Id, "User", "avatar");
+                    var avatar = mediaList.FirstOrDefault();
+                    if (avatar != null)
+                    {
+                        avatarUrl = MediaService.GetMediaUrl(avatar);
+                    }
+                } catch {}
+            }
+        }
+        catch
+        {
+            errorMessage = Localizer["ErrorLoadingProfile"];
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task UpdateProfile()
+    {
+        isSaving = true;
+        errorMessage = string.Empty;
+        isSuccess = false;
+
+        try
+        {
+            var updateRequest = new UpdateUserRequest
+            {
+                Email = currentUser.Email,
+                FirstName = currentUser.FirstName,
+                LastName = currentUser.LastName,
+                PhoneNumber = currentUser.PhoneNumber
+            };
+
+            await UserManagementService.UpdateProfileAsync(updateRequest);
+            
+            // Optional: Upload avatar
+            await UploadSelectedAvatarAsync();
+            
+            // Reload to refresh state
+            await LoadProfile();
+            
+            isSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task HandlePasswordSubmit()
+    {
+        isPasswordLoading = true;
+        passwordErrorMessage = string.Empty;
+        isPasswordSuccess = false;
+
+        try
+        {
+            var response = await AuthService.ChangePasswordAsync(passwordRequest);
+            if (response.Success)
+            {
+                isPasswordSuccess = true;
+                passwordRequest = new ChangePasswordRequest();
+            }
+            else
+            {
+                passwordErrorMessage = response.Message;
+            }
+        }
+        catch (Exception ex)
+        {
+            passwordErrorMessage = ex.Message;
+        }
+        finally
+        {
+            isPasswordLoading = false;
+        }
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+        
+        // Preview
+        try
+        {
+            long maxFileSize = 5 * 1024 * 1024;
+            var buffer = new byte[file.Size > int.MaxValue ? int.MaxValue : (int)file.Size];
+            using var stream = file.OpenReadStream(maxFileSize);
+            await stream.ReadAsync(buffer.AsMemory(0, buffer.Length));
+            var base64 = Convert.ToBase64String(buffer);
+            avatarUrl = $"data:{file.ContentType};base64,{base64}";
+        }
+        catch {}
+
+        selectedAvatarFile = file;
+    }
+
+    private async Task UploadSelectedAvatarAsync()
+    {
+        if (selectedAvatarFile == null || currentUser == null) return;
+
+        try
+        {
+            long maxFileSize = 5 * 1024 * 1024;
+            using var stream = selectedAvatarFile.OpenReadStream(maxFileSize);
+
+            var existingMedia = await MediaService.GetMediaForEntityAsync(currentUser.Id, "User", "avatar");
+            foreach (var media in existingMedia)
+            {
+                await MediaService.DeleteMediaAsync(media.Id);
+            }
+
+            await MediaService.UploadMediaAsync(currentUser.Id, "User", stream, selectedAvatarFile.Name, selectedAvatarFile.ContentType, "avatar");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to upload avatar: {ex.Message}";
+        }
+    }
+}

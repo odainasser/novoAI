@@ -1,0 +1,62 @@
+@using System.Timers
+@implements IDisposable
+
+<div class="relative">
+    <input type="text" 
+           value="@Value" 
+           @oninput="OnInput"
+           placeholder="@Placeholder"
+           class="@CssClass" />
+    <i class="bi bi-search absolute start-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+</div>
+
+@code {
+    [Parameter]
+    public string Value { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnSearch { get; set; }
+
+    [Parameter]
+    public string Placeholder { get; set; } = "Search...";
+
+    [Parameter]
+    public string CssClass { get; set; } = "w-full sm:w-64 px-4 py-2 ps-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent";
+
+    [Parameter]
+    public int DebounceDelay { get; set; } = 300;
+
+    private Timer? _debounceTimer;
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        var newValue = e.Value?.ToString() ?? string.Empty;
+        Value = newValue;
+        await ValueChanged.InvokeAsync(newValue);
+
+        // Reset debounce timer
+        _debounceTimer?.Stop();
+        _debounceTimer?.Dispose();
+
+        _debounceTimer = new Timer(DebounceDelay);
+        _debounceTimer.Elapsed += async (sender, args) =>
+        {
+            _debounceTimer?.Stop();
+            await InvokeAsync(async () =>
+            {
+                await OnSearch.InvokeAsync(newValue);
+            });
+        };
+        _debounceTimer.AutoReset = false;
+        _debounceTimer.Start();
+    }
+
+    public void Dispose()
+    {
+        _debounceTimer?.Stop();
+        _debounceTimer?.Dispose();
+    }
+}

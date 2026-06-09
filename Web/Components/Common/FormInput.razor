@@ -1,0 +1,88 @@
+@using System.Linq.Expressions
+
+@* Reusable form input with label, icon, and validation *@
+<div class="@WrapperClass">
+    <label for="@Id" class="block text-sm font-medium text-gray-700 mb-2">
+        @Label
+        @if (Required)
+        {
+            <span class="text-red-600">*</span>
+        }
+    </label>
+    <div class="relative">
+        @if (!string.IsNullOrEmpty(Icon))
+        {
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="bi bi-@Icon text-gray-400"></i>
+            </div>
+        }
+        @if (InputType == "textarea")
+        {
+            <InputTextArea @bind-Value="Value"
+                           class="@GetInputClass()"
+                           id="@Id"
+                           placeholder="@Placeholder"
+                           disabled="@Disabled"
+                           rows="@Rows" />
+        }
+        else if (InputType == "select")
+        {
+            <InputSelect @bind-Value="Value"
+                         class="@GetInputClass()"
+                         id="@Id"
+                         disabled="@Disabled">
+                @if (SelectContent != null)
+                {
+                    @SelectContent
+                }
+            </InputSelect>
+        }
+        else
+        {
+            <InputText @bind-Value="Value"
+                       type="@InputType"
+                       class="@GetInputClass()"
+                       id="@Id"
+                       placeholder="@Placeholder"
+                       disabled="@Disabled"
+                       readonly="@ReadOnly" />
+        }
+    </div>
+    @if (ValidationFor != null)
+    {
+        <ValidationMessage For="@ValidationFor" class="text-red-600 text-sm mt-1" />
+    }
+    @if (!string.IsNullOrEmpty(HelpText))
+    {
+        <p class="text-xs text-gray-500 mt-1">@HelpText</p>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Value { get; set; } = string.Empty;
+
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public string Label { get; set; } = "Label";
+    [Parameter] public string Id { get; set; } = Guid.NewGuid().ToString();
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string InputType { get; set; } = "text";
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public string WrapperClass { get; set; } = "mb-4";
+    [Parameter] public string? HelpText { get; set; }
+    [Parameter] public Expression<Func<string>>? ValidationFor { get; set; }
+    [Parameter] public RenderFragment? SelectContent { get; set; }
+    [Parameter] public int Rows { get; set; } = 4;
+    [Parameter] public bool Required { get; set; }
+
+    private string GetInputClass()
+    {
+        var baseClass = "w-full pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200";
+        var paddingClass = !string.IsNullOrEmpty(Icon) ? "pl-10" : "px-4";
+        var disabledClass = Disabled || ReadOnly ? "bg-gray-50 cursor-not-allowed" : "";
+        
+        return $"{baseClass} {paddingClass} {disabledClass}".Trim();
+    }
+}

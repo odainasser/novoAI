@@ -1,0 +1,82 @@
+@inject IJsonStringLocalizer Localizer
+
+@* Reusable page header with title, description, and action button *@
+<div class="flex justify-between items-center mb-8">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
+            @if (!string.IsNullOrEmpty(Icon))
+            {
+                <i class="bi bi-@Icon text-bf-primary"></i>
+            }
+            @Title
+        </h1>
+        @if (!string.IsNullOrEmpty(Description))
+        {
+            <p class="text-gray-600 mt-2">@Description</p>
+        }
+        @if (DescriptionContent != null)
+        {
+            <div class="mt-2">
+                @DescriptionContent
+            </div>
+        }
+    </div>
+    @if (ActionContent != null)
+    {
+        <div>
+            @ActionContent
+        </div>
+    }
+    @if (!string.IsNullOrEmpty(ActionText) && !string.IsNullOrEmpty(ActionLink))
+    {
+        <AuthorizeView Policy="@ActionPolicy">
+            <Authorized>
+                <a href="@ActionLink" class="btn-primary-action">
+                    @if (!string.IsNullOrEmpty(ActionIcon))
+                    {
+                        <i class="bi bi-@ActionIcon"></i>
+                    }
+                    <span>@ActionText</span>
+                </a>
+            </Authorized>
+            <NotAuthorized>
+                <button disabled class="inline-flex items-center gap-2 py-3 px-6 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed font-medium">
+                    @if (!string.IsNullOrEmpty(ActionIcon))
+                    {
+                        <i class="bi bi-@ActionIcon"></i>
+                    }
+                    <span>@ActionText</span>
+                </button>
+            </NotAuthorized>
+        </AuthorizeView>
+    }
+    @if (!string.IsNullOrEmpty(ActionText) && OnActionClick.HasDelegate)
+    {
+        <button @onclick="OnActionClick" class="btn-primary-action">
+            @if (!string.IsNullOrEmpty(ActionIcon))
+            {
+                <i class="bi bi-@ActionIcon"></i>
+            }
+            <span>@ActionText</span>
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Page Title";
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public RenderFragment? DescriptionContent { get; set; }
+    [Parameter] public RenderFragment? ActionContent { get; set; }
+    [Parameter] public string? ActionText { get; set; }
+    [Parameter] public string? ActionIcon { get; set; } = "plus-circle";
+    [Parameter] public string? ActionLink { get; set; }
+    [Parameter] public string? ActionPolicy { get; set; }
+    [Parameter] public EventCallback OnActionClick { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (string.IsNullOrEmpty(Title)) Title = Localizer["PageTitle"];
+        if (string.IsNullOrEmpty(ActionText)) ActionText = Localizer["ViewAll"];
+    }
+}

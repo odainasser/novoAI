@@ -1,0 +1,326 @@
+@using Microsoft.AspNetCore.Authorization
+@using Web.Authorization
+@using Web.Components.Common
+@using Web.Models.Promotions
+@using System.Globalization
+@inject ICategoryService CategoryService
+@inject IPromotionService PromotionService
+@inject NavigationManager Navigation
+
+<div class="flex justify-end mb-4">
+    <AuthorizeView Policy="Permission:categories.write">
+        <Authorized>
+            <button @onclick="NavigateToCreate"
+                    class="btn-primary-action">
+                <i class="bi bi-plus-circle"></i>
+                <span>@Localizer["CreateCategory"]</span>
+            </button>
+        </Authorized>
+    </AuthorizeView>
+</div>
+
+<div class="mb-6 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+    <div class="flex flex-wrap items-center gap-3 p-4">
+        <div class="flex-1 min-w-[200px]">
+            <SearchInput @bind-Value="search" OnSearch="HandleSearch" Placeholder="@Localizer["SearchCategories"]" />
+        </div>
+        <button @onclick="() => showFiltersPanel = !showFiltersPanel"
+                class="@($"inline-flex items-center gap-2 py-2 px-4 rounded-lg border transition-all duration-200 font-medium text-sm {(showFiltersPanel ? "bg-purple-50 border-purple-300 text-purple-700" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50")}")">
+            <i class="bi bi-funnel"></i>
+            <span>@Localizer["Filters"]</span>
+            @if (ActiveFilterCount > 0)
+            {
+                <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-purple-600 rounded-full">@ActiveFilterCount</span>
+            }
+            <i class="@($"bi bi-chevron-{(showFiltersPanel ? "up" : "down")} text-xs")"></i>
+        </button>
+        @if (HasActiveFilters())
+        {
+            <button @onclick="ResetFilters" class="inline-flex items-center gap-2 py-2 px-4 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                <i class="bi bi-x-circle"></i>
+                <span>@Localizer["ResetFilters"]</span>
+            </button>
+        }
+    </div>
+
+    @if (showFiltersPanel)
+    {
+        <div class="px-4 pb-4 pt-0 border-t border-gray-200">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4">
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">@Localizer["Status"]</label>
+                    <div class="relative">
+                        <select @bind="selectedStatus" @bind:after="ApplyFilters" class="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2 px-3 pe-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-bf-primary text-sm">
+                            <option value="">@Localizer["AllStatuses"]</option>
+                            <option value="true">@Localizer["Active"]</option>
+                            <option value="false">@Localizer["Inactive"]</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 end-0 flex items-center px-2 text-gray-400"><svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg></div>
+                    </div>
+                </div>
+                <div>
+                    <SearchableDropdown TItem="PromotionFilterOption"
+                                        TValue="string"
+                                        Items="PromotionFilterOptions"
+                                        @bind-Value="selectedPromotion"
+                                        OnChanged="ApplyFilters"
+                                        DisplayText="p => isAr ? p.NameAr : p.NameEn"
+                                        SearchText='p => $"{p.NameEn} {p.NameAr}"'
+                                        ItemValue="p => p.Value"
+                                        Label='@Localizer["Promotion"]'
+                                        Placeholder='@Localizer["AllPromotions"]'
+                                        Compact="true" />
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@if (isLoading)
+{
+    <Spinner Size="Spinner.SpinnerSize.Lg" Centered="true" />
+}
+else if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="p-4 bf-bg-danger-50 border bf-border-danger rounded-lg flex items-start gap-3">
+        <i class="bi bi-exclamation-triangle-fill bf-icon-danger text-lg mt-0.5"></i>
+        <span class="bf-text-danger">@errorMessage</span>
+    </div>
+}
+else if (!DisplayList.Any())
+{
+    <div class="text-center py-12">
+        <i class="bi bi-grid text-6xl text-gray-300 mb-4"></i>
+        <p class="text-gray-500 text-lg">@Localizer["NoCategoriesFound"]</p>
+    </div>
+}
+else
+{
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+        @foreach (var category in DisplayList)
+        {
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden">
+                <div class="h-40 bg-gray-100 flex items-center justify-center">
+                    @if (!string.IsNullOrEmpty(category.ImageUrl))
+                    {
+                        <img src="@category.ImageUrl" alt="@(isAr ? category.NameAr : category.NameEn)" class="w-full h-full object-cover" />
+                    }
+                    else
+                    {
+                        <i class="bi bi-image text-4xl text-gray-300"></i>
+                    }
+                </div>
+                <div class="p-4">
+                    <div class="flex justify-between items-start mb-2">
+                        <a href="@($"/admin/categories/edit/{category.Id}")" class="text-lg font-semibold text-indigo-600 hover:text-indigo-800 hover:underline">@(isAr ? category.NameAr : category.NameEn)</a>
+                        <span class="@(category.IsActive ? "bf-bg-success-100 bf-text-success" : "bf-bg-danger-100 bf-text-danger") text-xs px-2 py-1 rounded-full">
+                            @(category.IsActive ? Localizer["Active"] : Localizer["Inactive"])
+                        </span>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(isAr ? category.DescriptionAr : category.DescriptionEn))
+                    {
+                        <p class="text-gray-600 text-sm mb-3 line-clamp-2">@(isAr ? category.DescriptionAr : category.DescriptionEn)</p>
+                    }
+
+                    @if (category.ParentNameEn != null || category.ParentNameAr != null)
+                    {
+                        <div class="text-xs text-gray-500 mb-3">
+                            <i class="bi bi-folder me-1"></i>
+                            @Localizer["ParentCategory"]: @(isAr ? category.ParentNameAr : category.ParentNameEn)
+                        </div>
+                    }
+
+                    @if (category.ChildrenCount > 0)
+                    {
+                        <div class="text-xs text-bf-primary mb-3">
+                            <i class="bi bi-diagram-3 me-1"></i>
+                            @category.ChildrenCount @Localizer["ChildCategories"]
+                        </div>
+                    }
+
+                    @if (category.HasPromotion)
+                    {
+                        <div class="mb-3">
+                            <AuthorizeView Policy="Permission:promotions.write">
+                                <Authorized>
+                                    @if (category.PromotionId.HasValue)
+                                    {
+                                        <a class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 hover:underline"
+                                           href="@($"/admin/promotions/edit/{category.PromotionId}")" target="_blank" rel="noopener noreferrer"
+                                           title="@(isAr ? category.PromotionNameAr : category.PromotionNameEn)">
+                                            <i class="bi bi-percent me-1"></i> @(isAr ? category.PromotionNameAr : category.PromotionNameEn) @(category.DiscountPercentage.HasValue ? $"({category.DiscountPercentage}%)" : "")
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                            <i class="bi bi-percent me-1"></i> @(isAr ? category.PromotionNameAr : category.PromotionNameEn) @(category.DiscountPercentage.HasValue ? $"({category.DiscountPercentage}%)" : "")
+                                        </span>
+                                    }
+                                </Authorized>
+                                <NotAuthorized>
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                        <i class="bi bi-percent me-1"></i> @Localizer["OnPromotion"] @(category.DiscountPercentage.HasValue ? $"({category.DiscountPercentage}%)" : "")
+                                    </span>
+                                </NotAuthorized>
+                            </AuthorizeView>
+                        </div>
+                    }
+
+                    <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
+                        <AuthorizeView Policy="Permission:categories.write">
+                            <Authorized>
+                                <button @onclick="() => NavigateToEdit(category.Id)" class="text-purple-600 hover:text-purple-900 me-3" title="@Localizer["Edit"]">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                            </Authorized>
+                            <NotAuthorized>
+                                <button disabled class="text-gray-400 me-3 cursor-not-allowed" title="@Localizer["Edit"]"><i class="bi bi-pencil-square"></i></button>
+                            </NotAuthorized>
+                        </AuthorizeView>
+                        <AuthorizeView Policy="Permission:categories.delete">
+                            <Authorized>
+                                <button @onclick="() => ConfirmDelete(category.Id)"
+                                        class="p-2 bf-text-danger bf-hover-text-danger-strong bf-hover-bg-danger-50 rounded-lg transition-colors"
+                                        title="@Localizer["Delete"]"
+                                        disabled="@(category.ChildrenCount > 0)">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </Authorized>
+                            <NotAuthorized>
+                                <button disabled class="p-2 text-gray-300 cursor-not-allowed" title="@Localizer["Delete"]"><i class="bi bi-trash"></i></button>
+                            </NotAuthorized>
+                        </AuthorizeView>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <Pagination PageIndex="@pageIndex" TotalPages="@totalPages" TotalCount="@totalCount" PageSize="@pageSize" OnPageChanged="@OnPageChanged" />
+}
+
+<ConfirmModal IsVisible="@showDeleteConfirm"
+              Title="@Localizer["DeleteCategoryTitle"]"
+              Message="@Localizer["DeleteCategoryConfirmation"]"
+              OnConfirm="@DeleteCategory"
+              OnCancel="@CancelDelete"
+              IsDanger="true" />
+
+@code {
+    private List<CategoryDto> categories = new();
+    private List<PromotionDto> promotions = new();
+    private bool isLoading = true;
+    private bool isAr = false;
+    private string errorMessage = string.Empty;
+
+    private string search = string.Empty;
+    private string selectedStatus = string.Empty;
+    private string selectedPromotion = string.Empty;
+    private bool showFiltersPanel = false;
+
+    private int pageIndex = 1;
+    private int pageSize = 12;
+    private int totalPages = 1;
+    private int totalCount = 0;
+
+    private bool showDeleteConfirm = false;
+    private Guid categoryToDelete;
+
+    private sealed class PromotionFilterOption
+    {
+        public string Value { get; set; } = string.Empty;
+        public string NameEn { get; set; } = string.Empty;
+        public string NameAr { get; set; } = string.Empty;
+    }
+
+    private List<PromotionFilterOption> PromotionFilterOptions =>
+        [
+            new PromotionFilterOption
+            {
+                Value = "none",
+                NameEn = Localizer["WithoutPromotion"],
+                NameAr = Localizer["WithoutPromotion"]
+            },
+            ..promotions.Select(p => new PromotionFilterOption
+            {
+                Value = p.Id.ToString(),
+                NameEn = p.NameEn,
+                NameAr = p.NameAr
+            })
+        ];
+
+    private List<CategoryDto> DisplayList
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(selectedPromotion)) return categories;
+            if (selectedPromotion == "none") return categories.Where(c => !c.HasPromotion).ToList();
+            var promo = promotions.FirstOrDefault(p => p.Id.ToString() == selectedPromotion);
+            return promo != null
+                ? categories.Where(c => c.HasPromotion && (c.PromotionNameEn == promo.NameEn || c.PromotionNameAr == promo.NameAr)).ToList()
+                : categories;
+        }
+    }
+
+    private bool HasActiveFilters() => !string.IsNullOrEmpty(selectedStatus) || !string.IsNullOrEmpty(selectedPromotion);
+    private int ActiveFilterCount => (string.IsNullOrEmpty(selectedStatus) ? 0 : 1) + (string.IsNullOrEmpty(selectedPromotion) ? 0 : 1);
+
+    protected override async Task OnInitializedAsync()
+    {
+        isAr = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("ar", StringComparison.OrdinalIgnoreCase);
+
+        var categoriesTask = LoadCategories();
+        var promotionsTask = LoadPromotions();
+
+        await categoriesTask;
+
+        _ = FinishLoadingSupportDataAsync(promotionsTask);
+    }
+
+    private async Task FinishLoadingSupportDataAsync(Task supportTask)
+    {
+        try { await supportTask; } catch { }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadPromotions()
+    {
+        try { promotions = await PromotionService.GetActivePromotionsAsync(); }
+        catch { }
+    }
+
+    private async Task LoadCategories()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+        try
+        {
+            bool? isActive = string.IsNullOrEmpty(selectedStatus) ? null : bool.Parse(selectedStatus);
+            var result = await CategoryService.GetAllCategoriesAsync(pageIndex, pageSize, null, search, isActive);
+            categories = result.Items;
+            totalPages = result.TotalPages;
+            totalCount = result.TotalCount;
+        }
+        catch (Exception ex) { errorMessage = Localizer["FailedToLoadCategories"] + $": {ex.Message}"; }
+        finally { isLoading = false; }
+    }
+
+    private async Task HandleSearch(string v) { search = v; pageIndex = 1; await LoadCategories(); }
+    private async Task ApplyFilters() { pageIndex = 1; await LoadCategories(); }
+    private async Task ResetFilters() { search = string.Empty; selectedStatus = string.Empty; selectedPromotion = string.Empty; pageIndex = 1; await LoadCategories(); }
+    private async Task OnPageChanged(int p) { pageIndex = p; await LoadCategories(); }
+
+    private void NavigateToCreate() => Navigation.NavigateTo("/admin/categories/create");
+    private void NavigateToEdit(Guid id) => Navigation.NavigateTo($"/admin/categories/edit/{id}");
+
+    private void ConfirmDelete(Guid id) { categoryToDelete = id; showDeleteConfirm = true; }
+    private void CancelDelete() { showDeleteConfirm = false; categoryToDelete = Guid.Empty; }
+    private async Task DeleteCategory()
+    {
+        try { await CategoryService.DeleteCategoryAsync(categoryToDelete); showDeleteConfirm = false; await LoadCategories(); }
+        catch (Exception ex) { errorMessage = Localizer["FailedToDeleteCategory"] + $": {ex.Message}"; showDeleteConfirm = false; }
+    }
+
+}

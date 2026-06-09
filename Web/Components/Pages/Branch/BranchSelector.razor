@@ -1,0 +1,98 @@
+@page "/branch/select"
+@layout BranchSelectorLayout
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using System.Globalization
+@using Web.Components.Common
+@using Web.Models.Branches
+@inject IBranchService BranchService
+@inject ActiveBranchContext ActiveBranch
+@inject NavigationManager Navigation
+
+<PageTitle>@Localizer["SelectBranch"]</PageTitle>
+
+<div>
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+                <i class="bi bi-building text-purple-600"></i>
+                @Localizer["SelectBranch"]
+            </h1>
+            <p class="text-gray-600 mt-2 text-sm sm:text-base">@Localizer["SelectBranchDescription"]</p>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <Spinner Size="Spinner.SpinnerSize.Lg" Centered="true" />
+    }
+    else if (branches.Count == 0)
+    {
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm text-center py-12">
+            <i class="bi bi-building-x text-6xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500 text-lg">@Localizer["NoBranchesAssigned"]</p>
+        </div>
+    }
+    else
+    {
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            @foreach (var branch in branches)
+            {
+                var row = branch;
+                <button type="button"
+                        @onclick="() => Select(row)"
+                        class="flex items-center gap-4 text-start bg-white rounded-xl border border-gray-100 shadow-sm p-4 hover:shadow-md hover:bf-border-info transition-all group">
+                    <div class="h-11 w-11 bf-bg-info-100 rounded-lg flex items-center justify-center transition-colors">
+                        <i class="bi bi-building bf-text-info text-xl"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-gray-900 truncate">@(isAr ? row.NameAr : row.NameEn)</p>
+                        @if (!string.IsNullOrWhiteSpace(isAr ? row.DescriptionAr : row.DescriptionEn))
+                        {
+                            <p class="text-xs text-gray-500 mt-0.5 line-clamp-2">@(isAr ? row.DescriptionAr : row.DescriptionEn)</p>
+                        }
+                    </div>
+                    <i class="bi bi-chevron-right rtl:rotate-180 text-gray-400 ms-auto"></i>
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<BranchDto> branches = new();
+    private bool isLoading = true;
+    private bool isAr => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("ar", StringComparison.OrdinalIgnoreCase);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            branches = await BranchService.GetMyBranchesAsync();
+        }
+        catch
+        {
+            branches = new List<BranchDto>();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+
+        // Spec: if only one branch is assigned, skip the selector and set it
+        // automatically. We do this in OnInitializedAsync so the user never
+        // sees the single-option screen flash.
+        if (branches.Count == 1)
+        {
+            Select(branches[0]);
+        }
+    }
+
+    private void Select(BranchDto branch)
+    {
+        ActiveBranch.Set(branch.Id, branch.NameEn, branch.NameAr);
+        // Land on the Dashboard — it's now a real page, not a redirect.
+        Navigation.NavigateTo("/branch");
+    }
+}

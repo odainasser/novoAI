@@ -1,0 +1,287 @@
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Web.Models.Notifications
+@inject INotificationClientService Notifications
+@inject NavigationManager Navigation
+@implements IAsyncDisposable
+
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                <i class="bi bi-bell-fill text-bf-primary"></i>
+                @Localizer["Notifications"]
+            </h1>
+            <p class="text-gray-600 mt-1 text-sm">
+                @(unreadCount == 0
+                    ? Localizer["NoUnreadNotifications"]
+                    : string.Format(Localizer["UnreadNotificationsCount"], unreadCount))
+            </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+            <div class="inline-flex rounded-lg border border-gray-300 overflow-hidden text-sm">
+                <button type="button"
+                        class="@($"px-4 py-2 transition-colors {(!showUnreadOnly ? "bg-bf-primary text-white" : "bg-white text-gray-700 hover:bg-gray-50")}")"
+                        @onclick="() => SetFilter(false)">
+                    @Localizer["All"]
+                </button>
+                <button type="button"
+                        class="@($"px-4 py-2 border-s border-gray-300 transition-colors {(showUnreadOnly ? "bg-bf-primary text-white" : "bg-white text-gray-700 hover:bg-gray-50")}")"
+                        @onclick="() => SetFilter(true)">
+                    @Localizer["Unread"]
+                </button>
+            </div>
+
+            @if (unreadCount > 0)
+            {
+                <button type="button"
+                        class="inline-flex items-center gap-2 py-2 px-4 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium disabled:opacity-50"
+                        disabled="@isMutating"
+                        @onclick="MarkAllRead">
+                    <i class="bi bi-check2-all"></i>
+                    <span>@Localizer["MarkAllRead"]</span>
+                </button>
+            }
+
+            <button type="button"
+                    class="inline-flex items-center gap-2 py-2 px-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium disabled:opacity-50"
+                    disabled="@isLoading"
+                    @onclick="() => LoadAsync(1)">
+                <i class="@($"bi bi-arrow-clockwise {(isLoading ? "animate-spin" : string.Empty)}")"></i>
+                <span>@Localizer["Refresh"]</span>
+            </button>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <Spinner Size="Spinner.SpinnerSize.Lg" Centered="true" />
+    }
+    else if (items.Count == 0)
+    {
+        <div class="flex flex-col items-center justify-center py-16 text-center">
+            <div class="h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                <i class="bi bi-bell-slash text-gray-400 text-2xl"></i>
+            </div>
+            <p class="text-gray-700 font-medium">@Localizer["NoNotifications"]</p>
+        </div>
+    }
+    else
+    {
+        <ul class="divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
+            @foreach (var n in items)
+            {
+                var title = isAr && !string.IsNullOrEmpty(n.TitleAr) ? n.TitleAr : n.TitleEn;
+                var body = isAr && !string.IsNullOrEmpty(n.BodyAr) ? n.BodyAr : n.BodyEn;
+                <li class="@($"flex gap-3 px-4 py-4 hover:bg-gray-50 transition-colors cursor-pointer {(n.IsRead ? string.Empty : "bg-emerald-50/40")}")"
+                    @onclick="() => OnItemClick(n)">
+                    <div class="shrink-0 mt-1">
+                        <span class="@($"flex h-2.5 w-2.5 rounded-full {(n.IsRead ? "bg-gray-300" : "bg-emerald-500")}")"></span>
+                    </div>
+                    <div class="grow min-w-0">
+                        <div class="flex items-baseline justify-between gap-3">
+                            <p class="text-sm font-semibold text-gray-900">@title</p>
+                            <span class="text-xs text-gray-400 whitespace-nowrap shrink-0">@FormatAbsoluteTime(n.CreatedAt)</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mt-1 whitespace-pre-wrap break-words">@body</p>
+                        <div class="flex items-center gap-2 mt-2">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-700">
+                                @n.Type
+                            </span>
+                            @if (!n.IsRead)
+                            {
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-100 text-emerald-700">
+                                    @Localizer["Unread"]
+                                </span>
+                            }
+                        </div>
+                    </div>
+                </li>
+            }
+        </ul>
+
+        <div class="mt-4">
+            <Pagination PageIndex="@pageIndex"
+                        TotalPages="@totalPages"
+                        TotalCount="@totalCount"
+                        PageSize="@pageSize"
+                        OnPageChanged="@OnPageChanged" />
+        </div>
+    }
+</div>
+
+@code {
+    private List<NotificationDto> items = new();
+    private int unreadCount;
+    private int pageIndex = 1;
+    private int pageSize = 20;
+    private int totalPages = 1;
+    private int totalCount;
+    private bool isLoading = true;
+    private bool isMutating;
+    private bool showUnreadOnly;
+    private bool initialized;
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+
+    private bool isAr => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("ar", StringComparison.OrdinalIgnoreCase);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthStateTask != null)
+        {
+            var state = await AuthStateTask;
+            if (state.User.Identity?.IsAuthenticated != true) return;
+        }
+
+        if (initialized) return;
+        initialized = true;
+
+        Notifications.NotificationReceived += HandleNotificationReceivedAsync;
+        Notifications.UnreadCountChanged += HandleUnreadCountChangedAsync;
+
+        await Notifications.StartAsync();
+        await LoadAsync(1);
+    }
+
+    private async Task LoadAsync(int page)
+    {
+        isLoading = true;
+        StateHasChanged();
+        try
+        {
+            pageIndex = page < 1 ? 1 : page;
+            var result = await Notifications.GetAsync(pageIndex, pageSize, showUnreadOnly);
+            items = result.Items;
+            totalCount = result.TotalCount;
+            totalPages = result.TotalPages == 0 ? 1 : result.TotalPages;
+            unreadCount = await Notifications.GetUnreadCountAsync();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SetFilter(bool unreadOnly)
+    {
+        if (showUnreadOnly == unreadOnly) return;
+        showUnreadOnly = unreadOnly;
+        await LoadAsync(1);
+    }
+
+    private async Task OnPageChanged(int newPage)
+    {
+        await LoadAsync(newPage);
+    }
+
+    private async Task OnItemClick(NotificationDto n)
+    {
+        if (!n.IsRead)
+        {
+            await Notifications.MarkReadAsync(n.Id);
+            n.IsRead = true;
+            n.ReadAt = DateTime.UtcNow;
+            if (unreadCount > 0) unreadCount--;
+            if (showUnreadOnly)
+            {
+                items.Remove(n);
+                totalCount = Math.Max(0, totalCount - 1);
+                totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize));
+            }
+            StateHasChanged();
+        }
+        if (!string.IsNullOrEmpty(n.Link) && CanFollowLink(n.Link!))
+        {
+            Navigation.NavigateTo(n.Link!);
+        }
+    }
+
+    private bool CanFollowLink(string link)
+    {
+        var relative = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var isCashierPanel = relative.StartsWith("cashier", StringComparison.OrdinalIgnoreCase);
+        if (isCashierPanel && link.StartsWith("/admin", StringComparison.OrdinalIgnoreCase))
+            return false;
+        return true;
+    }
+
+    private async Task MarkAllRead()
+    {
+        if (isMutating) return;
+        isMutating = true;
+        try
+        {
+            await Notifications.MarkAllReadAsync();
+            foreach (var n in items)
+            {
+                if (!n.IsRead)
+                {
+                    n.IsRead = true;
+                    n.ReadAt = DateTime.UtcNow;
+                }
+            }
+            unreadCount = 0;
+            if (showUnreadOnly)
+            {
+                await LoadAsync(1);
+            }
+            else
+            {
+                StateHasChanged();
+            }
+        }
+        finally
+        {
+            isMutating = false;
+        }
+    }
+
+    private Task HandleNotificationReceivedAsync(NotificationDto dto)
+    {
+        InvokeAsync(async () =>
+        {
+            if (pageIndex == 1)
+            {
+                if (!showUnreadOnly || !dto.IsRead)
+                {
+                    items.Insert(0, dto);
+                    if (items.Count > pageSize)
+                        items.RemoveAt(items.Count - 1);
+                    totalCount++;
+                    totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize));
+                }
+            }
+            unreadCount = await Notifications.GetUnreadCountAsync();
+            StateHasChanged();
+        });
+        return Task.CompletedTask;
+    }
+
+    private Task HandleUnreadCountChangedAsync(int count)
+    {
+        unreadCount = count;
+        InvokeAsync(StateHasChanged);
+        return Task.CompletedTask;
+    }
+
+    private string FormatAbsoluteTime(DateTime utcTime)
+    {
+        var local = utcTime.ToLocal();
+        var diff = DateTime.UtcNow - utcTime;
+        if (diff.TotalMinutes < 1) return Localizer["JustNow"];
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}{Localizer["MinAgo"]}";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}{Localizer["HrAgo"]}";
+        if (diff.TotalDays < 7) return $"{(int)diff.TotalDays}{Localizer["DayAgo"]}";
+        return local.ToString("g");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Notifications.NotificationReceived -= HandleNotificationReceivedAsync;
+        Notifications.UnreadCountChanged -= HandleUnreadCountChangedAsync;
+        await Task.CompletedTask;
+    }
+}

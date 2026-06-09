@@ -1,0 +1,336 @@
+@page "/admin/suppliers"
+@attribute [Authorize]
+@attribute [RequirePermission(Permissions.SuppliersRead)]
+@using Microsoft.AspNetCore.Authorization
+@using Web.Authorization
+@using Web.Components.Common
+@using System.Globalization
+@inject ISupplierService SupplierService
+@inject NavigationManager Navigation
+
+<PageTitle>@Localizer["SuppliersManagement"]</PageTitle>
+
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-6">
+            <!-- Header -->
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+                        <i class="bi bi-truck text-purple-600"></i>
+                        @Localizer["SuppliersManagement"]
+                    </h1>
+                    <p class="text-gray-600 mt-2 text-sm sm:text-base">@Localizer["ManageSuppliers"]</p>
+                </div>
+                
+                <AuthorizeView Policy="Permission:suppliers.write">
+                    <Authorized>
+                        <button @onclick="NavigateToCreate" 
+                                class="btn-primary-action">
+                            <i class="bi bi-plus-circle"></i>
+                            <span>@Localizer["CreateSupplier"]</span>
+                        </button>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+
+            <!-- Filters -->
+            <div class="mb-6 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                <div class="flex flex-wrap items-center gap-3 p-4">
+                    <div class="flex-1 min-w-[200px]">
+                        <SearchInput @bind-Value="searchTerm"
+                                     OnSearch="HandleSearch"
+                                     Placeholder="@Localizer["SearchSuppliers"]" />
+                    </div>
+
+                    <button @onclick="() => showFiltersPanel = !showFiltersPanel"
+                            class="@($"inline-flex items-center gap-2 py-2 px-4 rounded-lg border transition-all duration-200 font-medium text-sm {(showFiltersPanel ? "bg-purple-50 border-purple-300 text-purple-700" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50")}")"> 
+                        <i class="bi bi-funnel"></i>
+                        <span>@Localizer["Filters"]</span>
+                        @if (ActiveFilterCount > 0)
+                        {
+                            <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-purple-600 rounded-full">@ActiveFilterCount</span>
+                        }
+                        <i class="@($"bi bi-chevron-{(showFiltersPanel ? "up" : "down")} text-xs")"></i>
+                    </button>
+
+                    @if (HasActiveFilters())
+                    {
+                        <button @onclick="ResetFilters" class="inline-flex items-center gap-2 py-2 px-4 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                            <i class="bi bi-x-circle"></i>
+                            <span>@Localizer["ResetFilters"]</span>
+                        </button>
+                    }
+                </div>
+
+                @if (showFiltersPanel)
+                {
+                    <div class="px-4 pb-4 pt-0 border-t border-gray-200">
+                        <div class="grid grid-cols-1 sm:grid-cols-1 gap-3 pt-4">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">@Localizer["Status"]</label>
+                                <div class="relative">
+                                    <select @bind="selectedStatus" @bind:after="ApplyFilters" class="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2 px-3 pe-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-bf-primary text-sm">
+                                        <option value="">@Localizer["AllStatuses"]</option>
+                                        <option value="true">@Localizer["Active"]</option>
+                                        <option value="false">@Localizer["Inactive"]</option>
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 end-0 flex items-center px-2 text-gray-400"><svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+            </div>
+
+            @if (isLoading)
+            {
+                <Spinner Size="Spinner.SpinnerSize.Lg" Centered="true" />
+            }
+            else if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="p-4 bf-bg-danger-50 border bf-border-danger rounded-lg flex items-start gap-3">
+                    <i class="bi bi-exclamation-triangle-fill bf-icon-danger text-lg mt-0.5"></i>
+                    <span class="bf-text-danger">@errorMessage</span>
+                </div>
+            }
+            else if (suppliers == null || !suppliers.Any())
+            {
+                <div class="text-center py-12">
+                    <i class="bi bi-truck text-6xl text-gray-300 mb-4"></i>
+                    <p class="text-gray-500 text-lg">@Localizer["NoSuppliersFound"]</p>
+                </div>
+            }
+            else
+            {
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["SupplierName"]</th>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["ContactPerson"]</th>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["ContactEmail"]</th>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["ContactPhone"]</th>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Status"]</th>
+                                <th class="px-6 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Actions"]</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            @foreach (var supplier in suppliers)
+                            {
+                                <tr class="hover:bg-gray-50 transition-colors duration-150">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                                                <i class="bi bi-truck text-purple-600"></i>
+                                            </div>
+                                            <div class="ms-4">
+                                                <a href="@($"/admin/suppliers/edit/{supplier.Id}")" class="text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline">@(isAr ? supplier.NameAr : supplier.NameEn)</a>
+                                                <div class="text-xs text-gray-500">@(isAr ? supplier.NameEn : supplier.NameAr)</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                        @{
+                                            var contactPerson = isAr ? supplier.ContactPersonAr : supplier.ContactPersonEn;
+                                        }
+                                        @(string.IsNullOrEmpty(contactPerson) ? "-" : contactPerson)
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                        @if (!string.IsNullOrEmpty(supplier.ContactEmail))
+                                        {
+                                            <a href="mailto:@supplier.ContactEmail" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-bf-primary hover:underline">@supplier.ContactEmail</a>
+                                        }
+                                        else
+                                        {
+                                            <span>-</span>
+                                        }
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                        @if (!string.IsNullOrEmpty(supplier.ContactPhone))
+                                        {
+                                            <a href="tel:@supplier.ContactPhone" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bf-bg-success-100 bf-text-success hover:underline">@supplier.ContactPhone</a>
+                                        }
+                                        else
+                                        {
+                                            <span>-</span>
+                                        }
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        @if (supplier.IsActive)
+                                        {
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bf-bg-success-100 bf-text-success">
+                                                <i class="bi bi-check-circle-fill me-1"></i> @Localizer["Active"]
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bf-bg-danger-100 bf-text-danger">
+                                                <i class="bi bi-x-circle-fill me-1"></i> @Localizer["Inactive"]
+                                            </span>
+                                        }
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-end text-sm font-medium">
+                                        <AuthorizeView Policy="Permission:suppliers.write">
+                                            <Authorized>
+                                                <button @onclick="() => NavigateToEdit(supplier.Id)" 
+                                                        class="text-purple-600 hover:text-purple-900 me-3" title="@Localizer["Edit"]">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </button>
+                                            </Authorized>
+                                            <NotAuthorized>
+                                                <button disabled class="text-gray-400 me-3 cursor-not-allowed" title="@Localizer["Edit"]">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </button>
+                                            </NotAuthorized>
+                                        </AuthorizeView>
+
+                                        <AuthorizeView Policy="Permission:suppliers.delete">
+                                            <Authorized>
+                                                <button @onclick="() => ConfirmDelete(supplier.Id)" 
+                                                        class="bf-text-danger bf-hover-text-danger-strong" title="@Localizer["Delete"]">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </Authorized>
+                                            <NotAuthorized>
+                                                <button disabled class="text-gray-400 cursor-not-allowed" title="@Localizer["Delete"]">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </NotAuthorized>
+                                        </AuthorizeView>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                
+                <Pagination PageIndex="@pageIndex" 
+                            TotalPages="@totalPages" 
+                            TotalCount="@totalCount" 
+                            PageSize="@pageSize" 
+                            OnPageChanged="@OnPageChanged" />
+            }
+</div>
+
+<ConfirmModal IsVisible="@showDeleteConfirm"
+              Title="@Localizer["DeleteSupplierTitle"]"
+              Message="@Localizer["DeleteSupplierConfirmation"]"
+              OnConfirm="@DeleteSupplier"
+              OnCancel="@CancelDelete"
+              IsDanger="true" />
+
+@code {
+private List<SupplierDto> suppliers = new();
+private bool isLoading = true;
+private string errorMessage = string.Empty;
+private bool showDeleteConfirm = false;
+private Guid supplierToDelete;
+private bool isAr = false;
+    
+// Filters
+private string searchTerm = string.Empty;
+private string selectedStatus = string.Empty;
+private bool showFiltersPanel = false;
+
+private bool HasActiveFilters() => !string.IsNullOrEmpty(selectedStatus);
+private int ActiveFilterCount => string.IsNullOrEmpty(selectedStatus) ? 0 : 1;
+    
+// Pagination
+private int pageIndex = 1;
+private int pageSize = 10;
+private int totalPages = 1;
+private int totalCount = 0;
+
+protected override async Task OnInitializedAsync()
+{
+    isAr = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("ar", StringComparison.OrdinalIgnoreCase);
+    await LoadSuppliers();
+}
+
+    private async Task LoadSuppliers()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+        
+        try
+        {
+            bool? isActive = string.IsNullOrEmpty(selectedStatus) ? null : bool.Parse(selectedStatus);
+            
+            var result = await SupplierService.GetAllSuppliersAsync(pageIndex, pageSize, searchTerm, isActive);
+            suppliers = result.Items;
+            totalPages = result.TotalPages;
+            totalCount = result.TotalCount;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = Localizer["FailedToLoadSuppliers"] + $": {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleSearch(string searchValue)
+    {
+        searchTerm = searchValue;
+        pageIndex = 1;
+        await LoadSuppliers();
+    }
+
+    private async Task ApplyFilters()
+    {
+        pageIndex = 1;
+        await LoadSuppliers();
+    }
+
+    private async Task ResetFilters()
+    {
+        searchTerm = string.Empty;
+        selectedStatus = string.Empty;
+        pageIndex = 1;
+        await LoadSuppliers();
+    }
+    private async Task OnPageChanged(int newPageIndex)
+    {
+        pageIndex = newPageIndex;
+        await LoadSuppliers();
+    }
+
+    private void NavigateToCreate()
+    {
+        Navigation.NavigateTo("/admin/suppliers/create");
+    }
+
+    private void NavigateToEdit(Guid supplierId)
+    {
+        Navigation.NavigateTo($"/admin/suppliers/edit/{supplierId}");
+    }
+
+    private void ConfirmDelete(Guid supplierId)
+    {
+        supplierToDelete = supplierId;
+        showDeleteConfirm = true;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteConfirm = false;
+        supplierToDelete = Guid.Empty;
+    }
+
+    private async Task DeleteSupplier()
+    {
+        try
+        {
+            await SupplierService.DeleteSupplierAsync(supplierToDelete);
+            showDeleteConfirm = false;
+            await LoadSuppliers();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = Localizer["FailedToDeleteSupplier"] + $": {ex.Message}";
+            showDeleteConfirm = false;
+        }
+    }
+}

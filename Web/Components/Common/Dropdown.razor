@@ -1,0 +1,78 @@
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+
+<div class="relative bf-dropdown-wrapper">
+    <button type="button" class="@ToggleCss" style="@ToggleStyle" @onclick="Toggle" aria-haspopup="true" aria-expanded="@isOpen.ToString().ToLower()" id="@ToggleId" @onkeydown="OnToggleKeyDown">
+        @if (ToggleContent != null)
+        {
+            @ToggleContent
+        }
+    </button>
+
+    @if (isOpen)
+    {
+        <div class="fixed inset-0 bf-dropdown-overlay" @onclick="Close"></div>
+        <div id="@MenuId" class="@MenuCss @AlignmentClass @MenuClass show" role="menu" aria-labelledby="@ToggleId" tabindex="0" @onkeydown="OnMenuKeyDown" @onclick="HandleMenuClick" style="@MenuStyle">
+            @ChildContent
+        </div>
+    }
+</div>
+
+@code {
+    private bool isOpen;
+    private string ToggleId = "dropdown-toggle-" + Guid.NewGuid().ToString("N");
+    private string MenuId = "dropdown-menu-" + Guid.NewGuid().ToString("N");
+
+    [Parameter] public RenderFragment? ToggleContent { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string Alignment { get; set; } = "right"; // "left" or "right"
+    [Parameter] public string ToggleCss { get; set; } = "bf-dropdown-toggle";
+    [Parameter] public string MenuCss { get; set; } = "bf-dropdown-menu absolute mt-2 z-50";
+    [Parameter] public string ToggleStyle { get; set; } = string.Empty;
+    [Parameter] public string MenuStyle { get; set; } = string.Empty;
+    [Parameter] public string MenuClass { get; set; } = string.Empty;
+
+    private string AlignmentClass => Alignment == "left" ? "start-0 origin-top-left rtl:origin-top-right" : "end-0 origin-top-right rtl:origin-top-left";
+
+    public void Toggle()
+    {
+        isOpen = !isOpen;
+    }
+
+    public void Close()
+    {
+        if (isOpen)
+        {
+            isOpen = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleMenuClick(MouseEventArgs e)
+    {
+        // small delay to allow child handlers to run
+        await Task.Delay(50);
+        Close();
+    }
+
+    private void OnToggleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" || e.Key == " ")
+        {
+            Toggle();
+        }
+        else if (e.Key == "ArrowDown")
+        {
+            isOpen = true;
+            StateHasChanged();
+        }
+    }
+
+    private void OnMenuKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            Close();
+        }
+    }
+}

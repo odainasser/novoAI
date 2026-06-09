@@ -1,0 +1,179 @@
+@using System.Globalization
+
+@* Reusable grouped bar chart component with RTL/LTR tooltip support and Y-axis grid *@
+
+<div class="flex flex-col" style="min-height: @(Height + 100)px;">
+@if (!Items.Any())
+{
+    <div class="flex flex-col items-center justify-center text-center" style="min-height: @(Height + 100)px;">
+        <div class="h-12 w-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <i class="bi bi-bar-chart text-gray-400 text-xl"></i>
+        </div>
+        <p class="text-gray-500 text-sm">@EmptyText</p>
+    </div>
+}
+else
+{
+    var globalMax = Math.Max(1, Items.Max(v => v.Bars.Any() ? v.Bars.Max(b => b.Value) : 0));
+    var maxBars = Items.Any() ? Items.Max(v => v.Bars.Count) : 1;
+    var colWidth = Math.Max(ColumnMinWidth, maxBars * (BarWidth + 8));
+    var isRtl = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
+    var gridLines = 4;
+    var axisWidth = 48;
+    var chartTotalWidth = Math.Max(Items.Count * colWidth, 300);
+
+    <div style="overflow-x: auto; overflow-y: hidden;">
+        <div class="flex" style="min-width: @(chartTotalWidth + axisWidth)px;">
+            @* Y-axis labels and grid container *@
+            <div class="flex-shrink-0 relative" style="width: @(axisWidth)px; height: @(Height + 4)px;">
+                @for (var g = 0; g <= gridLines; g++)
+                {
+                    var gv = (double)globalMax - (double)globalMax * g / gridLines;
+                    var topPx = (double)g / gridLines * Height;
+                    <div class="absolute text-[11px] text-gray-400 font-medium" style="top: @(topPx - 7)px; right: 8px;">
+                        @FormatYLabel(gv)
+                    </div>
+                }
+            </div>
+
+            @* Chart plot area with grid lines *@
+            <div class="flex-1 relative" style="height: @(Height + 4)px; min-width: @(chartTotalWidth)px;">
+                @* Horizontal grid lines *@
+                @for (var g = 0; g <= gridLines; g++)
+                {
+                    var topPx = (double)g / gridLines * Height;
+                    var isBaseline = g == gridLines;
+                    <div class="absolute left-0 right-0 pointer-events-none @(isBaseline ? "chart-grid-baseline" : "chart-grid-line")"
+                         style="top: @(topPx)px; height: 1px; @(isBaseline ? "" : "background: transparent; border-top-style: dashed; border-top-width: 1px;")">
+                    </div>
+                }
+
+                @* Bar groups *@
+                <div class="absolute inset-0 flex items-end" style="height: @(Height)px;">
+                    @foreach (var item in Items)
+                    {
+                        <div class="group relative flex flex-col items-center flex-shrink-0 h-full justify-end"
+                             style="width: @(colWidth)px;">
+                            @* Hover background highlight on the column *@
+                            <div class="absolute inset-x-2 inset-y-0 rounded-md bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none"></div>
+
+                            <div class="relative flex items-end justify-center gap-2 z-10" style="height: @(Height)px; width: @(colWidth)px;">
+                                @foreach (var bar in item.Bars)
+                                {
+                                    var barPx = bar.Value > 0 ? Math.Max(4, (int)((double)bar.Value * Height / globalMax)) : 0;
+
+                                    <div class="flex flex-col justify-end items-center" style="height: @(Height)px; width: @(BarWidth)px;">
+                                        <div class="w-full rounded-t-md cursor-pointer transition-all duration-200 hover:brightness-110 @bar.BgCssClass"
+                                             style="height: @(barPx)px;">
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                            @* Tooltip: positioned above the bar group *@
+                            <div class="chart-tooltip absolute opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-20 bg-gray-800 text-white text-xs rounded-lg px-3 py-1.5 shadow-md whitespace-nowrap"
+                                 style="bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);">
+                                @((MarkupString)item.Tooltip)
+                                <div class="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-gray-800"></div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @* X-axis labels *@
+        <div class="flex mt-2" style="min-width: @(chartTotalWidth + axisWidth)px;">
+            <div class="flex-shrink-0" style="width: @(axisWidth)px;"></div>
+            <div class="flex" style="min-width: @(chartTotalWidth)px;">
+                @foreach (var item in Items)
+                {
+                    <div class="flex-shrink-0 text-center px-1" style="width: @(colWidth)px;">
+                        <p class="text-xs text-gray-700 font-semibold leading-snug break-words" title="@item.Label">
+                            @item.Label
+                        </p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @if (LegendItems.Any())
+    {
+        <div class="flex items-center gap-4 mt-4 text-xs text-gray-500 flex-wrap">
+            @foreach (var legend in LegendItems)
+            {
+                <div class="flex items-center gap-1.5">
+                    <div class="w-3 h-3 rounded-sm @legend.BgCssClass"></div>
+                    <span>@legend.Label</span>
+                </div>
+            }
+        </div>
+    }
+}
+</div>
+
+@code {
+    /// <summary>The chart data items (one per column group).</summary>
+    [Parameter] public List<BarChartItem> Items { get; set; } = new();
+
+    /// <summary>Legend entries displayed below the chart.</summary>
+    [Parameter] public List<BarChartLegend> LegendItems { get; set; } = new();
+
+    /// <summary>Chart height in pixels.</summary>
+    [Parameter] public int Height { get; set; } = 180;
+
+    /// <summary>Width of each individual bar in pixels.</summary>
+    [Parameter] public int BarWidth { get; set; } = 28;
+
+    /// <summary>Minimum width of each column group in pixels.</summary>
+    [Parameter] public int ColumnMinWidth { get; set; } = 88;
+
+    /// <summary>Maximum label characters before truncation.</summary>
+    [Parameter] public int MaxLabelLength { get; set; } = 12;
+
+    /// <summary>Text shown when Items is empty.</summary>
+    [Parameter] public string EmptyText { get; set; } = "No data available";
+
+    private static string FormatYLabel(double val)
+    {
+        if (val >= 1_000_000) return (val / 1_000_000).ToString("0.#", CultureInfo.InvariantCulture) + "M";
+        if (val >= 1_000) return (val / 1_000).ToString("0.#", CultureInfo.InvariantCulture) + "K";
+        return ((int)Math.Round(val)).ToString(CultureInfo.InvariantCulture);
+    }
+
+    // --- Models ---
+
+    public class BarChartItem
+    {
+        /// <summary>X-axis label for this column group.</summary>
+        public string Label { get; set; } = string.Empty;
+
+        /// <summary>Tooltip text shown on hover.</summary>
+        public string Tooltip { get; set; } = string.Empty;
+
+        /// <summary>The bars in this column group.</summary>
+        public List<BarChartBar> Bars { get; set; } = new();
+    }
+
+    public class BarChartBar
+    {
+        /// <summary>Numeric value for this bar.</summary>
+        public int Value { get; set; }
+
+        /// <summary>Tailwind background class for the bar (e.g. "bg-emerald-500").</summary>
+        public string BgCssClass { get; set; } = "bg-emerald-500";
+
+        /// <summary>Tailwind text color class for the value label (e.g. "text-emerald-600").</summary>
+        public string TextCssClass { get; set; } = "text-emerald-600";
+    }
+
+    public class BarChartLegend
+    {
+        /// <summary>Legend label text.</summary>
+        public string Label { get; set; } = string.Empty;
+
+        /// <summary>Tailwind background class for the legend swatch.</summary>
+        public string BgCssClass { get; set; } = "bg-emerald-500";
+    }
+}

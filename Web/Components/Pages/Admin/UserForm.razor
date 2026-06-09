@@ -1,0 +1,742 @@
+@page "/admin/users/create"
+@page "/admin/users/edit/{UserId:guid}"
+@attribute [Authorize]
+@attribute [RequirePermission(Permissions.UsersWrite)]
+@using Microsoft.AspNetCore.Authorization
+@using Web.Authorization
+@using System.Globalization
+@using Web.Components.Common
+@using Web.Models.Cashiers
+@using Web.Models.Warehouses
+@using System.ComponentModel.DataAnnotations
+@inject IUserManagementService UserService
+@inject IRoleManagementService RoleService
+@inject ICashierManagementService CashierService
+@inject IWarehouseService WarehouseService
+@inject IBranchService BranchService
+@inject IMediaService MediaService
+@inject NavigationManager Navigation
+@inject IJsonStringLocalizer Localizer
+
+<PageTitle>@(IsEditMode ? Localizer["EditUser"] : Localizer["CreateUser"])</PageTitle>
+
+@if (isLoading)
+{
+    <Spinner Size="Spinner.SpinnerSize.Lg" Centered="true" />
+}
+else
+{
+    <EditForm Model="@model" OnValidSubmit="@HandleSubmit" FormName="userForm">
+        <LocalizedDataAnnotationsValidator />
+        <ServerValidator @ref="serverValidator" />
+
+        <!-- Sticky top bar -->
+        <div class="form-sticky-toolbar sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 mb-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <button type="button" @onclick="Cancel" class="p-2 -ml-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                        <i class="bi bi-arrow-left text-lg"></i>
+                    </button>
+                    <h1 class="text-xl font-semibold text-gray-900">
+                        @(IsEditMode ? Localizer["EditUser"] : Localizer["CreateUser"])
+                    </h1>
+                    @if (IsEditMode)
+                    {
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium @(model.IsActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600")">
+                            @(model.IsActive ? Localizer["Active"] : Localizer["Inactive"])
+                        </span>
+                    }
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" @onclick="Cancel" class="form-cancel-btn px-4 py-2 text-sm font-medium rounded-lg transition-colors">
+                        @(isSystemAdminUser ? Localizer["Close"] : Localizer["Cancel"])
+                    </button>
+                    @if (!isSystemAdminUser)
+                    {
+                        <button type="submit" disabled="@isSubmitting" class="px-4 py-2 text-sm font-medium bg-bf-primary text-bf-primary-contrast rounded-lg hover:opacity-90 transition-all disabled:opacity-50 inline-flex items-center gap-2">
+                            @if (isSubmitting)
+                            {
+                                <Spinner Size="Spinner.SpinnerSize.Xs" Color="Spinner.SpinnerColor.White" />
+                            }
+                            <span>@(IsEditMode ? Localizer["Update"] : Localizer["Create"])</span>
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+                <i class="bi bi-exclamation-triangle-fill text-red-600 text-lg mt-0.5"></i>
+                <span class="text-red-800 text-sm">@errorMessage</span>
+            </div>
+        }
+
+        @if (isSystemAdminUser)
+        {
+            <div class="mb-5 p-4 bf-bg-warning-50 border bf-border-warning rounded-xl flex items-start gap-3">
+                <i class="bi bi-lock-fill bf-icon-warning text-lg mt-0.5"></i>
+                <span class="bf-text-warning text-sm">@Localizer["SystemAdminModifyWarning"]</span>
+            </div>
+        }
+
+        <!-- Two-column Shopify-style layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+            <!-- Main column (2/3) -->
+            <div class="lg:col-span-2 space-y-5">
+
+                <!-- Card: Profile -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1.5">@Localizer["ProfilePicture"]</label>
+                            <div class="flex items-center gap-4">
+                                @if (!string.IsNullOrEmpty(avatarUrl))
+                                {
+                                    <img src="@avatarUrl" alt="Profile Picture" class="h-16 w-16 rounded-full object-cover border border-gray-200" />
+                                }
+                                else
+                                {
+                                    <div class="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center border border-gray-200">
+                                        <i class="bi bi-person text-2xl text-gray-400"></i>
+                                    </div>
+                                }
+                                <InputFile OnChange="HandleFileSelected" class="block w-full text-sm text-gray-500" />
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="firstName" class="block text-sm font-medium text-gray-700 mb-1.5">
+                                    @Localizer["FirstName"] <span class="text-red-500">*</span>
+                                </label>
+                                <InputText @bind-Value="model.FirstName"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                    id="firstName"
+                                    placeholder="@Localizer["EnterFirstName"]"
+                                    disabled="@isSystemAdminUser" />
+                                <ValidationMessage For="@(() => model.FirstName)" class="text-red-600 text-xs mt-1" />
+                            </div>
+                            <div>
+                                <label for="lastName" class="block text-sm font-medium text-gray-700 mb-1.5">
+                                    @Localizer["LastName"] <span class="text-red-500">*</span>
+                                </label>
+                                <InputText @bind-Value="model.LastName"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                    id="lastName"
+                                    placeholder="@Localizer["EnterLastName"]"
+                                    disabled="@isSystemAdminUser" />
+                                <ValidationMessage For="@(() => model.LastName)" class="text-red-600 text-xs mt-1" />
+                            </div>
+                        </div>
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1.5">
+                                @Localizer["Email"] <span class="text-red-500">*</span>
+                            </label>
+                            <InputText @bind-Value="model.Email"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                id="email"
+                                placeholder="@Localizer["EnterEmail"]"
+                                disabled="@isSystemAdminUser" />
+                            <ValidationMessage For="@(() => model.Email)" class="text-red-600 text-xs mt-1" />
+                        </div>
+                        <div>
+                            <label for="phoneNumber" class="block text-sm font-medium text-gray-700 mb-1.5">@Localizer["PhoneNumber"]</label>
+                            <InputText @bind-Value="model.PhoneNumber"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                id="phoneNumber" />
+                            <ValidationMessage For="@(() => model.PhoneNumber)" class="text-red-600 text-xs mt-1" />
+                        </div>
+                    </div>
+                </div>
+
+                @if (IsCashierRoleSelected)
+                {
+                    <!-- Card: Store Assignment (Cashier only) -->
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                        <h2 class="text-sm font-semibold text-gray-900 mb-3">
+                            @Localizer["Store"] <span class="text-red-500">*</span>
+                        </h2>
+                        <div class="border border-gray-300 rounded-lg p-3 max-h-48 overflow-y-auto space-y-1">
+                            @if (!availableStores.Any())
+                            {
+                                <p class="text-sm text-gray-400 italic py-2">@Localizer["NoStoresAvailable"]</p>
+                            }
+                            else
+                            {
+                                @foreach (var store in availableStores)
+                                {
+                                    var storeId = store.Id;
+                                    var storeLabel = CultureInfo.CurrentUICulture.Name.StartsWith("ar") ? store.NameAr : store.NameEn;
+                                    <div class="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer" @onclick="@(() => ToggleStore(storeId))">
+                                        <input type="checkbox"
+                                               id="store_@storeId"
+                                               checked="@model.WarehouseIds.Contains(storeId)"
+                                               @onchange="@(e => OnStoreToggled(storeId, (bool)(e.Value ?? false)))"
+                                               @onclick:stopPropagation
+                                               class="h-4 w-4 rounded border-gray-300 text-bf-primary focus:ring-bf-primary cursor-pointer" />
+                                        <label for="store_@storeId" class="text-sm text-gray-700 cursor-pointer select-none flex-1">@storeLabel</label>
+                                    </div>
+                                }
+                            }
+                        </div>
+                        <ValidationMessage For="@(() => model.WarehouseIds)" class="text-red-600 text-xs mt-1" />
+                        @if (model.WarehouseIds.Any())
+                        {
+                            <p class="text-xs text-gray-500 mt-1.5 flex items-center gap-1">
+                                <i class="bi bi-check2-circle text-green-500"></i>
+                                @model.WarehouseIds.Count @Localizer["StoresSelected"]
+                            </p>
+                        }
+                    </div>
+                }
+
+                @if (IsBranchManagerRoleSelected)
+                {
+                    <!-- Card: Branch Assignment (BranchManager only) -->
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                        <h2 class="text-sm font-semibold text-gray-900 mb-3">
+                            @Localizer["Branches"] <span class="text-red-500">*</span>
+                        </h2>
+                        <div class="border border-gray-300 rounded-lg p-3 max-h-48 overflow-y-auto space-y-1">
+                            @if (!availableBranches.Any())
+                            {
+                                <p class="text-sm text-gray-400 italic py-2">@Localizer["NoBranchesAvailable"]</p>
+                            }
+                            else
+                            {
+                                @foreach (var branch in availableBranches)
+                                {
+                                    var branchId = branch.Id;
+                                    var branchLabel = CultureInfo.CurrentUICulture.Name.StartsWith("ar") ? branch.NameAr : branch.NameEn;
+                                    <div class="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer" @onclick="@(() => ToggleBranch(branchId))">
+                                        <input type="checkbox"
+                                               id="branch_@branchId"
+                                               checked="@model.BranchIds.Contains(branchId)"
+                                               @onchange="@(e => OnBranchToggled(branchId, (bool)(e.Value ?? false)))"
+                                               @onclick:stopPropagation
+                                               class="h-4 w-4 rounded border-gray-300 text-bf-primary focus:ring-bf-primary cursor-pointer" />
+                                        <label for="branch_@branchId" class="text-sm text-gray-700 cursor-pointer select-none flex-1">@branchLabel</label>
+                                    </div>
+                                }
+                            }
+                        </div>
+                        <ValidationMessage For="@(() => model.BranchIds)" class="text-red-600 text-xs mt-1" />
+                        @if (model.BranchIds.Any())
+                        {
+                            <p class="text-xs text-gray-500 mt-1.5 flex items-center gap-1">
+                                <i class="bi bi-check2-circle text-green-500"></i>
+                                @model.BranchIds.Count @Localizer["BranchesSelected"]
+                            </p>
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- Sidebar (1/3) -->
+            <div class="space-y-5">
+
+                <!-- Card: Status -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <h2 class="text-sm font-semibold text-gray-900 mb-3">@Localizer["Status"]</h2>
+                    <div class="flex flex-wrap items-center gap-6">
+                        <ToggleSwitch @bind-Value="model.IsActive" Disabled="@isSystemAdminUser" Label="@Localizer["Active"]" />
+                        @if (IsCashierRoleSelected)
+                        {
+                            <ToggleSwitch @bind-Value="model.CanRefund" Label="@Localizer["CanRefund"]" />
+                        }
+                    </div>
+                </div>
+
+                <!-- Card: Role Assignment -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <h2 class="text-sm font-semibold text-gray-900 mb-3">@Localizer["Role"]</h2>
+                    <SearchableDropdown TItem="RoleResponse"
+                                        TValue="Guid?"
+                                        Items="availableRoles"
+                                        Value="model.RoleId"
+                                        ValueChanged="OnRoleChanged"
+                                        DisplayText='r => CultureInfo.CurrentUICulture.Name.StartsWith("ar") ? r.NameAr : r.NameEn'
+                                        SearchText='r => $"{r.NameEn} {r.NameAr}"'
+                                        ItemValue="r => (Guid?)r.Id"
+                                        Placeholder='@Localizer["SelectRole"]'
+                                        Disabled="@isSystemAdminUser" />
+                </div>
+            </div>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public Guid? UserId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+
+    private UserFormModel model = new();
+    private List<RoleResponse> availableRoles = new();
+    private List<WarehouseDto> availableStores = new();
+    private List<BranchDto> availableBranches = new();
+    private bool isLoading = true;
+    private bool isSubmitting = false;
+    private string errorMessage = string.Empty;
+    private bool IsEditMode => UserId.HasValue;
+    private string? avatarUrl;
+    private IBrowserFile? selectedAvatarFile;
+    private byte[]? selectedAvatarData;
+    private string? selectedAvatarContentType;
+    private string? selectedAvatarFileName;
+    private bool isSystemAdminUser = false;
+    private string? originalEmail;
+    private ServerValidator serverValidator = null!;
+    private Guid? cashierRoleId;
+    private Guid? branchManagerRoleId;
+    private bool wasOriginallyCashier;
+    private bool wasOriginallyBranchManager;
+
+    private bool IsCashierRoleSelected =>
+        model.RoleId.HasValue && cashierRoleId.HasValue && model.RoleId.Value == cashierRoleId.Value;
+
+    private bool IsBranchManagerRoleSelected =>
+        model.RoleId.HasValue && branchManagerRoleId.HasValue && model.RoleId.Value == branchManagerRoleId.Value;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRoles();
+        await LoadStores();
+        await LoadBranches();
+
+        if (IsEditMode)
+        {
+            await LoadUser(UserId!.Value);
+        }
+        else
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadRoles()
+    {
+        try
+        {
+            var result = await RoleService.GetAllRolesAsync(1, 100);
+            availableRoles = result.Items.ToList();
+            cashierRoleId = availableRoles
+                .FirstOrDefault(r => string.Equals(r.NameEn, Web.Models.Constants.Roles.Cashier, StringComparison.OrdinalIgnoreCase))?.Id;
+            branchManagerRoleId = availableRoles
+                .FirstOrDefault(r => string.Equals(r.NameEn, Web.Models.Constants.Roles.BranchManager, StringComparison.OrdinalIgnoreCase))?.Id;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = Localizer["FailedToLoadRoles"] + $": {ex.Message}";
+        }
+    }
+
+    private async Task LoadStores()
+    {
+        try
+        {
+            var allWarehouses = await WarehouseService.GetActiveWarehousesAsync();
+            availableStores = allWarehouses.Where(w => w.WarehouseTypeCode == "MS").ToList();
+        }
+        catch (Exception ex)
+        {
+            // Stores only matter for cashiers; surface the error only if user picks Cashier role.
+            Console.WriteLine($"Failed to load stores: {ex.Message}");
+        }
+    }
+
+    private async Task LoadBranches()
+    {
+        try
+        {
+            // Active branches only — there's no UX value in assigning a user
+            // to an inactive branch, and matches CashierForm's filter for stores.
+            availableBranches = await BranchService.GetActiveBranchesAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to load branches: {ex.Message}");
+        }
+    }
+
+    private async Task LoadUser(Guid id)
+    {
+        isLoading = true;
+        try
+        {
+            var user = await UserService.GetUserByIdAsync(id);
+            if (user != null)
+            {
+                model = new UserFormModel
+                {
+                    FirstName = user.FirstName ?? string.Empty,
+                    LastName = user.LastName ?? string.Empty,
+                    Email = user.Email,
+                    PhoneNumber = user.PhoneNumber,
+                    IsActive = user.IsActive,
+                    RoleId = user.Roles.FirstOrDefault()?.Id
+                };
+                originalEmail = user.Email;
+                isSystemAdminUser = user.IsSystemUser;
+
+                // Avatar
+                var media = await MediaService.GetMediaForEntityAsync(id, "User", "avatar");
+                var avatar = media.FirstOrDefault();
+                if (avatar != null)
+                {
+                    avatarUrl = MediaService.GetMediaUrl(avatar);
+                }
+
+                // If this user is a cashier, hydrate cashier-specific fields
+                wasOriginallyCashier = cashierRoleId.HasValue && model.RoleId == cashierRoleId.Value;
+                if (wasOriginallyCashier)
+                {
+                    var cashier = await CashierService.GetCashierByIdAsync(id);
+                    if (cashier != null)
+                    {
+                        model.CanRefund = cashier.CanRefund;
+                        model.WarehouseIds = cashier.AssignedWarehouses.Select(w => w.Id).ToList();
+                        if (!model.WarehouseIds.Any() && cashier.WarehouseId.HasValue)
+                        {
+                            model.WarehouseIds.Add(cashier.WarehouseId.Value);
+                        }
+                    }
+                }
+
+                // If this user is a branch manager, hydrate their assigned branches.
+                // We fetch unconditionally on edit so a role change from BranchManager
+                // → something else can still display the previously assigned list
+                // until the user confirms — though we clear in OnRoleChanged.
+                wasOriginallyBranchManager = IsBranchManagerRoleSelected;
+                if (wasOriginallyBranchManager)
+                {
+                    model.BranchIds = await UserService.GetUserBranchIdsAsync(id);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = Localizer["FailedToLoadUser"] + $": {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OnRoleChanged(Guid? newRoleId)
+    {
+        model.RoleId = newRoleId;
+        if (!IsCashierRoleSelected)
+        {
+            // Clear cashier-only fields when leaving the cashier role
+            model.WarehouseIds.Clear();
+        }
+        if (!IsBranchManagerRoleSelected)
+        {
+            // Demoting out of BranchManager: drop the staged branch list so a
+            // subsequent save doesn't accidentally re-assign branches the
+            // admin no longer wants linked.
+            model.BranchIds.Clear();
+        }
+    }
+
+    private void ToggleStore(Guid storeId)
+    {
+        if (model.WarehouseIds.Contains(storeId))
+            model.WarehouseIds.Remove(storeId);
+        else
+            model.WarehouseIds.Add(storeId);
+    }
+
+    private void OnStoreToggled(Guid storeId, bool isChecked)
+    {
+        if (isChecked)
+        {
+            if (!model.WarehouseIds.Contains(storeId))
+                model.WarehouseIds.Add(storeId);
+        }
+        else
+        {
+            model.WarehouseIds.Remove(storeId);
+        }
+    }
+
+    private void ToggleBranch(Guid branchId)
+    {
+        if (model.BranchIds.Contains(branchId))
+            model.BranchIds.Remove(branchId);
+        else
+            model.BranchIds.Add(branchId);
+    }
+
+    private void OnBranchToggled(Guid branchId, bool isChecked)
+    {
+        if (isChecked)
+        {
+            if (!model.BranchIds.Contains(branchId))
+                model.BranchIds.Add(branchId);
+        }
+        else
+        {
+            model.BranchIds.Remove(branchId);
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        errorMessage = string.Empty;
+        var errors = new Dictionary<string, string[]>();
+
+        if (IsCashierRoleSelected && !model.WarehouseIds.Any())
+        {
+            errors.Add(nameof(model.WarehouseIds), new[] { "StoreRequired" });
+        }
+        if (IsBranchManagerRoleSelected && !model.BranchIds.Any())
+        {
+            errors.Add(nameof(model.BranchIds), new[] { "BranchRequired" });
+        }
+
+        // Email uniqueness check
+        if (!IsEditMode || (IsEditMode && !string.Equals(originalEmail, model.Email, StringComparison.OrdinalIgnoreCase)))
+        {
+            var exists = IsCashierRoleSelected
+                ? await CashierService.CheckEmailExistsAsync(model.Email)
+                : await UserService.CheckEmailExistsAsync(model.Email);
+            if (exists)
+            {
+                string msg = Localizer["UserAlreadyExists"];
+                if (string.IsNullOrEmpty(msg) || msg == "UserAlreadyExists")
+                {
+                    msg = $"User with email '{model.Email}' already exists.";
+                }
+                errors.Add(nameof(model.Email), new[] { msg });
+            }
+        }
+
+        if (errors.Any())
+        {
+            serverValidator.DisplayErrors(errors);
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            Guid affectedUserId;
+
+            if (IsEditMode)
+            {
+                affectedUserId = UserId!.Value;
+
+                if (IsCashierRoleSelected && wasOriginallyCashier)
+                {
+                    // Cashier stays a cashier: route everything through CashierService
+                    var updateCashier = new UpdateCashierRequest
+                    {
+                        FirstName = model.FirstName,
+                        LastName = model.LastName,
+                        Email = model.Email,
+                        PhoneNumber = model.PhoneNumber,
+                        IsActive = model.IsActive,
+                        CanRefund = model.CanRefund,
+                        WarehouseIds = model.WarehouseIds
+                    };
+                    await CashierService.UpdateCashierAsync(affectedUserId, updateCashier);
+                }
+                else if (IsCashierRoleSelected && !wasOriginallyCashier)
+                {
+                    // Promotion to cashier: update profile + assign role, then push cashier-specific data
+                    var updateRequest = new UpdateUserRequest
+                    {
+                        FirstName = model.FirstName,
+                        LastName = model.LastName,
+                        Email = model.Email,
+                        PhoneNumber = model.PhoneNumber,
+                        IsActive = model.IsActive
+                    };
+                    await UserService.UpdateUserAsync(affectedUserId, updateRequest);
+                    await UserService.AssignRolesToUserAsync(affectedUserId, new AssignRolesRequest { RoleId = model.RoleId });
+
+                    var updateCashier = new UpdateCashierRequest
+                    {
+                        FirstName = model.FirstName,
+                        LastName = model.LastName,
+                        Email = model.Email,
+                        PhoneNumber = model.PhoneNumber,
+                        IsActive = model.IsActive,
+                        CanRefund = model.CanRefund,
+                        WarehouseIds = model.WarehouseIds
+                    };
+                    await CashierService.UpdateCashierAsync(affectedUserId, updateCashier);
+                }
+                else
+                {
+                    // Non-cashier target: standard update + role assignment. Backend cleans up cashier
+                    // warehouse rows if this is a demotion from Cashier.
+                    var updateRequest = new UpdateUserRequest
+                    {
+                        FirstName = model.FirstName,
+                        LastName = model.LastName,
+                        Email = model.Email,
+                        PhoneNumber = model.PhoneNumber,
+                        IsActive = model.IsActive
+                    };
+                    await UserService.UpdateUserAsync(affectedUserId, updateRequest);
+                    await UserService.AssignRolesToUserAsync(affectedUserId, new AssignRolesRequest { RoleId = model.RoleId });
+                }
+            }
+            else if (IsCashierRoleSelected)
+            {
+                var createCashier = new CreateCashierRequest
+                {
+                    Email = model.Email,
+                    FirstName = model.FirstName,
+                    LastName = model.LastName,
+                    PhoneNumber = model.PhoneNumber,
+                    IsActive = model.IsActive,
+                    CanRefund = model.CanRefund,
+                    WarehouseIds = model.WarehouseIds
+                };
+                var created = await CashierService.CreateCashierAsync(createCashier);
+                affectedUserId = created?.Id ?? Guid.Empty;
+            }
+            else
+            {
+                var createRequest = new CreateUserRequest
+                {
+                    Email = model.Email,
+                    FirstName = model.FirstName,
+                    LastName = model.LastName,
+                    PhoneNumber = model.PhoneNumber,
+                    IsActive = model.IsActive,
+                    RoleId = model.RoleId
+                };
+                var created = await UserService.CreateUserAsync(createRequest);
+                affectedUserId = created?.Id ?? Guid.Empty;
+            }
+
+            if (affectedUserId != Guid.Empty)
+            {
+                await UploadSelectedAvatarAsync(affectedUserId);
+
+                // Sync branch assignments only when the role is, or was,
+                // BranchManager — otherwise this is wasted network chatter on
+                // every Admin/Manager/Cashier save. The demotion case (was
+                // BranchManager, now isn't) still fires so previously assigned
+                // rows get cleared, because model.BranchIds was emptied in
+                // OnRoleChanged.
+                if (IsBranchManagerRoleSelected || wasOriginallyBranchManager)
+                {
+                    await UserService.SetUserBranchesAsync(affectedUserId, model.BranchIds);
+                }
+            }
+
+            Navigation.NavigateTo(GetReturnUrl());
+        }
+        catch (ServerValidationException ex)
+        {
+            serverValidator.DisplayErrors(ex.Errors);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private async Task UploadSelectedAvatarAsync(Guid userId)
+    {
+        if (selectedAvatarData == null || string.IsNullOrEmpty(selectedAvatarFileName)) return;
+
+        using var uploadStream = new MemoryStream(selectedAvatarData);
+
+        var existingMedia = await MediaService.GetMediaForEntityAsync(userId, "User", "avatar");
+        foreach (var media in existingMedia)
+        {
+            await MediaService.DeleteMediaAsync(media.Id);
+        }
+
+        var uploaded = await MediaService.UploadMediaAsync(userId, "User", uploadStream, selectedAvatarFileName, selectedAvatarContentType ?? "image/png", "avatar");
+        avatarUrl = MediaService.GetMediaUrl(uploaded);
+        selectedAvatarFile = null;
+        selectedAvatarData = null;
+        selectedAvatarContentType = null;
+        selectedAvatarFileName = null;
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        if (isSystemAdminUser) return;
+
+        var file = e.File;
+        if (file == null) return;
+
+        try
+        {
+            long maxFileSize = 5 * 1024 * 1024;
+
+            using var memoryStream = new MemoryStream();
+            await using var stream = file.OpenReadStream(maxFileSize);
+            await stream.CopyToAsync(memoryStream);
+            var buffer = memoryStream.ToArray();
+
+            selectedAvatarData = buffer;
+            selectedAvatarContentType = file.ContentType;
+            selectedAvatarFileName = file.Name;
+            selectedAvatarFile = file;
+
+            var base64 = Convert.ToBase64String(buffer);
+            avatarUrl = $"data:{file.ContentType};base64,{base64}";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = Localizer["FailedToProcessImage"] + $": {ex.Message}";
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo(GetReturnUrl());
+    }
+
+    private string GetReturnUrl()
+    {
+        if (string.IsNullOrWhiteSpace(ReturnUrl) ||
+            !ReturnUrl.StartsWith("/", StringComparison.Ordinal) ||
+            ReturnUrl.StartsWith("//", StringComparison.Ordinal))
+        {
+            return "/admin/identity/users";
+        }
+
+        return ReturnUrl;
+    }
+
+    private class UserFormModel
+    {
+        [Required(ErrorMessage = "FirstNameRequired")]
+        public string FirstName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "LastNameRequired")]
+        public string LastName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "EmailRequired")]
+        [EmailAddress(ErrorMessage = "InvalidEmailFormat")]
+        public string Email { get; set; } = string.Empty;
+
+        public string? PhoneNumber { get; set; }
+        public bool IsActive { get; set; } = true;
+        public Guid? RoleId { get; set; }
+        public bool CanRefund { get; set; } = true;
+        public List<Guid> WarehouseIds { get; set; } = new();
+        public List<Guid> BranchIds { get; set; } = new();
+    }
+}

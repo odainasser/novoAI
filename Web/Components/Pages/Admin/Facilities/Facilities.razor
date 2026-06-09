@@ -1,0 +1,140 @@
+@page "/admin/facilities"
+@page "/admin/facilities/{Tab}"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Web.Authorization
+@using System.Globalization
+@inject NavigationManager Navigation
+
+<PageTitle>@Localizer["FacilitiesManagement"]</PageTitle>
+
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+                <i class="bi bi-buildings text-purple-600"></i>
+                @Localizer["FacilitiesManagement"]
+            </h1>
+            <p class="text-gray-600 mt-2 text-sm sm:text-base">@Localizer["ManageFacilities"]</p>
+        </div>
+
+        @if (activeTab == "branches")
+        {
+            <AuthorizeView Policy="Permission:branches.write">
+                <Authorized>
+                    <button @onclick='() => Navigation.NavigateTo("/admin/branches/create")'
+                            class="btn-primary-action">
+                        <i class="bi bi-plus-circle"></i>
+                        <span>@Localizer["CreateBranch"]</span>
+                    </button>
+                </Authorized>
+            </AuthorizeView>
+        }
+        else if (activeTab == "warehouses")
+        {
+            <AuthorizeView Policy="Permission:warehouses.write">
+                <Authorized>
+                    <button @onclick='() => Navigation.NavigateTo("/admin/warehouses/create")'
+                            class="btn-primary-action">
+                        <i class="bi bi-plus-circle"></i>
+                        <span>@Localizer["CreateWarehouse"]</span>
+                    </button>
+                </Authorized>
+            </AuthorizeView>
+        }
+        else if (activeTab == "terminals")
+        {
+            <AuthorizeView Policy="Permission:terminals.write">
+                <Authorized>
+                    <button @onclick='() => Navigation.NavigateTo("/admin/terminals/create")'
+                            class="btn-primary-action">
+                        <i class="bi bi-plus-circle"></i>
+                        <span>@Localizer["CreateTerminal"]</span>
+                    </button>
+                </Authorized>
+            </AuthorizeView>
+        }
+    </div>
+
+    <!-- Tabs -->
+    <div class="mb-6">
+        <nav class="tab-nav" aria-label="Tabs">
+            <AuthorizeView Policy="Permission:branches.read">
+                <Authorized>
+                    <button @onclick='() => SetActiveTab("branches")'
+                            class="tab-btn @GetTabClass("branches")">
+                        <i class="bi bi-shop-window"></i>
+                        @Localizer["Branches"]
+                    </button>
+                </Authorized>
+            </AuthorizeView>
+            <AuthorizeView Policy="Permission:warehouses.read">
+                <Authorized>
+                    <button @onclick='() => SetActiveTab("warehouses")'
+                            class="tab-btn @GetTabClass("warehouses")">
+                        <i class="bi bi-houses"></i>
+                        @Localizer["Warehouses"]
+                    </button>
+                </Authorized>
+            </AuthorizeView>
+            <AuthorizeView Policy="Permission:terminals.read">
+                <Authorized>
+                    <button @onclick='() => SetActiveTab("terminals")'
+                            class="tab-btn @GetTabClass("terminals")">
+                        <i class="bi bi-pc-display"></i>
+                        @Localizer["Terminals"]
+                    </button>
+                </Authorized>
+            </AuthorizeView>
+        </nav>
+    </div>
+
+    <!-- Tab Content -->
+    @if (activeTab == "branches")
+    {
+        <FacilitiesBranchesTab />
+    }
+    else if (activeTab == "warehouses")
+    {
+        <FacilitiesWarehousesTab />
+    }
+    else if (activeTab == "terminals")
+    {
+        <FacilitiesTerminalsTab />
+    }
+</div>
+
+@code {
+    [Parameter] public string? Tab { get; set; }
+
+    private string activeTab = "branches";
+
+    protected override void OnInitialized()
+    {
+        activeTab = ResolveTab();
+    }
+
+    protected override void OnParametersSet()
+    {
+        activeTab = ResolveTab();
+    }
+
+    private string ResolveTab() =>
+        Tab?.ToLower() switch
+        {
+            "warehouses" => "warehouses",
+            "terminals"  => "terminals",
+            _            => "branches"
+        };
+
+    private string GetTabClass(string tab) =>
+        activeTab == tab ? "tab-btn-active" : "";
+
+    private async Task SetActiveTab(string tab)
+    {
+        activeTab = tab;
+        Navigation.NavigateTo($"/admin/facilities/{tab}", false);
+        await Task.CompletedTask;
+    }
+}

@@ -1,0 +1,389 @@
+@page "/admin/warehouses/create"
+@page "/admin/warehouses/edit/{WarehouseId:guid}"
+@attribute [Authorize]
+@attribute [RequirePermission(Permissions.WarehousesWrite)]
+@using Microsoft.AspNetCore.Authorization
+@using Web.Authorization
+@using System.Globalization
+@using Web.Components.Common
+@using System.ComponentModel.DataAnnotations
+@inject IWarehouseService WarehouseService
+@inject ILookupService LookupService
+@inject IBranchService BranchService
+@inject NavigationManager Navigation
+@inject IJsonStringLocalizer Localizer
+
+<PageTitle>@(IsEditMode ? Localizer["EditWarehouse"] : Localizer["CreateWarehouse"])</PageTitle>
+
+@if (isLoading)
+{
+    <Spinner Size="Spinner.SpinnerSize.Lg" Centered="true" />
+}
+else
+{
+    <EditForm Model="@model" OnValidSubmit="@HandleSubmit" FormName="warehouseForm">
+        <LocalizedDataAnnotationsValidator />
+        <ServerValidator @ref="serverValidator" />
+
+        <!-- Sticky top bar -->
+        <div class="form-sticky-toolbar sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 mb-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <button type="button" @onclick="NavigateBack" class="p-2 -ml-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                        <i class="bi bi-arrow-left text-lg"></i>
+                    </button>
+                    <h1 class="text-xl font-semibold text-gray-900">
+                        @(IsEditMode ? Localizer["EditWarehouse"] : Localizer["CreateWarehouse"])
+                    </h1>
+                    @if (IsEditMode)
+                    {
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium @(model.IsActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600")">
+                            @(model.IsActive ? Localizer["Active"] : Localizer["Inactive"])
+                        </span>
+                    }
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" @onclick="NavigateBack" class="form-cancel-btn px-4 py-2 text-sm font-medium rounded-lg transition-colors">
+                        @Localizer["Cancel"]
+                    </button>
+                    <button type="submit" disabled="@isSaving" class="px-4 py-2 text-sm font-medium bg-bf-primary text-bf-primary-contrast rounded-lg hover:opacity-90 transition-all disabled:opacity-50 inline-flex items-center gap-2">
+                        @if (isSaving)
+                        {
+                            <Spinner Size="Spinner.SpinnerSize.Xs" Color="Spinner.SpinnerColor.White" />
+                        }
+                        <span>@(IsEditMode ? Localizer["Update"] : Localizer["Create"])</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+                <i class="bi bi-exclamation-triangle-fill text-red-600 text-lg mt-0.5"></i>
+                <span class="text-red-800 text-sm">@errorMessage</span>
+            </div>
+        }
+
+        <!-- Two-column Shopify-style layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+            <!-- Main column (2/3) -->
+            <div class="lg:col-span-2 space-y-5">
+
+                <!-- Card: Warehouse Details -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="nameEn" class="block text-sm font-medium text-gray-700 mb-1.5">
+                                    @Localizer["WarehouseNameEn"] <span class="text-red-500">*</span>
+                                </label>
+                                <InputText @bind-Value="model.NameEn"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                    id="nameEn"
+                                    placeholder="@Localizer["EnterWarehouseNameEn"]" />
+                                <ValidationMessage For="@(() => model.NameEn)" class="text-red-600 text-xs mt-1" />
+                            </div>
+                            <div>
+                                <label for="nameAr" class="block text-sm font-medium text-gray-700 mb-1.5">
+                                    @Localizer["WarehouseNameAr"] <span class="text-red-500">*</span>
+                                </label>
+                                <InputText @bind-Value="model.NameAr"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                    id="nameAr" dir="rtl"
+                                    placeholder="@Localizer["EnterWarehouseNameAr"]" />
+                                <ValidationMessage For="@(() => model.NameAr)" class="text-red-600 text-xs mt-1" />
+                            </div>
+                        </div>
+                        <div>
+                            <label for="address" class="block text-sm font-medium text-gray-700 mb-1.5">@Localizer["Address"]</label>
+                            <InputText @bind-Value="model.Address"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                id="address"
+                                placeholder="@Localizer["EnterAddress"]" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card: Contact Information -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <h2 class="text-sm font-semibold text-gray-900 mb-3">@Localizer["ContactInformation"]</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label for="contactPerson" class="block text-sm font-medium text-gray-700 mb-1.5">@Localizer["ContactPerson"]</label>
+                            <InputText @bind-Value="model.ContactPerson"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                id="contactPerson"
+                                placeholder="@Localizer["EnterContactPerson"]" />
+                        </div>
+                        <div>
+                            <label for="contactPhone" class="block text-sm font-medium text-gray-700 mb-1.5">@Localizer["ContactPhone"]</label>
+                            <InputText @bind-Value="model.ContactPhone"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                id="contactPhone"
+                                placeholder="@Localizer["EnterContactPhone"]" />
+                        </div>
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1.5">@Localizer["Email"]</label>
+                            <InputText @bind-Value="model.Email"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary focus:border-transparent transition-all text-sm"
+                                id="email" type="email"
+                                placeholder="@Localizer["EnterEmail"]" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar (1/3) -->
+            <div class="space-y-5">
+
+                <!-- Card: Status -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <h2 class="text-sm font-semibold text-gray-900 mb-3">@Localizer["Status"]</h2>
+                    <ToggleSwitch @bind-Value="model.IsActive" Label="@Localizer["Active"]" />
+                </div>
+
+                <!-- Card: Configuration -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <h2 class="text-sm font-semibold text-gray-900 mb-3">@Localizer["WarehouseType"]</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="warehouseType" class="block text-sm font-medium text-gray-700 mb-1.5">
+                                @Localizer["WarehouseType"] <span class="text-red-500">*</span>
+                            </label>
+                            <SearchableDropdown TItem="LookupDto"
+                                                TValue="Guid"
+                                                Items="warehouseTypes"
+                                                @bind-Value="model.WarehouseTypeId"
+                                                OnChanged="OnWarehouseTypeChanged"
+                                                DisplayText="w => isAr ? w.NameAr : w.NameEn"
+                                                SearchText='w => $"{w.NameEn} {w.NameAr}"'
+                                                ItemValue="w => w.Id"
+                                                Placeholder='@Localizer["SelectWarehouseType"]'
+                                                Required="true"
+                                                Clearable="false" />
+                            <ValidationMessage For="@(() => model.WarehouseTypeId)" class="text-red-600 text-xs mt-1" />
+                        </div>
+
+                        @if (showBranchDropdown)
+                        {
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                                    @Localizer["Branch"] <span class="text-red-500">*</span>
+                                </label>
+                                <SearchableDropdown TItem="Web.Models.Branches.BranchDto"
+                                                    TValue="Guid?"
+                                                    Items="branches"
+                                                    @bind-Value="model.BranchId"
+                                                    DisplayText="m => isAr ? m.NameAr : m.NameEn"
+                                                    SearchText='m => $"{m.NameEn} {m.NameAr}"'
+                                                    ItemValue="m => (Guid?)m.Id"
+                                                    Placeholder="@Localizer["SelectBranch"]"
+                                                    Clearable="true" />
+                                <ValidationMessage For="@(() => model.BranchId)" class="text-red-600 text-xs mt-1" />
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public Guid? WarehouseId { get; set; }
+
+    private bool IsEditMode => WarehouseId.HasValue && WarehouseId.Value != Guid.Empty;
+
+    private WarehouseFormModel model = new();
+    private List<LookupDto> warehouseTypes = new();
+    private List<Web.Models.Branches.BranchDto> branches = new();
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private string errorMessage = string.Empty;
+    private bool isAr = false;
+    private ServerValidator serverValidator = null!;
+    private string? originalNameEn;
+    private string? originalNameAr;
+
+    private bool showBranchDropdown => IsBranchWarehouseType(model.WarehouseTypeId);
+
+    protected override async Task OnInitializedAsync()
+    {
+        isAr = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("ar", StringComparison.OrdinalIgnoreCase);
+
+        warehouseTypes = await LookupService.GetLookupsByParentAsync("WAREHOUSE_TYPE");
+        branches = await BranchService.GetActiveBranchesAsync();
+
+        if (IsEditMode)
+        {
+            await LoadWarehouse();
+        }
+
+        isLoading = false;
+    }
+
+    private async Task LoadWarehouse()
+    {
+        try
+        {
+            var wh = await WarehouseService.GetWarehouseByIdAsync(WarehouseId!.Value);
+            if (wh != null)
+            {
+                model = new WarehouseFormModel
+                {
+                    NameEn = wh.NameEn,
+                    NameAr = wh.NameAr,
+                    Address = wh.Address,
+                    ContactPerson = wh.ContactPerson,
+                    ContactPhone = wh.ContactPhone,
+                    Email = wh.Email,
+                    WarehouseTypeId = wh.WarehouseTypeId,
+                    BranchId = wh.BranchId,
+                    IsActive = wh.IsActive
+                };
+                originalNameEn = wh.NameEn;
+                originalNameAr = wh.NameAr;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"{Localizer["FailedToLoadWarehouse"]}: {ex.Message}";
+        }
+    }
+
+    private bool IsBranchWarehouseType(Guid typeId)
+    {
+        if (typeId == Guid.Empty) return false;
+        var wt = warehouseTypes.FirstOrDefault(t => t.Id == typeId);
+        return wt?.Code == "MW" || wt?.Code == "MS";
+    }
+
+    private void OnWarehouseTypeChanged()
+    {
+        if (!showBranchDropdown)
+        {
+            model.BranchId = null;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        isSaving = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var errors = new Dictionary<string, string[]>();
+
+            // Branch required validation for MW type
+            if (showBranchDropdown && (model.BranchId == null || model.BranchId == Guid.Empty))
+                errors.Add(nameof(model.BranchId), new[] { Localizer["BranchRequired"] });
+
+            // Central warehouse uniqueness check
+            var selectedType = warehouseTypes.FirstOrDefault(t => t.Id == model.WarehouseTypeId);
+            if (selectedType?.Code == "CW")
+            {
+                var cwExists = await WarehouseService.CheckCentralWarehouseExistsAsync(IsEditMode ? WarehouseId : null);
+                if (cwExists)
+                    errors.Add(nameof(model.WarehouseTypeId), new[] { Localizer["CentralWarehouseAlreadyExists"] });
+            }
+
+            // Duplicate check
+            bool nameEnChanged = !IsEditMode || !string.Equals(originalNameEn, model.NameEn, StringComparison.OrdinalIgnoreCase);
+            bool nameArChanged = !IsEditMode || !string.Equals(originalNameAr, model.NameAr, StringComparison.OrdinalIgnoreCase);
+
+            if (nameEnChanged || nameArChanged)
+            {
+                var exists = await WarehouseService.CheckWarehouseExistsAsync(model.NameEn, model.NameAr, IsEditMode ? WarehouseId : null);
+                if (exists)
+                    errors.Add(nameof(model.NameEn), new[] { Localizer["WarehouseAlreadyExists"] });
+            }
+
+            if (errors.Any())
+            {
+                serverValidator.DisplayErrors(errors);
+                isSaving = false;
+                return;
+            }
+
+            if (IsEditMode)
+            {
+                var req = new Web.Models.Warehouses.UpdateWarehouseRequest
+                {
+                    NameEn = model.NameEn,
+                    NameAr = model.NameAr,
+                    Address = model.Address,
+                    ContactPerson = model.ContactPerson,
+                    ContactPhone = model.ContactPhone,
+                    Email = model.Email,
+                    WarehouseTypeId = model.WarehouseTypeId,
+                    BranchId = showBranchDropdown ? model.BranchId : null,
+                    IsActive = model.IsActive
+                };
+                await WarehouseService.UpdateWarehouseAsync(WarehouseId!.Value, req);
+            }
+            else
+            {
+                var req = new Web.Models.Warehouses.CreateWarehouseRequest
+                {
+                    NameEn = model.NameEn,
+                    NameAr = model.NameAr,
+                    Address = model.Address,
+                    ContactPerson = model.ContactPerson,
+                    ContactPhone = model.ContactPhone,
+                    Email = model.Email,
+                    WarehouseTypeId = model.WarehouseTypeId,
+                    BranchId = showBranchDropdown ? model.BranchId : null,
+                    IsActive = model.IsActive
+                };
+                await WarehouseService.CreateWarehouseAsync(req);
+            }
+
+            Navigation.NavigateTo("/admin/facilities/warehouses");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"{Localizer["FailedToSaveWarehouse"]}: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void NavigateBack() => Navigation.NavigateTo("/admin/facilities/warehouses");
+
+    public class WarehouseFormModel
+    {
+        [Required(ErrorMessage = "NameEnRequired")]
+        [StringLength(256, ErrorMessage = "NameEnMaxLength")]
+        public string NameEn { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "NameArRequired")]
+        [StringLength(256, ErrorMessage = "NameArMaxLength")]
+        public string NameAr { get; set; } = string.Empty;
+
+        [StringLength(500, ErrorMessage = "MaxLengthError")]
+        public string? Address { get; set; }
+
+        [StringLength(200, ErrorMessage = "MaxLengthError")]
+        public string? ContactPerson { get; set; }
+
+        [StringLength(50, ErrorMessage = "MaxLengthError")]
+        public string? ContactPhone { get; set; }
+
+        [StringLength(256, ErrorMessage = "MaxLengthError")]
+        [EmailAddress(ErrorMessage = "InvalidEmail")]
+        public string? Email { get; set; }
+
+        [Required(ErrorMessage = "WarehouseTypeRequired")]
+        public Guid WarehouseTypeId { get; set; }
+
+        public Guid? BranchId { get; set; }
+
+        public bool IsActive { get; set; } = true;
+    }
+}

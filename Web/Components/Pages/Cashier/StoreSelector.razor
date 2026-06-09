@@ -1,0 +1,81 @@
+@page "/cashier/store-select"
+@layout CashierLayout
+@attribute [Authorize(Roles = Roles.Cashier)]
+@using Microsoft.AspNetCore.Authorization
+@using System.Globalization
+@using Web.Models.Offline
+@using Web.Offline
+@inject IIndexedDbService Idb
+@inject ActiveStoreContext ActiveStore
+@inject NavigationManager Nav
+@inject IOfflineSyncService Sync
+
+<PageTitle>@Localizer["SelectStore"]</PageTitle>
+
+<div class="max-w-2xl mx-auto mt-10 p-6 bg-white rounded-2xl shadow-sm border border-gray-200">
+    <h1 class="text-2xl font-bold text-gray-900 mb-2">@Localizer["SelectStore"]</h1>
+    <p class="text-sm text-gray-600 mb-6">@Localizer["SelectStoreDescription"]</p>
+
+    @if (isLoading)
+    {
+        <div class="text-center text-gray-500 py-8">@Localizer["Loading"]</div>
+    }
+    else if (stores.Count == 0)
+    {
+        <div class="rounded-lg bf-bg-warning-50 border bf-border-warning px-4 py-3 text-sm bf-text-warning">
+            @Localizer["NoStoresAvailable"]
+        </div>
+    }
+    else
+    {
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            @foreach (var store in stores)
+            {
+                <button type="button"
+                        class="text-start p-4 rounded-xl border border-gray-200 hover:border-bf-primary hover:bg-bf-primary/5 transition"
+                        @onclick="() => Select(store)">
+                    <div class="font-semibold text-gray-900">@(isAr ? store.NameAr : store.NameEn)</div>
+                    @if (!string.IsNullOrWhiteSpace(isAr ? store.BranchNameAr : store.BranchNameEn))
+                    {
+                        <div class="text-xs text-gray-500 mt-1">@(isAr ? store.BranchNameAr : store.BranchNameEn)</div>
+                    }
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<OfflineStoreDto> stores = new();
+    private bool isLoading = true;
+    private bool isAr => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("ar", StringComparison.OrdinalIgnoreCase);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Ensure we have a fresh local copy before the cashier chooses.
+            try { await Sync.PullAllAsync(); } catch { }
+            stores = await Idb.GetAllAsync<OfflineStoreDto>(OfflineStores.Stores);
+        }
+        catch
+        {
+            stores = new List<OfflineStoreDto>();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+
+        if (stores.Count == 1)
+        {
+            Select(stores[0]);
+        }
+    }
+
+    private void Select(OfflineStoreDto store)
+    {
+        ActiveStore.Set(store.StoreId, store.NameEn, store.NameAr);
+        Nav.NavigateTo("/cashier");
+    }
+}

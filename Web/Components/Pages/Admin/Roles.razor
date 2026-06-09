@@ -1,0 +1,270 @@
+@page "/admin/roles"
+@attribute [Authorize]
+@attribute [RequirePermission(Permissions.RolesRead)]
+@using Microsoft.AspNetCore.Authorization
+@using Web.Authorization
+@using Web.Components.Common
+@using System.Globalization
+@inject IRoleManagementService RoleService
+@inject NavigationManager Navigation
+
+<PageTitle>@Localizer["RolesManagement"]</PageTitle>
+
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-6">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+                        <i class="bi bi-shield-check text-purple-600"></i>
+                        @Localizer["RolesManagement"]
+                    </h1>
+                    <p class="text-gray-600 mt-2 text-sm sm:text-base">@Localizer["ManageSystemRolesPermissions"]</p>
+                </div>
+                <AuthorizeView Policy="Permission:roles.write">
+                    <Authorized>
+                        <button @onclick="NavigateToCreate" 
+                                class="btn-primary-action">
+                            <i class="bi bi-plus-circle"></i>
+                            <span>@Localizer["CreateRole"]</span>
+                        </button>
+                    </Authorized>
+                    <NotAuthorized>
+                        <button disabled 
+                                class="inline-flex items-center gap-2 py-3 px-6 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed font-medium">
+                            <i class="bi bi-plus-circle"></i>
+                            <span>@Localizer["CreateRole"]</span>
+                        </button>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
+
+            @if (isLoading)
+            {
+                <Spinner Size="Spinner.SpinnerSize.Lg" Centered="true" />
+            }
+            else if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="p-4 bf-bg-danger-50 border bf-border-danger rounded-lg flex items-start gap-3">
+                    <i class="bi bi-exclamation-triangle-fill bf-icon-danger text-lg mt-0.5"></i>
+                    <span class="bf-text-danger">@errorMessage</span>
+                </div>
+            }
+            else if (roles == null || !roles.Any())
+            {
+                <div class="text-center py-12">
+                    <i class="bi bi-inbox text-6xl text-gray-300 mb-4"></i>
+                    <p class="text-gray-500 text-lg">@Localizer["NoRolesFound"]</p>
+                </div>
+            }
+            else
+            {
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                    @foreach (var role in roles)
+                    {
+                        <div class="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow duration-200">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="flex-shrink-0 h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                    <i class="bi bi-shield-check text-purple-600 text-2xl"></i>
+                                </div>
+                                <div class="flex gap-2">
+                                    <AuthorizeView Policy="Permission:roles.write">
+                                        <Authorized>
+                                            @if (!role.IsSystemRole)
+                                            {
+                                                <button @onclick="() => NavigateToEdit(role.Id)" 
+                                                        class="text-purple-600 hover:text-purple-900" title="@Localizer["Edit"]">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <button @onclick="() => NavigateToEdit(role.Id)" 
+                                                        class="text-purple-600 hover:text-purple-900" title="@Localizer["ViewDetails"]">
+                                                    <i class="bi bi-eye"></i>
+                                                </button>
+                                            }
+                                        </Authorized>
+                                        <NotAuthorized>
+                                            @if (role.IsSystemRole)
+                                            {
+                                                <button @onclick="() => NavigateToEdit(role.Id)" 
+                                                        class="text-purple-600 hover:text-purple-900" title="@Localizer["ViewDetails"]">
+                                                    <i class="bi bi-eye"></i>
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <button disabled class="text-gray-400 cursor-not-allowed">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </button>
+                                            }
+                                        </NotAuthorized>
+                                    </AuthorizeView>
+                                    @if (!role.IsSystemRole)
+                                    {
+                                        <AuthorizeView Policy="Permission:roles.delete">
+                                            <Authorized>
+                                                <button @onclick="() => ConfirmDelete(role.Id)" 
+                                                        class="bf-text-danger bf-hover-text-danger-strong">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </Authorized>
+                                            <NotAuthorized>
+                                                <button disabled class="text-gray-400 cursor-not-allowed">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </NotAuthorized>
+                                        </AuthorizeView>
+                                    }
+                                </div>
+                            </div>
+                            
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">
+                                @(CultureInfo.CurrentUICulture.Name.StartsWith("ar", StringComparison.OrdinalIgnoreCase) ? role.NameAr : role.NameEn)
+                            </h3>
+                            
+                            @{
+                                var description = CultureInfo.CurrentUICulture.Name.StartsWith("ar", StringComparison.OrdinalIgnoreCase) 
+                                    ? role.DescriptionAr 
+                                    : role.DescriptionEn;
+                            }
+                            @if (!string.IsNullOrEmpty(description))
+                            {
+                                <p class="text-gray-600 text-sm mb-4 line-clamp-2">@description</p>
+                            }
+                            
+                            <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+                                <div class="flex items-center gap-4">
+                                    <div class="text-center">
+                                        <p class="text-2xl font-bold text-purple-600">@role.UserCount</p>
+                                        <p class="text-xs text-gray-500">@Localizer["Users"]</p>
+                                    </div>
+                                    <div class="text-center">
+                                        <p class="text-2xl font-bold text-purple-600">@role.PermissionCount</p>
+                                        <p class="text-xs text-gray-500">@Localizer["Permissions"]</p>
+                                    </div>
+                                </div>
+                                
+                                @if (role.IsSystemRole)
+                                {
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                        <i class="bi bi-lock-fill me-1"></i> @Localizer["SystemRole"]
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+                <Pagination PageIndex="@pageIndex" 
+                            TotalPages="@totalPages" 
+                            TotalCount="@totalCount" 
+                            PageSize="@pageSize" 
+                            OnPageChanged="@OnPageChanged" />
+            }
+</div>
+
+<AuthorizeView Policy="Permission:roles.delete">
+    <Authorized>
+        @if (showDeleteConfirm)
+        {
+            <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+                <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4">
+                    <h3 class="text-xl font-bold text-gray-900 mb-4">@Localizer["ConfirmDeleteRoleTitle"]</h3>
+                    <p class="text-gray-600 mb-6">@Localizer["ConfirmDeleteRoleMessage"]</p>
+                    <div class="flex gap-3">
+                        <button @onclick="CancelDelete" 
+                                class="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors duration-200 font-medium">
+                            @Localizer["Cancel"]
+                        </button>
+                        <button @onclick="DeleteRole" 
+                                class="flex-1 py-2 px-4 bf-bg-danger-600 bf-hover-bg-danger-700 rounded-lg transition-colors duration-200 font-medium">
+                            @Localizer["Delete"]
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    </Authorized>
+</AuthorizeView>
+@code {
+    private List<RoleResponse> roles = new();
+    private bool isLoading = true;
+    private string errorMessage = string.Empty;
+    private bool showDeleteConfirm = false;
+    private Guid roleToDelete;
+    
+    // Pagination
+    private int pageIndex = 1;
+    private int pageSize = 10;
+    private int totalPages = 1;
+    private int totalCount = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRoles();
+    }
+
+    private async Task LoadRoles()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+        
+        try
+        {
+            var result = await RoleService.GetAllRolesAsync(pageIndex, pageSize);
+            roles = result.Items;
+            totalPages = result.TotalPages;
+            totalCount = result.TotalCount;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"{Localizer["FailedToLoadRoles"]}: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+    
+    private async Task OnPageChanged(int newPageIndex)
+    {
+        pageIndex = newPageIndex;
+        await LoadRoles();
+    }
+
+    private void NavigateToCreate()
+    {
+        Navigation.NavigateTo("/admin/roles/create");
+    }
+
+    private void NavigateToEdit(Guid roleId)
+    {
+        Navigation.NavigateTo($"/admin/roles/edit/{roleId}");
+    }
+
+    private void ConfirmDelete(Guid roleId)
+    {
+        roleToDelete = roleId;
+        showDeleteConfirm = true;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteConfirm = false;
+        roleToDelete = Guid.Empty;
+    }
+
+    private async Task DeleteRole()
+    {
+        try
+        {
+            await RoleService.DeleteRoleAsync(roleToDelete);
+            showDeleteConfirm = false;
+            await LoadRoles();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"{Localizer["FailedToDeleteRole"]}: {ex.Message}";
+            showDeleteConfirm = false;
+        }
+    }
+}

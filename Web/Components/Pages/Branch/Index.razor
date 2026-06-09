@@ -1,0 +1,524 @@
+@page "/branch"
+@layout BranchLayout
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Globalization
+@using Web.Components.Common
+@using Web.Models.Enums
+@using Web.Models.Orders
+@using Web.Models.Requests
+@inject IOrderService OrderService
+@inject IRequestService RequestService
+@inject ActiveBranchContext ActiveBranch
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>@Localizer["Dashboard"]</PageTitle>
+
+@if (!ActiveBranch.IsSelected)
+{
+    @* No branch picked yet — defer to the selector. *@
+}
+else
+{
+    <div>
+        @if (isLoading)
+        {
+            <Spinner Size="Spinner.SpinnerSize.Xl" Centered="true" />
+        }
+        else
+        {
+            <!-- Hero Header -->
+            <div class="relative overflow-hidden bg-gradient-to-br from-purple-600 to-purple-800 rounded-2xl shadow-lg mb-6">
+                <div class="absolute inset-0 opacity-10 pointer-events-none">
+                    <i class="bi bi-bag absolute -end-6 -bottom-8 text-[9rem] text-white"></i>
+                </div>
+                <div class="relative p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-3">
+                            <div class="h-11 w-11 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm shrink-0">
+                                <i class="bi bi-columns-gap text-white text-xl"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <h1 class="text-2xl font-bold text-white truncate">@Localizer["Dashboard"]</h1>
+                                <p class="text-sm text-white/70">
+                                    @DateTime.Now.ToString("dddd, MMMM d, yyyy") —
+                                    <span class="font-semibold text-white/90">@(isAr ? ActiveBranch.BranchNameAr : ActiveBranch.BranchNameEn)</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 mt-4">
+                            <AuthorizeView Policy="Permission:orders.read">
+                                <Authorized>
+                                    <a href="/branch/orders" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-medium backdrop-blur-sm transition-colors">
+                                        <i class="bi bi-bag-check"></i>
+                                        @Localizer["Orders"]
+                                    </a>
+                                </Authorized>
+                            </AuthorizeView>
+                            <AuthorizeView Policy="Permission:requests.read">
+                                <Authorized>
+                                    <a href="/branch/requests" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-medium backdrop-blur-sm transition-colors">
+                                        <i class="bi bi-send"></i>
+                                        @Localizer["Requests"]
+                                    </a>
+                                </Authorized>
+                            </AuthorizeView>
+                            <AuthorizeView Policy="Permission:inventory.read">
+                                <Authorized>
+                                    <a href="/branch/stock-balances" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-medium backdrop-blur-sm transition-colors">
+                                        <i class="bi bi-stack"></i>
+                                        @Localizer["Inventory"]
+                                    </a>
+                                </Authorized>
+                            </AuthorizeView>
+                            <AuthorizeView Policy="Permission:shifts.read">
+                                <Authorized>
+                                    <a href="/branch/shifts" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-medium backdrop-blur-sm transition-colors">
+                                        <i class="bi bi-stopwatch"></i>
+                                        @Localizer["Shifts"]
+                                    </a>
+                                </Authorized>
+                            </AuthorizeView>
+                        </div>
+                    </div>
+                    <div class="shrink-0 bg-white/10 backdrop-blur-sm rounded-xl border border-white/15 p-4 lg:min-w-[340px]">
+                        <p class="text-[11px] font-semibold uppercase tracking-wider text-white/60 mb-3 flex items-center gap-1.5">
+                            <i class="bi bi-calendar2-check"></i>
+                            @Localizer["TodaysPerformance"]
+                        </p>
+                        <div class="grid grid-cols-3 gap-2 text-center">
+                            <div>
+                                <p class="text-xl font-bold text-white">@todayItemsSold</p>
+                                <p class="text-[11px] text-white/60 mt-0.5">@Localizer["ItemsSold"]</p>
+                            </div>
+                            <div class="border-x border-white/15">
+                                <p class="text-xl font-bold text-white">@todayOrders</p>
+                                <p class="text-[11px] text-white/60 mt-0.5">@Localizer["OrdersProcessed"]</p>
+                            </div>
+                            <div>
+                                <p class="text-xl font-bold text-white">@todayRevenue.ToString("N0")</p>
+                                <p class="text-[11px] text-white/60 mt-0.5">@Localizer["Revenue"]</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sales KPIs Row -->
+            <AuthorizeView Policy="Permission:orders.read">
+                <Authorized>
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <!-- Today's Revenue -->
+                        <div class="dash-card p-5">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="h-10 w-10 dash-chip">
+                                    <i class="bi bi-cash-coin bf-text-success text-xl"></i>
+                                </div>
+                                <span class="text-xs font-medium px-2 py-1 rounded-full bf-bg-info-50 bf-text-info">@Localizer["Today"]</span>
+                            </div>
+                            <p class="text-2xl font-bold text-gray-900">@todayRevenue.ToString("N0")</p>
+                            <p class="text-sm text-gray-500">@Localizer["TodayRevenue"]</p>
+                        </div>
+
+                        <!-- Today's Orders -->
+                        <div class="dash-card p-5">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="h-10 w-10 dash-chip">
+                                    <i class="bi bi-bag-check bf-text-info text-xl"></i>
+                                </div>
+                                <span class="text-xs font-medium px-2 py-1 rounded-full bf-bg-info-50 bf-text-info">@Localizer["Today"]</span>
+                            </div>
+                            <p class="text-2xl font-bold text-gray-900">@todayOrders</p>
+                            <p class="text-sm text-gray-500">@Localizer["TodayOrders"]</p>
+                        </div>
+
+                        <!-- Month Revenue -->
+                        <div class="dash-card p-5">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="h-10 w-10 dash-chip">
+                                    <i class="bi bi-graph-up-arrow bf-text-success text-xl"></i>
+                                </div>
+                                <span class="text-xs font-medium px-2 py-1 rounded-full bf-bg-info-50 bf-text-info">@Localizer["ThisMonth"]</span>
+                            </div>
+                            <p class="text-2xl font-bold text-gray-900">@monthRevenue.ToString("N0")</p>
+                            <p class="text-sm text-gray-500">@Localizer["MonthRevenue"]</p>
+                        </div>
+
+                        <!-- Month Orders -->
+                        <div class="dash-card p-5">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="h-10 w-10 dash-chip">
+                                    <i class="bi bi-bag-check bf-text-info text-xl"></i>
+                                </div>
+                                <span class="text-xs font-medium px-2 py-1 rounded-full bf-bg-info-50 bf-text-info">@Localizer["ThisMonth"]</span>
+                            </div>
+                            <p class="text-2xl font-bold text-gray-900">@monthOrders</p>
+                            <p class="text-sm text-gray-500">@Localizer["MonthOrders"]</p>
+                        </div>
+                    </div>
+                </Authorized>
+            </AuthorizeView>
+
+            <!-- Recent Orders (full width) -->
+            <AuthorizeView Policy="Permission:orders.read">
+                <Authorized>
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+                        <div class="p-5 border-b border-gray-100 flex items-center justify-between">
+                            <h3 class="font-semibold text-gray-900 flex items-center gap-2">
+                                <span class="dash-chip w-7 h-7 text-sm"><i class="bi bi-stopwatch"></i></span>
+                                @Localizer["RecentOrders"]
+                            </h3>
+                            <a href="/branch/orders" class="text-sm bf-text-info bf-hover-text-info-strong font-medium flex items-center gap-1">
+                                @Localizer["ViewAllOrders"]
+                                <i class="bi bi-arrow-right rtl:rotate-180"></i>
+                            </a>
+                        </div>
+                        @if (recentOrders.Any())
+                        {
+                            <div class="overflow-x-auto">
+                                <table class="w-full">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-4 py-3 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["OrderNumber"]</th>
+                                            <th class="px-4 py-3 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["Items"]</th>
+                                            <th class="px-4 py-3 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["Total"]</th>
+                                            <th class="px-4 py-3 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["Status"]</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100">
+                                        @foreach (var order in recentOrders)
+                                        {
+                                            <tr class="dash-row cursor-pointer" @onclick="() => ViewOrders()">
+                                                <td class="px-4 py-3 text-sm font-medium text-gray-900">@order.OrderNumber</td>
+                                                <td class="px-4 py-3 text-sm text-gray-600">@order.ItemCount @Localizer["items"]</td>
+                                                <td class="px-4 py-3 text-sm font-medium text-gray-900">@order.Total.ToString("N2")</td>
+                                                <td class="px-4 py-3">
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium @GetStatusClass(order.Status)">
+                                                        @Localizer[order.Status.ToString()]
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="p-8 text-center">
+                                <div class="h-12 w-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <i class="bi bi-send text-gray-400 text-xl"></i>
+                                </div>
+                                <p class="text-gray-500 text-sm">@Localizer["NoRecentOrders"]</p>
+                            </div>
+                        }
+                    </div>
+                </Authorized>
+            </AuthorizeView>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Order Summary -->
+                <AuthorizeView Policy="Permission:orders.read">
+                    <Authorized>
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div class="p-5 border-b border-gray-100 flex items-center justify-between">
+                                <h3 class="font-semibold text-gray-900 flex items-center gap-2">
+                                    <span class="dash-chip w-7 h-7 text-sm"><i class="bi bi-bar-chart"></i></span>
+                                    @Localizer["OrdersSummary"]
+                                </h3>
+                                <a href="/branch/orders" class="text-sm bf-text-info bf-hover-text-info-strong font-medium flex items-center gap-1">
+                                    @Localizer["ViewAll"]
+                                    <i class="bi bi-arrow-right rtl:rotate-180"></i>
+                                </a>
+                            </div>
+                            <div class="p-5">
+                                <div class="grid grid-cols-3 gap-4">
+                                    <div class="text-center p-4 bf-bg-success-50 rounded-lg">
+                                        <div class="h-12 w-12 bf-bg-success-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                                            <i class="bi bi-check-circle-fill bf-text-success text-xl"></i>
+                                        </div>
+                                        <p class="text-2xl font-bold bf-text-success">@completedOrders</p>
+                                        <p class="text-xs text-gray-600 mt-1">@Localizer["Completed"]</p>
+                                    </div>
+                                    <div class="text-center p-4 bf-bg-info-50 rounded-lg">
+                                        <div class="h-12 w-12 bf-bg-info-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                                            <i class="bi bi-arrow-return-left bf-text-info text-xl"></i>
+                                        </div>
+                                        <p class="text-2xl font-bold bf-text-info">@partialRefundedOrders</p>
+                                        <p class="text-xs text-gray-600 mt-1">@Localizer["PartialRefunded"]</p>
+                                    </div>
+                                    <div class="text-center p-4 bf-bg-danger-50 rounded-lg">
+                                        <div class="h-12 w-12 bf-bg-danger-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                                            <i class="bi bi-x-circle-fill bf-text-danger text-xl"></i>
+                                        </div>
+                                        <p class="text-2xl font-bold bf-text-danger">@refundedOrders</p>
+                                        <p class="text-xs text-gray-600 mt-1">@Localizer["Refunded"]</p>
+                                    </div>
+                                </div>
+
+                                <!-- Progress bar -->
+                                <div class="mt-5">
+                                    <div class="flex items-center justify-between text-sm text-gray-600 mb-2">
+                                        <span>@Localizer["CompletionRate"]</span>
+                                        <span class="font-medium">@GetCompletionRate()%</span>
+                                    </div>
+                                    <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                        <div class="h-full bf-bg-success-500 rounded-full transition-all duration-500 progress-bar-fill" style="--progress: @GetCompletionRate()%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+
+                <!-- Pending Requests Widget -->
+                <AuthorizeView Policy="Permission:requests.read">
+                    <Authorized>
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+                            <div class="p-4 border-b border-gray-100 flex justify-between items-center">
+                                <h3 class="font-semibold text-gray-900 flex items-center gap-2">
+                                    <span class="dash-chip w-7 h-7 text-sm"><i class="bi bi-send-fill"></i></span>
+                                    @Localizer["PendingRequests"]
+                                </h3>
+                                <a href="/branch/requests" class="text-sm bf-text-info bf-hover-text-info-strong font-medium flex items-center gap-1">
+                                    @Localizer["ViewAll"]
+                                    <i class="bi bi-arrow-right rtl:rotate-180"></i>
+                                </a>
+                            </div>
+                            <div class="p-0">
+                                @if (isLoadingRequests)
+                                {
+                                    <Spinner Size="Spinner.SpinnerSize.Md" Centered="true" />
+                                }
+                                else if (!pendingRequests.Any())
+                                {
+                                    <div class="p-8 text-center text-gray-400 text-sm">@Localizer["NoPendingRequests"]</div>
+                                }
+                                else
+                                {
+                                    <div class="relative">
+                                        @{ var reqIndex = 0; }
+                                        @foreach (var req in pendingRequests.Take(5))
+                                        {
+                                            var isFirstReq = reqIndex == 0;
+                                            var isLastReq = reqIndex == Math.Min(pendingRequests.Count, 5) - 1;
+                                            reqIndex++;
+                                            <a href="/branch/requests" class="group dash-row flex gap-3 px-4 py-3 no-underline cursor-pointer relative">
+                                                @* Timeline connector *@
+                                                <div class="relative flex flex-col items-center">
+                                                    @if (isFirstReq)
+                                                    {
+                                                        <span class="relative flex h-2.5 w-2.5 mt-1.5">
+                                                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-bf-primary opacity-75"></span>
+                                                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-bf-primary"></span>
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="relative flex h-2.5 w-2.5 mt-1.5">
+                                                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-bf-primary"></span>
+                                                        </span>
+                                                    }
+                                                    @if (!isLastReq)
+                                                    {
+                                                        <div class="w-px grow bg-gray-200 mt-1"></div>
+                                                    }
+                                                </div>
+                                                @* Content *@
+                                                <div class="grow min-w-0 pb-1">
+                                                    <div class="flex items-baseline justify-between gap-2">
+                                                        <p class="text-sm text-gray-700 truncate leading-snug">
+                                                            <span class="font-semibold text-gray-900">@req.RequestedByName</span>
+                                                            <span class="text-gray-500">@Localizer["Requested"].ToString().ToLower()</span>
+                                                            <span class="font-medium text-gray-800">@Localizer[$"RequestType{req.Type}"]</span>
+                                                        </p>
+                                                        <span class="text-[11px] text-gray-400 whitespace-nowrap shrink-0">@FormatRelativeTime(req.CreatedAt)</span>
+                                                    </div>
+                                                    @if (!string.IsNullOrEmpty(req.ProductName))
+                                                    {
+                                                        <p class="text-xs text-gray-400 mt-0.5 truncate">@req.ProductName</p>
+                                                    }
+                                                </div>
+                                            </a>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private bool isLoading = true;
+    private bool isLoadingRequests = true;
+
+    private decimal todayRevenue;
+    private int todayOrders;
+    private int todayItemsSold;
+    private decimal monthRevenue;
+    private int monthOrders;
+    private int completedOrders;
+    private int partialRefundedOrders;
+    private int refundedOrders;
+
+    private List<OrderDto> recentOrders = new();
+    private List<RequestDto> pendingRequests = new();
+
+    private bool isAr => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("ar", StringComparison.OrdinalIgnoreCase);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!ActiveBranch.IsSelected)
+        {
+            Navigation.NavigateTo("/branch/select", replace: true);
+            return;
+        }
+
+        ActiveBranch.OnChanged += OnBranchChanged;
+        await LoadAll();
+    }
+
+    private async Task LoadAll()
+    {
+        isLoading = true;
+        isLoadingRequests = true;
+
+        try
+        {
+            await LoadOrderMetrics();
+            await LoadRecentOrders();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+
+        _ = LoadPendingRequestsAsync();
+    }
+
+    private async Task LoadOrderMetrics()
+    {
+        if (!ActiveBranch.BranchId.HasValue) return;
+        var branchId = ActiveBranch.BranchId.Value;
+        var today = DateTime.Today;
+        var monthStart = new DateTime(today.Year, today.Month, 1);
+
+        // Reset
+        todayRevenue = 0; todayOrders = 0; todayItemsSold = 0;
+        monthRevenue = 0; monthOrders = 0;
+        completedOrders = 0; partialRefundedOrders = 0; refundedOrders = 0;
+
+        try
+        {
+            // Single fetch of this month's orders (page size capped) — dashboard is a glance
+            // view, not source-of-truth reporting, so we accept the cap for very busy branches.
+            var monthList = await OrderService.GetAllOrdersAsync(
+                pageNumber: 1, pageSize: 500,
+                fromDate: monthStart, toDate: today,
+                branchId: branchId);
+
+            monthOrders = monthList.TotalCount;
+
+            foreach (var o in monthList.Items)
+            {
+                var revenueGenerating = o.Status == OrderStatus.Completed || o.Status == OrderStatus.PartialRefunded;
+                if (revenueGenerating) monthRevenue += o.Total;
+
+                if (o.Status == OrderStatus.Completed) completedOrders++;
+                else if (o.Status == OrderStatus.PartialRefunded) partialRefundedOrders++;
+                else if (o.Status == OrderStatus.Refunded) refundedOrders++;
+
+                if (o.CreatedAt.Date == today)
+                {
+                    todayOrders++;
+                    todayItemsSold += o.ItemCount;
+                    if (revenueGenerating) todayRevenue += o.Total;
+                }
+            }
+        }
+        catch
+        {
+            // Silent failure — cards show zeros.
+        }
+    }
+
+    private async Task LoadRecentOrders()
+    {
+        if (!ActiveBranch.BranchId.HasValue) return;
+        try
+        {
+            var result = await OrderService.GetAllOrdersAsync(1, 5, branchId: ActiveBranch.BranchId.Value);
+            recentOrders = result.Items.ToList();
+        }
+        catch
+        {
+            recentOrders = new();
+        }
+    }
+
+    private async Task LoadPendingRequestsAsync()
+    {
+        if (!ActiveBranch.BranchId.HasValue) return;
+        try
+        {
+            var result = await RequestService.GetAllRequestsAsync(1, 50, status: RequestStatus.Pending, branchId: ActiveBranch.BranchId.Value);
+            pendingRequests = result.Items.ToList();
+        }
+        catch
+        {
+            pendingRequests = new();
+        }
+        finally
+        {
+            isLoadingRequests = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private int GetCompletionRate()
+    {
+        if (monthOrders == 0) return 0;
+        var revenueGenerating = completedOrders + partialRefundedOrders;
+        return (int)Math.Round((double)revenueGenerating / monthOrders * 100);
+    }
+
+    private string GetStatusClass(OrderStatus status)
+    {
+        return status switch
+        {
+            OrderStatus.Completed => "bf-bg-success-100 bf-text-success",
+            OrderStatus.Refunded => "bf-bg-danger-100 bf-text-danger",
+            OrderStatus.PartialRefunded => "bf-bg-info-100 bf-text-info",
+            _ => "bg-gray-100 text-gray-700"
+        };
+    }
+
+    private void ViewOrders()
+    {
+        Navigation.NavigateTo("/branch/orders");
+    }
+
+    private string FormatRelativeTime(DateTime utcTime)
+    {
+        var diff = DateTime.UtcNow - utcTime;
+        if (diff.TotalMinutes < 1) return Localizer["JustNow"];
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}{Localizer["MinAgo"]}";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}{Localizer["HrAgo"]}";
+        if (diff.TotalDays < 7) return $"{(int)diff.TotalDays}{Localizer["DayAgo"]}";
+        return utcTime.ToLocal().ToString("MMM dd");
+    }
+
+    private void OnBranchChanged() => _ = InvokeAsync(LoadAll);
+
+    public void Dispose()
+    {
+        ActiveBranch.OnChanged -= OnBranchChanged;
+    }
+}

@@ -1,0 +1,76 @@
+@inject IJsonStringLocalizer Localizer
+
+@*
+    Sticky toolbar used at the top of create/edit forms. Provides the back
+    button + title + (optional) right-side status badge + cancel/submit
+    buttons. Submit is a type="submit" so it triggers the parent EditForm.
+
+    Usage:
+        <FormToolbar Title="@(IsEditMode ? Localizer[\"EditUser\"] : Localizer[\"CreateUser\"])"
+                     OnBack="Cancel"
+                     CancelText="@Localizer[\"Cancel\"]"
+                     SubmitText="@(IsEditMode ? Localizer[\"Update\"] : Localizer[\"Create\"])"
+                     IsSubmitting="isSubmitting"
+                     HideSubmit="@isSystemAdminUser" />
+*@
+
+<div class="form-sticky-toolbar sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 mb-6">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            @if (OnBack.HasDelegate)
+            {
+                <button type="button" @onclick="OnBack"
+                        class="p-2 -ml-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                    <i class="bi bi-arrow-left text-lg"></i>
+                </button>
+            }
+            <h1 class="text-xl font-semibold text-gray-900">@Title</h1>
+            @if (BadgeContent is not null)
+            {
+                @BadgeContent
+            }
+        </div>
+        <div class="flex items-center gap-2">
+            @if (LeadingActions is not null)
+            {
+                @LeadingActions
+            }
+            @if (!string.IsNullOrEmpty(CancelText))
+            {
+                <button type="button" @onclick="OnCancel"
+                        class="form-cancel-btn px-4 py-2 text-sm font-medium rounded-lg transition-colors">
+                    @CancelText
+                </button>
+            }
+            @if (!HideSubmit && !string.IsNullOrEmpty(SubmitText))
+            {
+                <button type="submit" disabled="@IsSubmitting"
+                        class="px-4 py-2 text-sm font-medium bg-bf-primary text-bf-primary-contrast rounded-lg hover:opacity-90 transition-all disabled:opacity-50 inline-flex items-center gap-2">
+                    @if (IsSubmitting)
+                    {
+                        <Spinner Size="Spinner.SpinnerSize.Xs" Color="Spinner.SpinnerColor.White" />
+                    }
+                    <span>@SubmitText</span>
+                </button>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public EventCallback OnBack { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public string? CancelText { get; set; }
+    [Parameter] public string? SubmitText { get; set; }
+    [Parameter] public bool IsSubmitting { get; set; }
+    [Parameter] public bool HideSubmit { get; set; }
+    [Parameter] public RenderFragment? BadgeContent { get; set; }
+    [Parameter] public RenderFragment? LeadingActions { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (string.IsNullOrEmpty(CancelText)) CancelText = Localizer["Cancel"];
+        if (string.IsNullOrEmpty(SubmitText)) SubmitText = Localizer["Save"];
+    }
+}

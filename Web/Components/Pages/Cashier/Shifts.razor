@@ -1,0 +1,413 @@
+@page "/cashier/shifts"
+@layout CashierLayout
+@attribute [Authorize(Roles = "Cashier")]
+@using Web.Models.Shifts
+@using Web.Models.Cashiers
+@using Web.Components.Common
+@using System.Globalization
+@inject IShiftService ShiftService
+@inject ICashierManagementService CashierManagementService
+@inject NavigationManager Navigation
+
+<PageTitle>@Localizer["MyShifts"]</PageTitle>
+
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-6">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+                        <i class="bi bi-clock-history text-bf-primary"></i>
+                        @Localizer["MyShifts"]
+                    </h1>
+                    <p class="text-gray-600 mt-2 text-sm">@Localizer["ManageYourShifts"]</p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    @if (assignedStores.Count > 1)
+                    {
+                        <div class="min-w-[220px]">
+                            <SearchableDropdown TItem="AssignedWarehouseDto"
+                                                TValue="string"
+                                                Items="assignedStores"
+                                                @bind-Value="selectedWarehouseId"
+                                                OnChanged="OnStoreFilterChanged"
+                                                DisplayText="s => isAr ? s.NameAr : s.NameEn"
+                                                SearchText='s => $"{s.NameEn} {s.NameAr}"'
+                                                ItemValue="s => s.Id.ToString()"
+                                                Placeholder='@Localizer["AllStores"]'
+                                                Compact="true" />
+                        </div>
+                    }
+                    @if (activeShift is null)
+                    {
+                        <button class="px-4 py-2 bg-bf-primary text-bf-primary-contrast rounded-lg flex items-center gap-2" @onclick="() => showStart = true">
+                            <i class="bi bi-play-fill"></i>
+                            @Localizer["StartShift"]
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="px-4 py-2 bg-red-600 text-white rounded-lg flex items-center gap-2" @onclick="() => showEnd = true">
+                            <i class="bi bi-stop-fill"></i>
+                            @Localizer["EndShift"]
+                        </button>
+                    }
+                </div>
+            </div>
+
+            @if (isLoading)
+            {
+                <Spinner Size="Spinner.SpinnerSize.Lg" Centered="true" />
+            }
+            else if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3 mb-4">
+                    <i class="bi bi-exclamation-triangle-fill text-red-600 text-lg mt-0.5"></i>
+                    <span class="text-red-800">@errorMessage</span>
+                </div>
+            }
+            else if (!string.IsNullOrEmpty(message))
+            {
+                <div class="p-3 mb-4 rounded-lg bf-bg-success-50 bf-text-success border bf-border-success flex items-start gap-2">
+                    <i class="bi bi-check-circle-fill bf-icon-success mt-0.5"></i>
+                    <span>@message</span>
+                </div>
+            }
+
+            <!-- Shifts List -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["Store"]</th>
+                            <th class="px-4 py-2 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["StartTime"]</th>
+                            <th class="px-4 py-2 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["EndTime"]</th>
+                            <th class="px-4 py-2 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["TotalSales"]</th>
+                            <th class="px-4 py-2 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["CashIn"]</th>
+                            <th class="px-4 py-2 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["CashOut"]</th>
+                            <th class="px-4 py-2 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["Status"]</th>
+                            <th class="px-4 py-2 text-end text-xs font-medium text-gray-500 uppercase">@Localizer["Actions"]</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        @foreach (var s in shifts)
+                        {
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-4 py-3 text-sm text-gray-700">
+                                    @{
+                                        var storeName = isAr ? s.WarehouseNameAr : s.WarehouseNameEn;
+                                    }
+                                    @if (!string.IsNullOrEmpty(storeName))
+                                    {
+                                        @storeName
+                                    }
+                                    else
+                                    {
+                                        <span class="text-gray-400">-</span>
+                                    }
+                                </td>
+                                <td class="px-4 py-3 text-sm text-gray-700">@s.StartTime.ToLocal().ToString("g")</td>
+                                <td class="px-4 py-3 text-sm text-gray-700">@(s.EndTime.HasValue ? s.EndTime.Value.ToLocal().ToString("g") : "-")</td>
+                                <td class="px-4 py-3 text-sm text-gray-700">@s.TotalSales.ToString("N2") @Localizer["CurrencyUnit"]</td>
+                                <td class="px-4 py-3 text-sm text-gray-700">@s.CashIn.ToString("N2") @Localizer["CurrencyUnit"]</td>
+                                <td class="px-4 py-3 text-sm text-gray-700">@s.CashOut.ToString("N2") @Localizer["CurrencyUnit"]</td>
+                                <td class="px-4 py-3 text-sm text-gray-700">
+                                    <StatusBadge Text="@Localizer[$"ShiftStatus_{s.Status}"]" Type="@(s.Status == Web.Models.Enums.ShiftStatus.Active ? StatusBadge.BadgeType.Success : StatusBadge.BadgeType.Error)" Size="StatusBadge.BadgeSize.Small" />
+                                </td>
+                                <td class="px-4 py-3 text-end text-sm font-medium">
+                                    <button title="@Localizer["View"]" @onclick="() => ViewShift(s.Id)"
+                                            class="text-bf-primary hover:text-bf-primary-dark p-2 hover:bg-bf-primary/10 rounded-lg transition-colors">
+                                        <i class="bi bi-eye text-lg"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-4">
+                <Pagination PageIndex="@pageIndex" TotalPages="@totalPages" TotalCount="@totalCount" PageSize="@pageSize" OnPageChanged="@OnPageChanged" />
+            </div>
+</div>
+
+<!-- Shift Details Modal -->
+@if (showDetails && selectedShift != null)
+{
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center" @onclick="() => showDetails = false">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" @onclick:stopPropagation>
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <h3 class="text-xl font-bold text-gray-900">@Localizer["ShiftDetails"]</h3>
+                    <p class="text-sm text-gray-500">@selectedShift.CashierName</p>
+                </div>
+                <button @onclick="() => showDetails = false" class="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                    <i class="bi bi-x-lg text-xl"></i>
+                </button>
+            </div>
+
+            @{
+                var detailStoreName = isAr ? selectedShift.WarehouseNameAr : selectedShift.WarehouseNameEn;
+            }
+            @if (!string.IsNullOrEmpty(detailStoreName))
+            {
+                <div class="mb-4 flex items-center gap-2 px-3 py-2 bg-purple-50 border border-purple-100 rounded-lg text-sm text-purple-700">
+                    <i class="bi bi-shop"></i>
+                    <span class="font-medium">@detailStoreName</span>
+                </div>
+            }
+
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="p-3 bg-gray-50 rounded-lg">
+                    <p class="text-xs text-gray-500 uppercase">@Localizer["StartTime"]</p>
+                    <p class="font-medium">@selectedShift.StartTime.ToLocal().ToString("g")</p>
+                </div>
+                <div class="p-3 bg-gray-50 rounded-lg">
+                    <p class="text-xs text-gray-500 uppercase">@Localizer["TotalSales"]</p>
+                    <p class="font-medium">@selectedShift.TotalSales.ToString("N2") @Localizer["CurrencyUnit"]</p>
+                </div>
+                <div class="p-3 bg-gray-50 rounded-lg">
+                    <p class="text-xs text-gray-500 uppercase">@Localizer["TotalReturns"]</p>
+                    <p class="font-medium">@selectedShift.TotalReturns.ToString("N2") @Localizer["CurrencyUnit"]</p>
+                </div>
+                <div class="p-3 bg-gray-50 rounded-lg">
+                    <p class="text-xs text-gray-500 uppercase">@Localizer["CashIn"]</p>
+                    <p class="font-medium">@selectedShift.CashIn.ToString("N2") @Localizer["CurrencyUnit"]</p>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(selectedShift.Comments))
+            {
+                <div class="border-t border-gray-200 pt-4">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-500">@Localizer["Comments"]</span>
+                        <span class="text-gray-900">@selectedShift.Comments</span>
+                    </div>
+                </div>
+            }
+
+            <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
+                <button class="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors" @onclick="() => showDetails = false">@Localizer["Close"]</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* Use shared StartShiftModal component *@
+<StartShiftModal @ref="startModal" IsVisible="@showStart" OnCancel="CloseStartForm" OnStart="@(async (req) => await StartShiftWithRequest(req))" />
+
+@* Use shared EndShiftModal component *@
+<EndShiftModal @ref="endModal" IsVisible="@showEnd" OnCancel="CloseEndForm" OnEnd="@(async (req) => await EndShiftWithRequest(req))" />
+
+@code {
+    private List<ShiftDto> shifts = new();
+    private ShiftDto? activeShift;
+    private bool isAr = false;
+    private List<AssignedWarehouseDto> assignedStores = new();
+    private string selectedWarehouseId = "";
+
+    private bool showStart = false;
+    private bool showEnd = false;
+    private StartShiftModal? startModal;
+    private EndShiftModal? endModal;
+    private decimal startCashIn = 0m;
+    private string? startComments;
+    private decimal endCashOut = 0m;
+    private string? endComments;
+
+    private string? message;
+
+    // Pagination
+    private int pageIndex = 1;
+    private int pageSize = 10;
+    private int totalPages = 1;
+    private int totalCount = 0;
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isAr = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.ToLowerInvariant() == "ar";
+        assignedStores = await CashierManagementService.GetMyAssignedStoresAsync();
+        await LoadShifts();
+    }
+
+    private async Task OnStoreFilterChanged()
+    {
+        pageIndex = 1;
+        await LoadShifts();
+    }
+
+    private void ShowStartForm()
+    {
+        startCashIn = 0m;
+        startComments = string.Empty;
+        startModal?.Reset();
+        showStart = true;
+    }
+
+    private void CloseStartForm() => showStart = false;
+
+    private void ShowEndForm()
+    {
+        endCashOut = 0m;
+        endComments = string.Empty;
+        endModal?.Reset();
+        showEnd = true;
+    }
+
+    private void CloseEndForm() => showEnd = false;
+
+    private async Task StartShift()
+    {
+        try
+        {
+            var req = new StartShiftRequest { CashIn = startCashIn, Comments = startComments };
+            var result = await ShiftService.StartShiftAsync(req);
+            message = Localizer["ShiftStarted"];
+            showStart = false;
+            await LoadShifts();
+        }
+        catch (Exception ex)
+        {
+            message = ex.Message;
+        }
+    }
+
+    private async Task StartShiftWithRequest(StartShiftRequest req)
+    {
+        try
+        {
+            var result = await ShiftService.StartShiftAsync(req);
+            message = Localizer["ShiftStarted"];
+            showStart = false;
+            await LoadShifts();
+        }
+        catch (Web.Services.ServerValidationException ex)
+        {
+            // show field-specific errors in the modal
+            startModal?.DisplayErrors(ex.Errors);
+            return;
+        }
+        catch (Exception ex)
+        {
+            message = ex.Message;
+        }
+    }
+
+    private async Task EndShift()
+    {
+        if (activeShift == null) return;
+        try
+        {
+            var req = new EndShiftRequest { CashOut = endCashOut, Comments = endComments };
+            var result = await ShiftService.EndShiftAsync(activeShift.Id, req);
+            message = Localizer["ShiftEnded"];
+            showEnd = false;
+            await LoadShifts();
+        }
+        catch (Exception ex)
+        {
+            message = ex.Message;
+        }
+    }
+
+    private async Task EndShiftWithRequest(EndShiftRequest req)
+    {
+        if (activeShift == null) return;
+        try
+        {
+            var result = await ShiftService.EndShiftAsync(activeShift.Id, req);
+            message = Localizer["ShiftEnded"];
+            showEnd = false;
+            await LoadShifts();
+        }
+        catch (Web.Services.ServerValidationException ex)
+        {
+            endModal?.DisplayErrors(ex.Errors);
+            return;
+        }
+        catch (Exception ex)
+        {
+            message = ex.Message;
+        }
+    }
+
+    private void BeginEndForShift(Guid shiftId)
+    {
+        // Pre-fill with active shift data if needed
+        var s = shifts.FirstOrDefault(x => x.Id == shiftId);
+        if (s != null)
+        {
+            activeShift = s;
+            endCashOut = s.CashOut;
+        }
+        ShowEndForm();
+    }
+
+    private async Task LoadShifts()
+    {
+        isLoading = true;
+        errorMessage = null;
+        try
+        {
+            var warehouseFilter = Guid.TryParse(selectedWarehouseId, out var wId) ? wId : (Guid?)null;
+            var result = await ShiftService.GetMyShiftsAsync(pageIndex, pageSize, warehouseFilter);
+            shifts = result.Items;
+            totalCount = result.TotalCount;
+            totalPages = result.TotalPages;
+
+            // Determine active shift independently of current page so pagination doesn't affect the Start/End toggle
+            try
+            {
+                var allShifts = await ShiftService.GetMyShiftsAsync(1, 1000);
+                activeShift = allShifts.Items.FirstOrDefault(s => s.Status == Web.Models.Enums.ShiftStatus.Active);
+            }
+            catch
+            {
+                // Fallback: derive from current page if the all-shifts call fails for any reason
+                activeShift = shifts.FirstOrDefault(s => s.Status == Web.Models.Enums.ShiftStatus.Active);
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            // Ensure modal state is reset when data changes (pagination, filters, etc.)
+            showStart = false;
+            showEnd = false;
+            showDetails = false;
+            isLoading = false;
+        }
+    }
+
+    private bool showDetails = false;
+    private ShiftDto? selectedShift = null;
+
+    private void ViewShift(Guid id)
+    {
+        var s = shifts.FirstOrDefault(x => x.Id == id);
+        if (s != null)
+        {
+            selectedShift = s;
+            showDetails = true;
+        }
+    }
+
+    private async Task OnPageChanged(int newPage)
+    {
+        pageIndex = newPage;
+        await LoadShifts();
+    }
+
+    private StatusBadge.BadgeType GetBadgeType(Web.Models.Enums.ShiftStatus status)
+    {
+        return status switch
+        {
+            Web.Models.Enums.ShiftStatus.Active => StatusBadge.BadgeType.Success,
+            Web.Models.Enums.ShiftStatus.Completed => StatusBadge.BadgeType.Info,
+            _ => StatusBadge.BadgeType.Info,
+        };
+    }
+}

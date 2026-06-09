@@ -1,0 +1,617 @@
+@using Microsoft.AspNetCore.Authorization
+@using Web.Authorization
+@using System.Globalization
+@using Web.Models.Enums
+@using Web.Models.PurchaseRequests
+@using Web.Models.Warehouses
+@using Web.Models.Suppliers
+@using Web.Models.Units
+@inject IPurchaseRequestClientService PurchaseRequestService
+@inject IWarehouseService WarehouseService
+@inject ISupplierService SupplierService
+@inject IUnitService UnitService
+@inject IJsonStringLocalizer Localizer
+
+<div class="flex justify-end gap-2 mb-4">
+    <AuthorizeView Policy="Permission:purchase-requests.write">
+        <Authorized>
+            <button @onclick="GenerateProposals" disabled="@isGenerating"
+                    class="inline-flex items-center gap-2 py-2 px-4 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium">
+                @if (isGenerating)
+                {
+                    <Spinner Size="Spinner.SpinnerSize.Sm" />
+                }
+                <i class="bi bi-magic"></i>
+                <span>@Localizer["GenerateReorderProposals"]</span>
+            </button>
+            <button @onclick="OpenCreate" class="btn-primary-action">
+                <i class="bi bi-plus-circle"></i>
+                <span>@Localizer["CreatePurchaseRequest"]</span>
+            </button>
+        </Authorized>
+    </AuthorizeView>
+</div>
+
+<!-- Filters -->
+<div class="mb-6 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+    <div class="flex flex-wrap items-center gap-3 p-4">
+        <div class="flex-1 min-w-[200px]">
+            <SearchInput @bind-Value="searchTerm" OnSearch="HandleSearch" Placeholder="@Localizer["SearchPurchaseRequests"]" />
+        </div>
+
+        <button @onclick="() => showFiltersPanel = !showFiltersPanel"
+                class="@($"inline-flex items-center gap-2 py-2 px-4 rounded-lg border transition-all duration-200 font-medium text-sm {(showFiltersPanel ? "bg-purple-50 border-purple-300 text-purple-700" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50")}")">
+            <i class="bi bi-funnel"></i>
+            <span>@Localizer["Filters"]</span>
+            @if (ActiveFilterCount > 0)
+            {
+                <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-purple-600 rounded-full">@ActiveFilterCount</span>
+            }
+            <i class="@($"bi bi-chevron-{(showFiltersPanel ? "up" : "down")} text-xs")"></i>
+        </button>
+
+        @if (HasActiveFilters())
+        {
+            <button @onclick="ResetFilters" class="inline-flex items-center gap-2 py-2 px-4 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                <i class="bi bi-x-circle"></i>
+                <span>@Localizer["ResetFilters"]</span>
+            </button>
+        }
+    </div>
+
+    @if (showFiltersPanel)
+    {
+        <div class="px-4 pb-4 pt-0 border-t border-gray-200">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-4">
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">@Localizer["Status"]</label>
+                    <div class="relative">
+                        <select @bind="filterStatus" @bind:after="ApplyFilters" class="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2 px-3 pe-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-bf-primary text-sm">
+                            <option value="">@Localizer["All"]</option>
+                            @foreach (var s in Enum.GetValues<PurchaseRequestStatus>())
+                            {
+                                <option value="@s">@Localizer[$"PRStatus{s}"]</option>
+                            }
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 end-0 flex items-center px-2 text-gray-400"><svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg></div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">@Localizer["SupplySource"]</label>
+                    <div class="relative">
+                        <select @bind="filterSupplySource" @bind:after="ApplyFilters" class="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2 px-3 pe-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-bf-primary text-sm">
+                            <option value="">@Localizer["All"]</option>
+                            <option value="@PurchaseRequestSupplySource.FromSupplier">@Localizer["SupplySourceFromSupplier"]</option>
+                            <option value="@PurchaseRequestSupplySource.FromCentralWarehouse">@Localizer["SupplySourceFromCentralWarehouse"]</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 end-0 flex items-center px-2 text-gray-400"><svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg></div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">@Localizer["Warehouse"]</label>
+                    <div class="relative">
+                        <select @bind="filterWarehouseId" @bind:after="ApplyFilters" class="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2 px-3 pe-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-bf-primary text-sm">
+                            <option value="">@Localizer["AllWarehouses"]</option>
+                            @foreach (var w in warehouses)
+                            {
+                                <option value="@w.Id">@(isAr ? w.NameAr : w.NameEn)</option>
+                            }
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 end-0 flex items-center px-2 text-gray-400"><svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@if (isLoading)
+{
+    <Spinner Size="Spinner.SpinnerSize.Lg" Centered="true" />
+}
+else if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="p-4 bf-bg-danger-50 border bf-border-danger rounded-lg bf-text-danger">@errorMessage</div>
+}
+else if (!items.Any())
+{
+    <div class="text-center py-12">
+        <i class="bi bi-cart-x text-6xl text-gray-300 mb-4"></i>
+        <p class="text-gray-500 text-lg">@Localizer["NoPurchaseRequestsFound"]</p>
+    </div>
+}
+else
+{
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-3 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["PurchaseRequestNumber"]</th>
+                    <th class="px-4 py-3 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["SupplySource"]</th>
+                    <th class="px-4 py-3 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["Warehouse"]</th>
+                    <th class="px-4 py-3 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["CreationMethod"]</th>
+                    <th class="px-4 py-3 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["Status"]</th>
+                    <th class="px-4 py-3 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["Date"]</th>
+                    <th class="px-4 py-3 text-end text-xs font-medium text-gray-500 uppercase">@Localizer["Actions"]</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                @foreach (var pr in items)
+                {
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">@pr.RequestNumber</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">@Localizer[$"SupplySource{pr.SupplySource}"]</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">@(isAr ? pr.RequestingWarehouseNameAr : pr.RequestingWarehouseNameEn)</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">@Localizer[$"PRMethod{pr.CreationMethod}"]</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full @StatusCss(pr.Status)">@Localizer[$"PRStatus{pr.Status}"]</span>
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">@pr.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-end text-sm font-medium">
+                            <button @onclick="() => OpenDetail(pr.Id)" title="@Localizer["View"]" class="text-indigo-600 hover:text-indigo-900 me-2"><i class="bi bi-eye"></i></button>
+                            @if (pr.Status == PurchaseRequestStatus.Draft)
+                            {
+                                <AuthorizeView Policy="Permission:purchase-requests.write" Context="a1">
+                                    <Authorized Context="a1">
+                                        <button @onclick="() => OpenEdit(pr.Id)" title="@Localizer["Edit"]" class="text-amber-600 hover:text-amber-800 me-2"><i class="bi bi-pencil-square"></i></button>
+                                        <button @onclick="() => SubmitPr(pr.Id)" title="@Localizer["Submit"]" class="text-bf-primary hover:opacity-80 me-2"><i class="bi bi-send"></i></button>
+                                        <button @onclick="() => CancelPr(pr.Id)" title="@Localizer["Cancel"]" class="bf-text-danger me-2"><i class="bi bi-x-circle"></i></button>
+                                    </Authorized>
+                                </AuthorizeView>
+                            }
+                            @if (pr.Status == PurchaseRequestStatus.Approved)
+                            {
+                                <AuthorizeView Policy="Permission:purchase-requests.convert" Context="a2">
+                                    <Authorized Context="a2">
+                                        <button @onclick="() => ConvertPr(pr.Id)" title="@Localizer["Convert"]" class="bf-text-success hover:opacity-80 me-2"><i class="bi bi-arrow-right-circle"></i></button>
+                                    </Authorized>
+                                </AuthorizeView>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <Pagination PageIndex="@pageIndex" TotalPages="@totalPages" TotalCount="@totalCount" PageSize="@pageSize" OnPageChanged="@OnPageChanged" />
+}
+
+@if (showEditor)
+{
+    <div class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75" @onclick="CloseEditor"></div>
+            <div class="relative bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 z-10">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-gray-900">@(editingId.HasValue ? Localizer["EditPurchaseRequest"] : Localizer["CreatePurchaseRequest"])</h3>
+                    <button @onclick="CloseEditor" class="text-gray-400 hover:text-gray-600"><i class="bi bi-x-lg text-xl"></i></button>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["SupplySource"] *</label>
+                            <select @bind="model.SupplySource" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                                <option value="@PurchaseRequestSupplySource.FromCentralWarehouse">@Localizer["SupplySourceFromCentralWarehouse"]</option>
+                                <option value="@PurchaseRequestSupplySource.FromSupplier">@Localizer["SupplySourceFromSupplier"]</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["Warehouse"] *</label>
+                            <select @bind="model.RequestingWarehouseId" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                                <option value="@Guid.Empty">@Localizer["SelectWarehouse"]</option>
+                                @foreach (var w in branchWarehouses)
+                                {
+                                    <option value="@w.Id">@(isAr ? w.NameAr : w.NameEn)</option>
+                                }
+                            </select>
+                        </div>
+                        @if (model.SupplySource == PurchaseRequestSupplySource.FromSupplier)
+                        {
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["Supplier"]</label>
+                                <select @bind="SupplierIdString" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                                    <option value="">@Localizer["SelectSupplier"]</option>
+                                    @foreach (var s in suppliers)
+                                    {
+                                        <option value="@s.Id">@(isAr ? s.NameAr : s.NameEn)</option>
+                                    }
+                                </select>
+                            </div>
+                        }
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["Notes"]</label>
+                        <textarea @bind="model.Notes" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2"></textarea>
+                    </div>
+
+                    <div class="border-t pt-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="text-lg font-semibold text-gray-800">@Localizer["Items"]</h4>
+                            <button @onclick="AddLine" class="inline-flex items-center gap-1 px-3 py-1.5 bf-bg-success-600 text-white rounded-lg text-sm"><i class="bi bi-plus"></i> @Localizer["AddItem"]</button>
+                        </div>
+                        @for (int i = 0; i < model.Lines.Count; i++)
+                        {
+                            var idx = i;
+                            <div class="mb-3 bg-gray-50 p-3 rounded-lg grid grid-cols-12 gap-2 items-end">
+                                <div class="col-span-7">
+                                    <label class="block text-xs text-gray-500">@Localizer["Product"] *</label>
+                                    <select value="@model.Lines[idx].UnitId" @onchange="(e) => OnLineUnitChanged(idx, e)" class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm">
+                                        <option value="@Guid.Empty">@Localizer["SelectProduct"]</option>
+                                        @foreach (var u in units)
+                                        {
+                                            <option value="@u.Id">@(isAr ? u.ProductNameAr : u.ProductNameEn) - @(isAr ? u.UnitOfMeasureNameAr : u.UnitOfMeasureNameEn) (@u.Quantity)</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-span-4">
+                                    <label class="block text-xs text-gray-500">@Localizer["RequestedQuantity"] *</label>
+                                    <input type="number" min="1" @bind="model.Lines[idx].RequestedQuantity" class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+                                </div>
+                                <div class="col-span-1 flex items-end justify-end">
+                                    <button @onclick="() => RemoveLine(idx)" class="bf-text-danger p-1"><i class="bi bi-trash"></i></button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(modalError))
+                {
+                    <div class="mt-4 p-3 bf-bg-danger-50 border bf-border-danger rounded-lg bf-text-danger text-sm">@modalError</div>
+                }
+
+                <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
+                    <button @onclick="CloseEditor" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">@Localizer["Cancel"]</button>
+                    <button @onclick="Save" disabled="@isSaving" class="px-4 py-2 bg-bf-primary text-bf-primary-contrast rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center gap-2">
+                        @if (isSaving) { <Spinner Size="Spinner.SpinnerSize.Sm" /> }
+                        <span>@Localizer["Save"]</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showDetail && detail is not null)
+{
+    <div class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75" @onclick="() => showDetail = false"></div>
+            <div class="relative bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 z-10">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-gray-900">@detail.RequestNumber</h3>
+                    <button @onclick="() => showDetail = false" class="text-gray-400 hover:text-gray-600"><i class="bi bi-x-lg text-xl"></i></button>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 text-sm">
+                    <div><span class="text-gray-500">@Localizer["SupplySource"]:</span> @Localizer[$"SupplySource{detail.SupplySource}"]</div>
+                    <div><span class="text-gray-500">@Localizer["Warehouse"]:</span> @(isAr ? detail.RequestingWarehouseNameAr : detail.RequestingWarehouseNameEn)</div>
+                    <div><span class="text-gray-500">@Localizer["Status"]:</span> <span class="px-2 py-0.5 rounded-full text-xs @StatusCss(detail.Status)">@Localizer[$"PRStatus{detail.Status}"]</span></div>
+                    <div><span class="text-gray-500">@Localizer["CreationMethod"]:</span> @Localizer[$"PRMethod{detail.CreationMethod}"]</div>
+                    @if (detail.SupplierId.HasValue)
+                    {
+                        <div><span class="text-gray-500">@Localizer["Supplier"]:</span> @(isAr ? detail.SupplierNameAr : detail.SupplierNameEn)</div>
+                    }
+                    @if (!string.IsNullOrEmpty(detail.ConvertedDocumentReference))
+                    {
+                        <div><span class="text-gray-500">@Localizer["ConvertedDocument"]:</span> @detail.ConvertedDocumentReference</div>
+                    }
+                </div>
+
+                @if (!string.IsNullOrEmpty(detail.RejectReason))
+                {
+                    <div class="mb-4 p-3 bf-bg-danger-50 border bf-border-danger rounded-lg bf-text-danger text-sm">
+                        <strong>@Localizer["RejectReason"]:</strong> @detail.RejectReason
+                    </div>
+                }
+
+                <div class="overflow-x-auto border rounded-lg">
+                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-3 py-2 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["Product"]</th>
+                                <th class="px-3 py-2 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["CurrentAvailable"]</th>
+                                <th class="px-3 py-2 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["SuggestedQuantity"]</th>
+                                <th class="px-3 py-2 text-start text-xs font-medium text-gray-500 uppercase">@Localizer["RequestedQuantity"]</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            @foreach (var l in detail.Lines)
+                            {
+                                <tr>
+                                    <td class="px-3 py-2">@(isAr ? l.ProductNameAr : l.ProductNameEn) - @(isAr ? l.UnitOfMeasureNameAr : l.UnitOfMeasureNameEn)</td>
+                                    <td class="px-3 py-2">@l.CurrentAvailableQuantity</td>
+                                    <td class="px-3 py-2">@(l.SuggestedQuantity?.ToString() ?? "—")</td>
+                                    <td class="px-3 py-2 font-medium">@l.RequestedQuantity</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (detail.Status == PurchaseRequestStatus.Submitted)
+                {
+                    <AuthorizeView Policy="Permission:purchase-requests.approve" Context="rev">
+                        <Authorized Context="rev">
+                            <div class="mt-4 border-t pt-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["ReviewNote"]</label>
+                                <textarea @bind="reviewNote" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3"></textarea>
+                                <div class="flex justify-end gap-3">
+                                    <button @onclick="Reject" disabled="@isReviewing" class="px-4 py-2 bf-bg-danger-600 text-white rounded-lg hover:opacity-90 disabled:opacity-50">@Localizer["Reject"]</button>
+                                    <button @onclick="Approve" disabled="@isReviewing" class="px-4 py-2 bf-bg-success-600 text-white rounded-lg hover:opacity-90 disabled:opacity-50">@Localizer["Approve"]</button>
+                                </div>
+                            </div>
+                        </Authorized>
+                    </AuthorizeView>
+                }
+                @if (detail.Status == PurchaseRequestStatus.Approved)
+                {
+                    <AuthorizeView Policy="Permission:purchase-requests.convert" Context="cv">
+                        <Authorized Context="cv">
+                            <div class="mt-4 border-t pt-4 flex justify-end">
+                                <button @onclick="() => ConvertPr(detail.Id)" disabled="@isReviewing" class="px-4 py-2 bf-bg-success-600 text-white rounded-lg hover:opacity-90 disabled:opacity-50">
+                                    @(detail.SupplySource == PurchaseRequestSupplySource.FromSupplier ? Localizer["ConvertToGRN"] : Localizer["ConvertToTransfer"])
+                                </button>
+                            </div>
+                        </Authorized>
+                    </AuthorizeView>
+                }
+                @if (!string.IsNullOrEmpty(modalError))
+                {
+                    <div class="mt-4 p-3 bf-bg-danger-50 border bf-border-danger rounded-lg bf-text-danger text-sm">@modalError</div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isLoading = true;
+    private bool isAr;
+    private string errorMessage = string.Empty;
+
+    private int pageIndex = 1;
+    private int pageSize = 10;
+    private int totalPages = 1;
+    private int totalCount = 0;
+
+    private List<PurchaseRequestDto> items = new();
+    private List<WarehouseDto> warehouses = new();
+    private List<WarehouseDto> branchWarehouses = new();
+    private List<SupplierDto> suppliers = new();
+    private List<UnitDto> units = new();
+
+    private string searchTerm = string.Empty;
+    private string filterStatus = string.Empty;
+    private string filterSupplySource = string.Empty;
+    private string filterWarehouseId = string.Empty;
+    private bool showFiltersPanel = false;
+
+    // Editor (create/edit)
+    private bool showEditor;
+    private bool isSaving;
+    private Guid? editingId;
+    private string modalError = string.Empty;
+    private CreatePurchaseRequestRequest model = new();
+
+    private string SupplierIdString
+    {
+        get => model.SupplierId?.ToString() ?? string.Empty;
+        set => model.SupplierId = Guid.TryParse(value, out var g) ? g : null;
+    }
+
+    // Detail / review
+    private bool showDetail;
+    private bool isReviewing;
+    private PurchaseRequestDto? detail;
+    private string reviewNote = string.Empty;
+    private bool isGenerating;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isAr = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("ar", StringComparison.OrdinalIgnoreCase);
+        await LoadLookups();
+        await LoadData();
+    }
+
+    private async Task LoadLookups()
+    {
+        try
+        {
+            warehouses = (await WarehouseService.GetActiveWarehousesAsync()).ToList();
+            // Requests target a branch warehouse (everything except the central warehouse).
+            branchWarehouses = warehouses.Where(w => w.WarehouseTypeCode != "CW").ToList();
+            suppliers = (await SupplierService.GetAllSuppliersAsync(1, 500, isActive: true)).Items;
+            units = (await UnitService.GetAllAsync(1, 1000, isActive: true)).Items;
+        }
+        catch (Exception ex) { Console.WriteLine($"PR lookups failed: {ex.Message}"); }
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+        try
+        {
+            PurchaseRequestStatus? status = Enum.TryParse<PurchaseRequestStatus>(filterStatus, out var st) ? st : null;
+            PurchaseRequestSupplySource? source = Enum.TryParse<PurchaseRequestSupplySource>(filterSupplySource, out var ss) ? ss : null;
+            Guid? warehouseId = Guid.TryParse(filterWarehouseId, out var wId) ? wId : null;
+
+            var result = await PurchaseRequestService.GetAllAsync(pageIndex, pageSize, searchTerm, status, source, warehouseId);
+            items = result.Items;
+            totalPages = result.TotalPages;
+            totalCount = result.TotalCount;
+        }
+        catch (Exception ex) { errorMessage = ex.Message; }
+        finally { isLoading = false; }
+    }
+
+    private async Task OnPageChanged(int p) { pageIndex = p; await LoadData(); }
+    private async Task ApplyFilters() { pageIndex = 1; await LoadData(); }
+    private async Task HandleSearch(string value) { searchTerm = value; pageIndex = 1; await LoadData(); }
+
+    private async Task ResetFilters()
+    {
+        searchTerm = string.Empty;
+        filterStatus = string.Empty;
+        filterSupplySource = string.Empty;
+        filterWarehouseId = string.Empty;
+        showFiltersPanel = false;
+        pageIndex = 1;
+        await LoadData();
+    }
+
+    private bool HasActiveFilters() =>
+        !string.IsNullOrEmpty(searchTerm) || !string.IsNullOrEmpty(filterStatus) ||
+        !string.IsNullOrEmpty(filterSupplySource) || !string.IsNullOrEmpty(filterWarehouseId);
+
+    private int ActiveFilterCount
+    {
+        get
+        {
+            int count = 0;
+            if (!string.IsNullOrEmpty(filterStatus)) count++;
+            if (!string.IsNullOrEmpty(filterSupplySource)) count++;
+            if (!string.IsNullOrEmpty(filterWarehouseId)) count++;
+            return count;
+        }
+    }
+
+    private void OpenCreate()
+    {
+        editingId = null;
+        model = new CreatePurchaseRequestRequest { SupplySource = PurchaseRequestSupplySource.FromCentralWarehouse, Lines = { new CreatePurchaseRequestLineRequest() } };
+        modalError = string.Empty;
+        showEditor = true;
+    }
+
+    private async Task OpenEdit(Guid id)
+    {
+        var pr = await PurchaseRequestService.GetByIdAsync(id);
+        if (pr is null) return;
+        editingId = id;
+        model = new CreatePurchaseRequestRequest
+        {
+            SupplySource = pr.SupplySource,
+            RequestingWarehouseId = pr.RequestingWarehouseId,
+            SupplierId = pr.SupplierId,
+            Notes = pr.Notes,
+            Lines = pr.Lines.Select(l => new CreatePurchaseRequestLineRequest { UnitId = l.UnitId, RequestedQuantity = l.RequestedQuantity, Notes = l.Notes }).ToList()
+        };
+        if (model.Lines.Count == 0) model.Lines.Add(new CreatePurchaseRequestLineRequest());
+        modalError = string.Empty;
+        showEditor = true;
+    }
+
+    private void CloseEditor() { showEditor = false; modalError = string.Empty; }
+    private void AddLine() => model.Lines.Add(new CreatePurchaseRequestLineRequest());
+    private void RemoveLine(int idx) { if (idx >= 0 && idx < model.Lines.Count) model.Lines.RemoveAt(idx); }
+
+    private void OnLineUnitChanged(int idx, ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var unitId))
+        {
+            model.Lines[idx].UnitId = unitId;
+            if (model.Lines[idx].RequestedQuantity <= 0) model.Lines[idx].RequestedQuantity = 1;
+        }
+    }
+
+    private async Task Save()
+    {
+        isSaving = true;
+        modalError = string.Empty;
+        try
+        {
+            model.Lines = model.Lines.Where(l => l.UnitId != Guid.Empty && l.RequestedQuantity > 0).ToList();
+            if (model.RequestingWarehouseId == Guid.Empty) { modalError = Localizer["WarehouseRequired"]; return; }
+            if (model.Lines.Count == 0) { modalError = Localizer["LinesRequired"]; return; }
+
+            if (editingId.HasValue)
+            {
+                await PurchaseRequestService.UpdateAsync(editingId.Value, new UpdatePurchaseRequestRequest
+                {
+                    SupplySource = model.SupplySource,
+                    SupplierId = model.SupplierId,
+                    Notes = model.Notes,
+                    Lines = model.Lines
+                });
+            }
+            else
+            {
+                await PurchaseRequestService.CreateAsync(model);
+            }
+            CloseEditor();
+            await LoadData();
+        }
+        catch (Web.Services.ServerValidationException ex) { modalError = string.Join(" ", ex.Errors.Values.SelectMany(v => v).Select(e => Localizer[e])); }
+        catch (Exception ex) { modalError = ex.Message; }
+        finally { isSaving = false; }
+    }
+
+    private async Task OpenDetail(Guid id)
+    {
+        modalError = string.Empty;
+        reviewNote = string.Empty;
+        detail = await PurchaseRequestService.GetByIdAsync(id);
+        if (detail is not null) showDetail = true;
+    }
+
+    private async Task Approve()
+    {
+        if (detail is null) return;
+        isReviewing = true; modalError = string.Empty;
+        try { await PurchaseRequestService.ApproveAsync(detail.Id, reviewNote); showDetail = false; await LoadData(); }
+        catch (Exception ex) { modalError = ex.Message; }
+        finally { isReviewing = false; }
+    }
+
+    private async Task Reject()
+    {
+        if (detail is null) return;
+        isReviewing = true; modalError = string.Empty;
+        try { await PurchaseRequestService.RejectAsync(detail.Id, reviewNote); showDetail = false; await LoadData(); }
+        catch (Exception ex) { modalError = ex.Message; }
+        finally { isReviewing = false; }
+    }
+
+    private async Task SubmitPr(Guid id)
+    {
+        try { await PurchaseRequestService.SubmitAsync(id); await LoadData(); }
+        catch (Exception ex) { errorMessage = ex.Message; }
+    }
+
+    private async Task CancelPr(Guid id)
+    {
+        try { await PurchaseRequestService.CancelAsync(id); await LoadData(); }
+        catch (Exception ex) { errorMessage = ex.Message; }
+    }
+
+    private async Task ConvertPr(Guid id)
+    {
+        isReviewing = true; modalError = string.Empty;
+        try { await PurchaseRequestService.ConvertAsync(id); showDetail = false; await LoadData(); }
+        catch (Exception ex) { modalError = ex.Message; errorMessage = ex.Message; }
+        finally { isReviewing = false; }
+    }
+
+    private async Task GenerateProposals()
+    {
+        isGenerating = true; errorMessage = string.Empty;
+        try { await PurchaseRequestService.GenerateAutoReorderProposalsAsync(); await LoadData(); }
+        catch (Exception ex) { errorMessage = ex.Message; }
+        finally { isGenerating = false; }
+    }
+
+    private static string StatusCss(PurchaseRequestStatus s) => s switch
+    {
+        PurchaseRequestStatus.Draft => "bf-bg-warning-100 bf-text-warning",
+        PurchaseRequestStatus.Submitted => "bg-blue-100 text-bf-primary",
+        PurchaseRequestStatus.Approved => "bf-bg-success-100 bf-text-success",
+        PurchaseRequestStatus.Rejected => "bf-bg-danger-100 bf-text-danger",
+        PurchaseRequestStatus.Converted => "bg-indigo-100 text-indigo-700",
+        PurchaseRequestStatus.Cancelled => "bg-gray-200 text-gray-600",
+        _ => "bg-gray-100 text-gray-600"
+    };
+}

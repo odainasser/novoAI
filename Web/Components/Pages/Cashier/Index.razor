@@ -1,0 +1,918 @@
+@page "/cashier"
+@layout CashierLayout
+@using Microsoft.AspNetCore.Authorization
+@using System.Globalization
+@inject IAuthenticationService AuthService
+@inject ICategoryService CategoryService
+@inject IProductService ProductService
+@inject IOrderService OrderService
+@inject IShiftService ShiftService
+@inject ICashierManagementService CashierManagementService
+@inject IPromotionService PromotionService
+@using Web.Models.Shifts
+@using Web.Models.Cashiers
+@using Web.Models.Promotions
+@inject IJSRuntime JSRuntime
+@attribute [Authorize(Roles = Roles.Cashier)]
+@using Web.Components.Common
+
+<PageTitle>@Localizer["POS"]</PageTitle>
+
+<div class="h-[calc(100vh-10rem)] flex flex-col">
+    @if (isLoading)
+    {
+        <div class="flex justify-center items-center flex-1">
+            <Spinner Size="Spinner.SpinnerSize.Xl" />
+        </div>
+    }
+    else
+    {
+        @if (activeShift == null)
+        {
+            <div class="w-full p-4 bf-bg-warning-50 border bf-border-warning rounded-lg bf-text-warning mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                    <strong>@Localizer["StartShiftRequired"]</strong>
+                    <div class="text-sm bf-text-warning">@Localizer["StartShiftDescription"]</div>
+                </div>
+                <div>
+                    <button @onclick="StartShiftButton" class="inline-flex items-center gap-2 px-4 py-2 bf-bg-warning-500 bf-hover-bg-warning-700 rounded-lg transition-colors">
+                        <i class="bi bi-play-fill"></i>
+                        <span>@Localizer["StartShiftShort"]</span>
+                    </button>
+                </div>
+            </div>
+        }
+
+        <div class="flex-1 flex flex-col lg:flex-row gap-4 overflow-hidden min-h-0">
+            <!-- Left Column: Products + Stats -->
+            <div class="flex-1 flex flex-col gap-3 min-h-[300px] lg:min-h-0">
+                <!-- Product Grid Card -->
+                <div class="flex-1 flex flex-col bg-gray-50 rounded-xl border border-gray-200 overflow-hidden min-h-0">
+                    <ProductGrid Categories="categories"
+                                 Products="FilteredProducts"
+                                 SelectedCategoryId="selectedCategoryId"
+                                 SearchQuery="@searchQuery"
+                                 StockFilter="@stockFilter"
+                                 IsAr="isAr"
+                                 CultureInfo="cultureInfo"
+                                 GetBestPromotionForUnit="GetBestPromotionForUnit"
+                                 OnCategorySelected="SelectCategory"
+                                 OnSearchQueryChanged="OnSearchQueryChanged"
+                                 OnStockFilterChanged="OnStockFilterChanged"
+                                 OnProductClicked="OnProductClicked" />
+
+                    @* Start Shift Modal (shared component) *@
+                    <StartShiftModal IsVisible="@showStartShiftModal" OnCancel="CancelStartShift" OnStart="SubmitStartShift" />
+                </div>
+
+                <!-- Quick Stats Bar (under products only) -->
+                <QuickStatsBar Statistics="statistics" LastSaleTime="@lastSaleTime" CultureInfo="cultureInfo" />
+            </div>
+
+            <!-- Right Panel: Cart & Payment -->
+            <div class="w-full lg:w-[28rem] xl:w-[32rem] flex flex-col bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden min-h-0">
+                <!-- Cart Header -->
+                <div class="bg-white border-b border-gray-200 px-5 py-3.5 flex items-center justify-between">
+                    <div class="flex items-center gap-3 text-gray-800">
+                        <div class="w-10 h-10 rounded-xl bf-bg-info-50 border bf-border-info flex items-center justify-center">
+                            <i class="bi bi-cart3 text-lg bf-text-info"></i>
+                        </div>
+                        <div>
+                            <span class="font-bold text-base text-gray-900">@Localizer["CurrentSale"]</span>
+                            @if (cartItems.Any())
+                            {
+                                <span class="ms-2 text-xs bg-bf-primary text-bf-primary-contrast rounded-full px-2.5 py-0.5 font-semibold align-middle">@totalItems</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        @if (cartItems.Any())
+                        {
+                            <button @onclick="ClearCart" class="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors border border-red-200 hover:border-red-300 font-medium">
+                                <i class="bi bi-trash3 me-1"></i>@Localizer["ClearCart"]
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(shiftMessage))
+                {
+                    <div class="px-4 py-2 bf-bg-success-50 bf-text-success border-b bf-border-success text-sm flex items-center gap-2">
+                        <i class="bi bi-check-circle-fill bf-icon-success"></i>
+                        <span>@shiftMessage</span>
+                    </div>
+                }
+
+                <!-- Cart Component & Payment Processing -->
+                <CartPanel TCartItem="CartItem"
+                           CartItems="cartItems"
+                           IsAr="isAr"
+                           CultureInfo="cultureInfo"
+                           TotalItems="totalItems"
+                           Subtotal="subtotal"
+                           TotalDiscount="totalDiscount"
+                           Vat="vat"
+                           Total="total"
+                           ErrorMessage="@errorMessage"
+                           OnIncreaseQuantity="args => IncreaseQuantity(args)"
+                           OnDecreaseQuantity="args => DecreaseQuantity(args)"
+                           OnSetQuantity="args => SetQuantity(args.Item, args.Value)"
+                           OnRemoveItem="args => RemoveFromCart(args)">
+                    <PaymentContent>
+                        <PaymentPanel Total="total"
+                                      IsProcessing="isProcessing"
+                                      CartHasItems="cartItems.Any()"
+                                      HasActiveShift="@(activeShift != null)"
+                                      SelectedPaymentMethod="selectedPaymentMethod"
+                                      SplitCashAmount="splitCashAmount"
+                                      SplitCardAmount="splitCardAmount"
+                                      CultureInfo="cultureInfo"
+                                      OnPaymentMethodSelected="SelectPaymentMethod"
+                                      OnSplitCashChanged="OnSplitCashChanged"
+                                      OnSplitCardChanged="OnSplitCardChanged"
+                                      OnConfirmPayment="ConfirmPayment" />
+                    </PaymentContent>
+                </CartPanel>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Payment Success Modal -->
+@if (showPaymentModal && lastOrder != null)
+{
+    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @onclick="ClosePaymentModal">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 text-center" @onclick:stopPropagation>
+            <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="bi bi-check-lg text-green-600 text-4xl"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-gray-900 mb-2">@Localizer["PaymentSuccessful"]</h3>
+            <p class="text-gray-600 mb-4">@Localizer["TransactionCompletedVia"] @lastOrder.PaymentMethodName</p>
+            
+            <div class="bg-gray-50 rounded-lg p-4 mb-6 text-start">
+                <div class="flex justify-between mb-2">
+                    <span class="text-gray-500">@Localizer["ReceiptNumber"]</span>
+                    <span class="font-mono font-bold">@lastOrder.OrderNumber</span>
+                </div>
+                <div class="flex justify-between mb-2">
+                    <span class="text-gray-500">@Localizer["Items"]</span>
+                    <span class="font-semibold">@lastOrder.ItemCount</span>
+                </div>
+                <div class="flex justify-between text-lg">
+                    <span class="text-gray-500">@Localizer["TotalPaid"]</span>
+                    <span class="font-bold text-bf-primary">@lastOrder.Total.ToString("N2", cultureInfo) @Localizer["CurrencyUnit"]</span>
+                </div>
+            </div>
+            
+            <div class="flex gap-3">
+                <button @onclick="PrintReceipt" class="flex-1 py-3 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition-colors flex items-center justify-center gap-2">
+                    <i class="bi bi-printer"></i>
+                    @Localizer["PrintReceipt"]
+                </button>
+                <button @onclick="ClosePaymentModal" class="flex-1 py-3 bg-bf-primary text-bf-primary-contrast rounded-lg font-semibold hover:opacity-90 transition-colors flex items-center justify-center gap-2">
+                    <i class="bi bi-plus-circle"></i>
+                    @Localizer["NewSale"]
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Unit Selection Modal -->
+@if (showUnitModal && unitProduct != null)
+{
+    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @onclick="() => { showUnitModal = false; unitProduct = null; }">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full mx-4" @onclick:stopPropagation>
+            <div class="flex items-start justify-between mb-4 gap-2">
+                <div class="flex-1 min-w-0">
+                    <h3 class="text-lg font-bold text-gray-900">@(isAr ? unitProduct.NameAr : unitProduct.NameEn)</h3>
+                    @{
+                        var activeProductUnits = unitProduct.Units.Where(u => u.IsActive && u.Quantity > 0).ToList();
+                        var hasOutOfStockUnit = activeProductUnits.Any(u => MaxSellableSellingUnits(u) <= 0);
+                        var hasLowStockUnit = activeProductUnits.Any(u => MaxSellableSellingUnits(u) > 0 && u.AvailableQuantity <= u.LowStockThreshold);
+                        var productFullyOut = !activeProductUnits.Any(u => MaxSellableSellingUnits(u) > 0);
+                    }
+                    <div class="flex flex-wrap gap-1 mt-1">
+                        @if (hasOutOfStockUnit)
+                        {
+                            <span class="inline-flex items-center gap-1 text-[10px] font-semibold bf-bg-danger-500 px-2 py-0.5 rounded-full">
+                                <i class="bi bi-x-circle"></i>@Localizer[productFullyOut ? "OutOfStock" : "HasOutOfStock"]
+                            </span>
+                        }
+                        @if (hasLowStockUnit)
+                        {
+                            <span class="inline-flex items-center gap-1 text-[10px] font-semibold bf-bg-warning-500 px-2 py-0.5 rounded-full">
+                                <i class="bi bi-exclamation-triangle"></i>@Localizer["HasLowStock"]
+                            </span>
+                        }
+                    </div>
+                </div>
+                <button @onclick="() => { showUnitModal = false; unitProduct = null; }" class="text-gray-400 hover:text-gray-600 shrink-0">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <p class="text-sm text-gray-500 mb-4">@Localizer["SelectUnit"]</p>
+            <div class="space-y-2 max-h-64 overflow-y-auto">
+                @foreach (var su in unitProduct.Units.Where(s => s.IsActive))
+                {
+                    var promoInfo = GetBestPromotionForUnit(unitProduct, su);
+                    var maxSellable = MaxSellableSellingUnits(su);
+                    var unitStatus = ResolveUnitStockStatus(su);
+                    <button @onclick="() => SelectUnitAndAdd(unitProduct, su)"
+                            disabled="@(maxSellable <= 0)"
+                            class="w-full flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-indigo-50 hover:border-indigo-300 transition-colors relative disabled:opacity-50 disabled:cursor-not-allowed">
+                        <div class="text-start">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <p class="font-medium text-gray-800 text-sm">@(isAr ? su.UnitOfMeasureNameAr : su.UnitOfMeasureNameEn)</p>
+                                @if (unitStatus == "out")
+                                {
+                                    <span class="inline-flex items-center gap-1 text-[10px] font-semibold bf-bg-danger-500 px-1.5 py-0.5 rounded-full">
+                                        <i class="bi bi-x-circle"></i>@Localizer["OutOfStock"]
+                                    </span>
+                                }
+                                else if (unitStatus == "low")
+                                {
+                                    <span class="inline-flex items-center gap-1 text-[10px] font-semibold bf-bg-warning-500 px-1.5 py-0.5 rounded-full">
+                                        <i class="bi bi-exclamation-triangle"></i>@Localizer["LowStock"]
+                                    </span>
+                                }
+                            </div>
+                            <p class="text-xs text-gray-400">@su.Barcode · @Localizer["BaseUnits"]: @su.Quantity · @Localizer["Available"]: @maxSellable</p>
+                            @if (promoInfo.HasPromotion)
+                            {
+                                <p class="text-[10px] text-green-600 font-medium mt-0.5">
+                                    <i class="bi bi-tag-fill me-0.5"></i>@promoInfo.PromotionName
+                                </p>
+                            }
+                        </div>
+                        <div class="text-end">
+                            @if (promoInfo.HasPromotion)
+                            {
+                                <span class="inline-block bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full mb-0.5">
+                                    @if (promoInfo.DiscountType == DiscountType.Percentage)
+                                    {
+                                        @($"{promoInfo.DiscountValue}% {Localizer["Off"]}")
+                                    }
+                                    else
+                                    {
+                                        @($"-{promoInfo.DiscountValue} {Localizer["CurrencyUnit"]}")
+                                    }
+                                </span>
+                                <div>
+                                    <span class="text-xs text-gray-400 line-through">@su.SellingPrice.ToString("N2", cultureInfo)</span>
+                                    <span class="font-bold text-green-600">@promoInfo.DiscountedPrice.ToString("N2", cultureInfo) @Localizer["CurrencyUnit"]</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="font-bold text-indigo-600">@su.SellingPrice.ToString("N2", cultureInfo) @Localizer["CurrencyUnit"]</span>
+                            }
+                        </div>
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isLoading = true;
+    private bool isProcessing = false;
+    private bool isAr = false;
+    private UserDto? user;
+    private CultureInfo cultureInfo = new CultureInfo("en-AE");
+    private string errorMessage = string.Empty;
+
+    // Dynamic data from database
+    private List<CategoryDto> categories = new();
+    private List<ProductDto> products = new();
+    private List<PromotionDto> activePromotions = new();
+    private OrderStatisticsDto statistics = new();
+    private ShiftDto? activeShift;
+    private string? shiftMessage;
+
+    private Guid? currentWarehouseId;
+
+    // UI State
+    private Guid? selectedCategoryId = null;
+    private string searchQuery = "";
+    private string stockFilter = "all";
+    private List<CartItem> cartItems = new();
+    private bool showPaymentModal = false;
+    private PaymentMethod? selectedPaymentMethod = null;
+    private decimal splitCashAmount = 0m;
+    private decimal splitCardAmount = 0m;
+    
+    // Last order info (for receipt)
+    private OrderDto? lastOrder;
+    private string lastSaleTime = "--:--";
+    
+    // Search Debouncer
+    private System.Timers.Timer? searchTimer;
+
+    // Cart calculations
+    private decimal originalSubtotal => cartItems.Sum(x => x.OriginalTotal);
+    private decimal subtotal => cartItems.Sum(x => x.Total);
+    private decimal totalDiscount => originalSubtotal - subtotal;
+    private decimal vat => subtotal * 0.05m;
+    private decimal total => subtotal + vat;
+    private int totalItems => cartItems.Sum(x => x.Quantity);
+
+    private IEnumerable<ProductDto> FilteredProducts => products
+        .Where(p => p.IsActive && p.Status == ItemStatus.Active)
+        .Where(p => selectedCategoryId == null || p.CategoryId == selectedCategoryId)
+        .Where(p => string.IsNullOrWhiteSpace(searchQuery) || 
+                    (isAr ? p.NameAr : p.NameEn).Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                    p.Units.Any(u => 
+                        (!string.IsNullOrEmpty(u.Barcode) && u.Barcode.Contains(searchQuery, StringComparison.OrdinalIgnoreCase)) ||
+                        (isAr && !string.IsNullOrEmpty(u.UnitOfMeasureNameAr) && u.UnitOfMeasureNameAr.Contains(searchQuery, StringComparison.OrdinalIgnoreCase)) ||
+                        (!isAr && !string.IsNullOrEmpty(u.UnitOfMeasureNameEn) && u.UnitOfMeasureNameEn.Contains(searchQuery, StringComparison.OrdinalIgnoreCase))
+                    ));
+
+    private void OnSearchQueryChanged(string query)
+    {
+        searchQuery = query;
+
+        // Debounce search so we don't refilter the huge list constantly
+        if (searchTimer != null)
+        {
+            searchTimer.Stop();
+            searchTimer.Dispose();
+        }
+
+        searchTimer = new System.Timers.Timer(300);
+        searchTimer.Elapsed += async (s, e) =>
+        {
+            await InvokeAsync(StateHasChanged);
+            searchTimer.Stop();
+        };
+        searchTimer.Start();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Set culture based on current UI culture
+            var currentCulture = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.ToLowerInvariant();
+            isAr = currentCulture == "ar";
+            cultureInfo = isAr ? new CultureInfo("ar-AE") : new CultureInfo("en-AE");
+            
+            // Load user
+            user = await AuthService.GetCurrentUserAsync();
+            
+            // Load categories from database
+            var categoriesResult = await CategoryService.GetAllCategoriesAsync(1, 100);
+            categories = categoriesResult.Items.Where(c => c.IsActive).ToList();
+            
+            // Load cashier profile to get active warehouse
+            var cashierProfile = await CashierManagementService.GetCurrentCashierProfileAsync();
+            currentWarehouseId = cashierProfile?.WarehouseId ?? user?.WarehouseId;
+
+            // Load all active products. If warehouse is known, stock values are scoped to it;
+            // if not, products are still shown using global stock scope.
+            await LoadActiveProductsAsync();
+
+            // Load statistics
+            await LoadStatistics();
+            await LoadActiveShift();
+
+            // Load active promotions
+            try { activePromotions = await PromotionService.GetActivePromotionsAsync(); } catch { }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading data: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadStatistics()
+    {
+        try
+        {
+            statistics = await OrderService.GetMyStatisticsAsync();
+            if (statistics.TodayOrders > 0)
+            {
+                lastSaleTime = DateTime.Now.ToString("HH:mm");
+            }
+        }
+        catch
+        {
+            statistics = new OrderStatisticsDto();
+        }
+    }
+
+    private async Task LoadActiveShift()
+    {
+        try
+        {
+            var res = await ShiftService.GetMyShiftsAsync(1, 10);
+            activeShift = res.Items.FirstOrDefault(s => s.Status.ToString() == "Active");
+        }
+        catch
+        {
+            activeShift = null;
+        }
+    }
+
+    private void SelectCategory(Guid? categoryId)
+    {
+        selectedCategoryId = categoryId;
+    }
+
+    private void OnStockFilterChanged(string status)
+    {
+        stockFilter = string.IsNullOrEmpty(status) ? "all" : status;
+    }
+
+    private string GetCategoryClass(Guid? categoryId)
+    {
+        return selectedCategoryId == categoryId
+            ? "bg-bf-primary text-bf-primary-contrast shadow-md"
+            : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200";
+    }
+
+    private void OnProductClicked(ProductDto product)
+    {
+        if (!product.Units.Any(u => u.IsActive && MaxSellableSellingUnits(u) > 0)) return;
+
+        // Since it must have units to get here, it will always show the modal
+        unitProduct = product;
+        showUnitModal = true;
+    }
+
+    private void SelectUnitAndAdd(ProductDto product, ProductUnitDto unit)
+    {
+        AddToCart(product, unit);
+        showUnitModal = false;
+        unitProduct = null;
+    }
+
+    private static int MaxSellableSellingUnits(ProductUnitDto? unit)
+    {
+        if (unit == null || unit.Quantity <= 0 || unit.AvailableQuantity <= 0) return 0;
+        return unit.AvailableQuantity / unit.Quantity;
+    }
+
+    private static string ResolveUnitStockStatus(ProductUnitDto unit)
+    {
+        if (MaxSellableSellingUnits(unit) <= 0) return "out";
+        if (unit.AvailableQuantity <= unit.LowStockThreshold) return "low";
+        return "in";
+    }
+
+    private void AddToCart(ProductDto product, ProductUnitDto? unit)
+    {
+        if (unit == null) return;
+        var maxQty = MaxSellableSellingUnits(unit);
+        if (maxQty <= 0) return;
+
+        // Match by product + unit combination
+        var existingItem = cartItems.FirstOrDefault(x => x.Product.Id == product.Id && x.SelectedUnit?.Id == unit.Id);
+        if (existingItem != null)
+        {
+            if (existingItem.Quantity >= maxQty)
+            {
+                errorMessage = Localizer["InsufficientStockForProduct", isAr ? product.NameAr : product.NameEn];
+                return;
+            }
+            existingItem.Quantity++;
+            errorMessage = string.Empty;
+        }
+        else
+        {
+            var cartItem = new CartItem { Product = product, SelectedUnit = unit, Quantity = 1 };
+
+            // Apply promotion price if applicable
+            var promoInfo = GetBestPromotionForUnit(product, unit);
+            if (promoInfo.HasPromotion)
+            {
+                cartItem.DiscountedUnitPrice = promoInfo.DiscountedPrice;
+                cartItem.PromotionName = promoInfo.PromotionName;
+            }
+
+            cartItems.Add(cartItem);
+            errorMessage = string.Empty;
+        }
+    }
+
+    private void AddToCart(ProductDto product)
+    {
+        AddToCart(product, null);
+    }
+
+    private void IncreaseQuantity(CartItem item)
+    {
+        var maxQty = MaxSellableSellingUnits(item.SelectedUnit);
+        if (item.Quantity >= maxQty)
+        {
+            errorMessage = Localizer["InsufficientStockForProduct", isAr ? item.Product.NameAr : item.Product.NameEn];
+            return;
+        }
+        item.Quantity++;
+        errorMessage = string.Empty;
+    }
+
+    private void DecreaseQuantity(CartItem item)
+    {
+        if (item.Quantity > 1)
+        {
+            item.Quantity--;
+            errorMessage = string.Empty;
+        }
+        else
+        {
+            cartItems.Remove(item);
+            errorMessage = string.Empty;
+        }
+    }
+
+    private void SetQuantity(CartItem item, string? value)
+    {
+        if (int.TryParse(value, out var qty) && qty >= 1)
+        {
+            var maxQty = MaxSellableSellingUnits(item.SelectedUnit);
+            if (maxQty <= 0)
+            {
+                cartItems.Remove(item);
+                errorMessage = Localizer["InsufficientStockForProduct", isAr ? item.Product.NameAr : item.Product.NameEn];
+                return;
+            }
+            if (qty > maxQty)
+            {
+                item.Quantity = maxQty;
+                errorMessage = Localizer["InsufficientStockForProduct", isAr ? item.Product.NameAr : item.Product.NameEn];
+                return;
+            }
+            item.Quantity = qty;
+            errorMessage = string.Empty;
+        }
+        else if (value == "0" || value == "")
+        {
+            cartItems.Remove(item);
+            errorMessage = string.Empty;
+        }
+    }
+
+    private void RemoveFromCart(CartItem item)
+    {
+        cartItems.Remove(item);
+    }
+
+    private void ClearCart()
+    {
+        cartItems.Clear();
+        errorMessage = string.Empty;
+        selectedPaymentMethod = null;
+        splitCashAmount = 0m;
+        splitCardAmount = 0m;
+    }
+
+    private void SelectPaymentMethod(PaymentMethod method)
+    {
+        selectedPaymentMethod = method;
+        if (method != PaymentMethod.Split)
+        {
+            splitCashAmount = 0m;
+            splitCardAmount = 0m;
+        }
+        else
+        {
+            // Default cash to full amount so card = 0
+            splitCashAmount = total;
+            splitCardAmount = 0m;
+        }
+    }
+
+    private string GetPaymentButtonClass(PaymentMethod method)
+    {
+        bool isSelected = selectedPaymentMethod == method;
+        return method switch
+        {
+            PaymentMethod.Cash => isSelected
+                ? "border-green-600 bg-green-500 text-white"
+                : "border-green-500 text-green-600 hover:bg-green-50",
+            PaymentMethod.Card => isSelected
+                ? "border-blue-600 bg-blue-500 text-white"
+                : "border-blue-500 text-blue-600 hover:bg-blue-50",
+            PaymentMethod.Split => isSelected
+                ? "border-purple-600 bg-purple-500 text-white"
+                : "border-purple-500 text-purple-600 hover:bg-purple-50",
+            _ => "border-gray-300 text-gray-600"
+        };
+    }
+
+    private void OnSplitCashChanged(string? value)
+    {
+        if (decimal.TryParse(value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var cash))
+        {
+            splitCashAmount = Math.Max(0, Math.Min(cash, total));
+            splitCardAmount = Math.Round(total - splitCashAmount, 2);
+        }
+    }
+
+    private void OnSplitCardChanged(string? value)
+    {
+        if (decimal.TryParse(value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var card))
+        {
+            splitCardAmount = Math.Max(0, Math.Min(card, total));
+            splitCashAmount = Math.Round(total - splitCardAmount, 2);
+        }
+    }
+
+    private async Task ConfirmPayment()
+    {
+        if (selectedPaymentMethod == null) return;
+        if (selectedPaymentMethod == PaymentMethod.Split)
+        {
+            await ProcessSplitPayment();
+        }
+        else
+        {
+            await ProcessPayment(selectedPaymentMethod.Value);
+        }
+    }
+
+    private async Task ProcessPayment(PaymentMethod method)
+    {
+        if (!cartItems.Any() || isProcessing) return;
+
+        // Frontend validation: cashier must have an active shift before creating POS orders
+        if (activeShift == null)
+        {
+            errorMessage = Localizer["StartShiftRequired"] ?? "Please start your shift before creating orders.";
+            return;
+        }
+
+        isProcessing = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var request = new CreateOrderRequest
+            {
+                Channel = OrderChannel.POS,
+                PaymentMethod = method,
+                Items = cartItems.Select(ci => new CreateOrderItemRequest
+                {
+                    ProductId = ci.Product.Id,
+                    UnitId = ci.SelectedUnit!.Id,
+                    Quantity = ci.Quantity
+                }).ToList()
+            };
+
+            lastOrder = await OrderService.CreateOrderAsync(request);
+            lastSaleTime = DateTime.Now.ToString("HH:mm");
+
+            // Refresh statistics
+            await LoadStatistics();
+
+            // Refresh products to get updated stock values after sale.
+            await LoadActiveProductsAsync();
+
+            // Clear cart and show success modal
+            cartItems.Clear();
+            selectedPaymentMethod = null;
+            splitCashAmount = 0m;
+            splitCardAmount = 0m;
+            showPaymentModal = true;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"{Localizer["FailedToCreateOrder"]}: {LocalizeCreateOrderError(ex.Message)}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private async Task ProcessSplitPayment()
+    {
+        if (!cartItems.Any() || isProcessing) return;
+
+        if (activeShift == null)
+        {
+            errorMessage = Localizer["StartShiftRequired"] ?? "Please start your shift before creating orders.";
+            return;
+        }
+
+        isProcessing = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var request = new CreateOrderRequest
+            {
+                Channel = OrderChannel.POS,
+                PaymentMethod = PaymentMethod.Split,
+                CashAmount = splitCashAmount,
+                CardAmount = splitCardAmount,
+                Items = cartItems.Select(ci => new CreateOrderItemRequest
+                {
+                    ProductId = ci.Product.Id,
+                    UnitId = ci.SelectedUnit!.Id,
+                    Quantity = ci.Quantity
+                }).ToList()
+            };
+
+            lastOrder = await OrderService.CreateOrderAsync(request);
+            lastSaleTime = DateTime.Now.ToString("HH:mm");
+
+            await LoadStatistics();
+
+            await LoadActiveProductsAsync();
+
+            cartItems.Clear();
+            selectedPaymentMethod = null;
+            splitCashAmount = 0m;
+            splitCardAmount = 0m;
+            showPaymentModal = true;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"{Localizer["FailedToCreateOrder"]}: {LocalizeCreateOrderError(ex.Message)}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private string LocalizeCreateOrderError(string? message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+            return Localizer["UnexpectedError"];
+
+        const string insufficientStockPrefix = "Insufficient stock for product:";
+        if (message.StartsWith(insufficientStockPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            var productName = message.Substring(insufficientStockPrefix.Length).Trim();
+            if (string.IsNullOrWhiteSpace(productName))
+                return Localizer["InsufficientStock"];
+
+            // Backend message currently includes English product name; map it to Arabic display name when UI is Arabic.
+            if (isAr)
+            {
+                var localizedName = cartItems
+                    .Select(ci => ci.Product)
+                    .FirstOrDefault(p => string.Equals(p.NameEn, productName, StringComparison.OrdinalIgnoreCase))
+                    ?.NameAr;
+
+                if (string.IsNullOrWhiteSpace(localizedName))
+                {
+                    localizedName = products
+                        .FirstOrDefault(p => string.Equals(p.NameEn, productName, StringComparison.OrdinalIgnoreCase))
+                        ?.NameAr;
+                }
+
+                if (!string.IsNullOrWhiteSpace(localizedName))
+                {
+                    productName = localizedName;
+                }
+            }
+
+            return Localizer["InsufficientStockForProduct", productName];
+        }
+
+        return message;
+    }
+
+    private void ClosePaymentModal()
+    {
+        showPaymentModal = false;
+    }
+
+    private async Task PrintReceipt()
+    {
+        await JSRuntime.InvokeVoidAsync("window.print");
+    }
+
+    private async Task NewSale()
+    {
+        // Reset last order and close modal
+        lastOrder = null;
+        showPaymentModal = false;
+        // Optionally reset any UI state if needed
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private bool showStartShiftModal = false;
+
+    private void StartShiftButton()
+    {
+        // Open the start-shift modal instead of starting directly
+        showStartShiftModal = true;
+    }
+
+    private async Task SubmitStartShift(Web.Models.Shifts.StartShiftRequest req)
+    {
+        // Let exceptions bubble up so the StartShiftModal can display the error and remain open.
+        var result = await ShiftService.StartShiftAsync(req);
+        shiftMessage = Localizer["ShiftStarted"] ?? "Shift started";
+        activeShift = result;
+        showStartShiftModal = false;
+
+        // Update warehouse from the new shift and reload products
+        if (result.WarehouseId.HasValue)
+            currentWarehouseId = result.WarehouseId;
+
+        await LoadActiveProductsAsync();
+
+        StateHasChanged();
+    }
+
+    private async Task LoadActiveProductsAsync()
+    {
+        const int pageSize = 500;
+        var page = 1;
+        var all = new List<ProductDto>();
+
+        while (true)
+        {
+            var result = await ProductService.GetAllProductsAsync(
+                page,
+                pageSize,
+                status: ItemStatus.Active,
+                warehouseId: currentWarehouseId,
+                onlyWithStock: false);
+
+            all.AddRange(result.Items);
+
+            if (page >= result.TotalPages || result.Items.Count == 0)
+                break;
+
+            page++;
+        }
+
+        products = all;
+    }
+
+    private void CancelStartShift()
+    {
+        showStartShiftModal = false;
+    }
+
+    private async Task EndShiftButton()
+    {
+        if (activeShift is null) return;
+        try
+        {
+            var req = new Web.Models.Shifts.EndShiftRequest { CashOut = 0m, Comments = null };
+            var result = await ShiftService.EndShiftAsync(activeShift.Id, req);
+            shiftMessage = Localizer["ShiftEnded"];
+            activeShift = null;
+        }
+        catch (Exception ex)
+        {
+            shiftMessage = ex.Message;
+        }
+    }
+
+    // Unit selection modal
+    private bool showUnitModal = false;
+    private ProductDto? unitProduct = null;
+
+    private (bool HasPromotion, decimal DiscountedPrice, DiscountType DiscountType, decimal DiscountValue, string PromotionName) GetBestPromotionForUnit(ProductDto product, ProductUnitDto unit)
+    {
+        if (!activePromotions.Any()) return (false, unit.SellingPrice, default, 0, string.Empty);
+
+        var now = DateTime.UtcNow;
+
+        var applicablePromotions = activePromotions.Where(p =>
+            p.IsActive && p.StartDateTime <= now && p.EndDateTime >= now && (
+                p.ApplyTo.HasFlag(PromotionApplyTo.AllSellingUnits) ||
+                (p.ApplyTo.HasFlag(PromotionApplyTo.SpecificUnits) && p.UnitIds.Contains(unit.Id)) ||
+                (p.ApplyTo.HasFlag(PromotionApplyTo.Categories) && product.CategoryId != null && p.CategoryIds.Contains(product.CategoryId.Value))
+            )
+        ).ToList();
+
+        if (!applicablePromotions.Any()) return (false, unit.SellingPrice, default, 0, string.Empty);
+
+        decimal bestPrice = unit.SellingPrice;
+        PromotionDto? bestPromo = null;
+
+        foreach (var promo in applicablePromotions)
+        {
+            decimal discounted = promo.DiscountType == DiscountType.Percentage
+                ? unit.SellingPrice * (1 - promo.DiscountValue / 100m)
+                : unit.SellingPrice - promo.DiscountValue;
+            discounted = Math.Max(0, discounted);
+
+            if (discounted < bestPrice)
+            {
+                bestPrice = discounted;
+                bestPromo = promo;
+            }
+        }
+
+        if (bestPromo == null) return (false, unit.SellingPrice, default, 0, string.Empty);
+        return (true, bestPrice, bestPromo.DiscountType, bestPromo.DiscountValue, isAr ? bestPromo.NameAr : bestPromo.NameEn);
+    }
+
+
+}

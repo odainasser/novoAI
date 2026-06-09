@@ -1,0 +1,33 @@
+@inject IJsonStringLocalizer Localizer
+
+@* Reusable empty state component *@
+<div class="text-center py-12">
+    <i class="bi bi-@Icon text-6xl text-gray-300 mb-4"></i>
+    <p class="text-gray-500 text-lg">@Message</p>
+    @if (!string.IsNullOrEmpty(ActionText) && ActionUrl != null)
+    {
+        <a href="@ActionUrl" class="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-bf-primary text-bf-primary-contrast rounded-lg hover:opacity-90 transition-all duration-200 shadow-md font-medium">
+            @if (!string.IsNullOrEmpty(ActionIcon))
+            {
+                <i class="bi bi-@ActionIcon"></i>
+            }
+            <span>@ActionText</span>
+        </a>
+    }
+</div>
+
+@code {
+    [Parameter] public string Icon { get; set; } = "inbox";
+    [Parameter] public string Message { get; set; } = string.Empty;
+    [Parameter] public string? ActionText { get; set; }
+    [Parameter] public string? ActionUrl { get; set; }
+    [Parameter] public string? ActionIcon { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (string.IsNullOrEmpty(Message))
+        {
+            Message = Localizer["NoDataFound"];
+        }
+    }
+}

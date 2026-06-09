@@ -1,0 +1,71 @@
+@* Reusable card container component *@
+<div class="@GetCardClass()">
+    @if (!string.IsNullOrEmpty(Title))
+    {
+        <div class="@GetHeaderClass()">
+            @if (!string.IsNullOrEmpty(Icon))
+            {
+                <i class="bi bi-@Icon @IconClass"></i>
+            }
+            <h3 class="@TitleClass">@Title</h3>
+            @if (HeaderContent != null)
+            {
+                @HeaderContent
+            }
+        </div>
+    }
+    
+    @if (ChildContent != null)
+    {
+        @ChildContent
+    }
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? HeaderContent { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public string IconClass { get; set; } = "text-purple-600 text-2xl mr-3";
+    [Parameter] public string TitleClass { get; set; } = "text-2xl font-bold text-gray-900";
+    [Parameter] public CardStyle Style { get; set; } = CardStyle.Default;
+    [Parameter] public string? CustomClass { get; set; }
+    [Parameter] public string Padding { get; set; } = "p-8";
+    [Parameter] public bool NoPadding { get; set; }
+
+    private string GetCardClass()
+    {
+        var baseClass = "bg-white rounded-xl";
+        var paddingClass = NoPadding ? "" : Padding;
+        
+        var styleClass = Style switch
+        {
+            CardStyle.Default => "shadow-lg",
+            CardStyle.Outlined => "border border-gray-200",
+            CardStyle.Subtle => "shadow-sm border border-gray-100",
+            CardStyle.Elevated => "shadow-2xl",
+            _ => "shadow-lg"
+        };
+
+        return $"{baseClass} {styleClass} {paddingClass} {CustomClass}".Trim();
+    }
+
+    private string GetHeaderClass()
+    {
+        if (!string.IsNullOrEmpty(Title))
+        {
+            return string.IsNullOrEmpty(Icon) 
+                ? "mb-6" 
+                : "mb-6 flex items-center";
+        }
+        return "";
+    }
+
+    public enum CardStyle
+    {
+        Default,
+        Outlined,
+        Subtle,
+        Elevated
+    }
+}
