@@ -170,9 +170,22 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromSeconds(ollamaSettings.TimeoutSeconds);
         });
         services.AddScoped<OllamaClient>();
+
+        // ByteMart tool provider: the read tools are owned by ByteMart and executed
+        // there over HTTP under the calling user's own bearer token. The catalog is a
+        // cached singleton snapshot of ByteMart's /api/assistant-data/tools.
+        services.Configure<Configuration.MartIntegrationSettings>(configuration.GetSection("MartIntegration"));
+        var martSettings = configuration.GetSection("MartIntegration").Get<Configuration.MartIntegrationSettings>() ?? new();
+        services.AddHttpClient("Mart", client =>
+        {
+            client.BaseAddress = new Uri(martSettings.BaseUrl.TrimEnd('/') + "/");
+            client.Timeout = TimeSpan.FromSeconds(martSettings.TimeoutSeconds);
+        });
+        services.AddSingleton<Services.Assistant.MartToolsClient>();
+
         // Tool-calling assistant: the model picks read tools (function-calling) and
         // phrases answers; the application owns every query, permission gate, branch
-        // lock, and PII redaction. The tool catalog is a code-owned singleton.
+        // lock, and PII redaction.
         services.AddSingleton<Services.Assistant.ToolCatalog>();
         services.AddScoped<Services.Assistant.AssistantPlanEngine>();
         services.AddScoped<Application.Features.Assistant.IAssistantLearningService, Services.Assistant.AssistantLearningService>();

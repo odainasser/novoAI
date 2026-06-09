@@ -17,8 +17,9 @@ public interface IAssistantAdminService
         int pageNumber, int pageSize, string? search = null,
         bool? unansweredOnly = null, bool? confirmedOnly = null);
 
-    /// <summary>The code-owned tool/domain/entity vocabulary for the correction dropdowns.</summary>
-    AssistantPlanOptionsDto GetPlanOptions();
+    /// <summary>The tool/domain/entity vocabulary for the correction dropdowns
+    /// (fetched from the ByteMart-owned tool catalog).</summary>
+    Task<AssistantPlanOptionsDto> GetPlanOptionsAsync();
 
     /// <summary>
     /// Save a reviewer's corrected plan for a turn as a CONFIRMED governed plan

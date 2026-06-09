@@ -25,6 +25,7 @@ internal class AssistantService : IAssistantService
     private readonly ToolCatalog _catalog;
     private readonly Assistant.AssistantPlanEngine _planEngine;
     private readonly OllamaClient _ollama;
+    private readonly Assistant.MartToolsClient _mart;
     private readonly IServiceProvider _serviceProvider;
     private readonly IAssistantLearningService _learning;
     private readonly OllamaSettings _settings;
@@ -49,6 +50,7 @@ internal class AssistantService : IAssistantService
         ToolCatalog catalog,
         Assistant.AssistantPlanEngine planEngine,
         OllamaClient ollama,
+        Assistant.MartToolsClient mart,
         IServiceProvider serviceProvider,
         IAssistantLearningService learning,
         IOptions<OllamaSettings> options,
@@ -57,6 +59,7 @@ internal class AssistantService : IAssistantService
         _catalog = catalog;
         _planEngine = planEngine;
         _ollama = ollama;
+        _mart = mart;
         _serviceProvider = serviceProvider;
         _learning = learning;
         _settings = options.Value;
@@ -163,7 +166,22 @@ internal class AssistantService : IAssistantService
             return Reply(request, ans);
         }
 
+        // The tool catalog is owned by ByteMart — make sure a usable snapshot is
+        // loaded before classifying or offering tools. A hard failure here surfaces
+        // as the deterministic "data unavailable" answer (caught in AskAsync).
+        await _catalog.EnsureLoadedAsync(ct);
+
+        // Resolve the branch lock once (Branch Panel). A branch with no warehouses
+        // can't be scoped — refuse rather than leak company-wide data.
         IReadOnlyList<Guid>? branchWarehouseIds = null;
+        if (request.BranchId.HasValue)
+        {
+            branchWarehouseIds = await _mart.GetBranchWarehouseIdsAsync(request.BranchId.Value, ct);
+            if (branchWarehouseIds.Count == 0)
+                // An out-of-branch refusal is an honest answer, not a no-answer.
+                return await Done(OutOfScopeMessage(request.Locale), new(), false, null, "{}");
+        }
+
         var ctx = new ToolContext(sp, userId, permissions, request.BranchId, branchWarehouseIds, request.Locale, ct);
 
         // Plan-first: classify → match a confirmed governed plan → execute it
@@ -328,19 +346,16 @@ internal class AssistantService : IAssistantService
 
     // True when the text contains anything that must never reach the user: GUIDs,
     // raw URLs, JSON braces, or a tool/function name.
-    private static bool Leaks(string text)
+    private bool Leaks(string text)
     {
         if (text.Contains('{') || text.Contains('}')) return true;
         if (GuidLike.IsMatch(text)) return true;
         if (UrlLike.IsMatch(text)) return true;
-        foreach (var name in ToolNames.Value)
+        foreach (var name in _catalog.ToolNames)
             if (text.Contains(name, StringComparison.OrdinalIgnoreCase))
                 return true;
         return false;
     }
-
-    private static readonly Lazy<string[]> ToolNames = new(() =>
-        ToolDefinitions.BuildAll().Select(t => t.Name).ToArray());
 
     // ── System prompt (hardened phrasing rules) ───────────────────────
 
@@ -415,6 +430,7 @@ internal class AssistantService : IAssistantService
     {
         if (data is null) return true;
         if (data is string s) return string.IsNullOrWhiteSpace(s);
+        if (data is System.Text.Json.JsonElement je) return JsonIsEmpty(je);
         if (data is System.Collections.IEnumerable en) return !en.Cast<object>().Any();
 
         var type = data.GetType();
@@ -425,6 +441,34 @@ internal class AssistantService : IAssistantService
         var items = type.GetProperty("items") ?? type.GetProperty("Items") ?? type.GetProperty("rows") ?? type.GetProperty("Rows");
         if (items?.GetValue(data) is System.Collections.IEnumerable it) return !it.Cast<object>().Any();
         return false;
+    }
+
+    // Remote tools return parsed JSON — mirror the reflection heuristic above.
+    private static bool JsonIsEmpty(System.Text.Json.JsonElement e)
+    {
+        switch (e.ValueKind)
+        {
+            case System.Text.Json.JsonValueKind.Null:
+            case System.Text.Json.JsonValueKind.Undefined:
+                return true;
+            case System.Text.Json.JsonValueKind.String:
+                return string.IsNullOrWhiteSpace(e.GetString());
+            case System.Text.Json.JsonValueKind.Array:
+                return e.GetArrayLength() == 0;
+            case System.Text.Json.JsonValueKind.Object:
+                foreach (var name in new[] { "totalCount", "total", "count" })
+                    if (e.TryGetProperty(name, out var v)
+                        && v.ValueKind == System.Text.Json.JsonValueKind.Number
+                        && v.TryGetInt32(out var n))
+                        return n == 0;
+                foreach (var name in new[] { "items", "rows" })
+                    if (e.TryGetProperty(name, out var arr)
+                        && arr.ValueKind == System.Text.Json.JsonValueKind.Array)
+                        return arr.GetArrayLength() == 0;
+                return false;
+            default:
+                return false;
+        }
     }
 
     // ── Locale / conversational / replies ─────────────────────────────

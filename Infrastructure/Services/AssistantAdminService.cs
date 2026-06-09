@@ -46,6 +46,8 @@ internal class AssistantAdminService : IAssistantAdminService
         int pageNumber, int pageSize, string? search = null,
         bool? unansweredOnly = null, bool? confirmedOnly = null)
     {
+        await TryLoadCatalogAsync();   // tool domain/entity enrichment is best-effort
+
         var query = _context.Set<AssistantInteraction>().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -63,8 +65,10 @@ internal class AssistantAdminService : IAssistantAdminService
         return new PaginatedList<AssistantInteractionDto>(items.Select(MapInteraction).ToList(), count, pageNumber, pageSize);
     }
 
-    public AssistantPlanOptionsDto GetPlanOptions()
+    public async Task<AssistantPlanOptionsDto> GetPlanOptionsAsync()
     {
+        await _catalog.EnsureLoadedAsync(CancellationToken.None);
+
         var tools = _catalog.All
             .OrderBy(t => t.Domain).ThenBy(t => t.Name)
             .Select(t => new AssistantToolInfoDto
@@ -94,6 +98,9 @@ internal class AssistantAdminService : IAssistantAdminService
 
     public async Task ConfirmPlanAsync(Guid interactionId, ConfirmAssistantPlanRequest request)
     {
+        // Validation below resolves tools by name — the catalog must be loaded.
+        await _catalog.EnsureLoadedAsync(CancellationToken.None);
+
         // interactionId may be Guid.Empty when the plan is created from a no-answer
         // cluster (there is no owning interaction in that case).
         AssistantInteraction? interaction = null;
@@ -283,8 +290,18 @@ internal class AssistantAdminService : IAssistantAdminService
 
     public async Task<AssistantInteractionDto?> GetInteractionAsync(Guid id)
     {
+        await TryLoadCatalogAsync();   // tool domain/entity enrichment is best-effort
+
         var i = await _context.Set<AssistantInteraction>().FindAsync(id);
         return i is null ? null : MapInteraction(i);
+    }
+
+    // Read paths only enrich rows with tool metadata — don't fail the page when the
+    // ByteMart catalog is unreachable.
+    private async Task TryLoadCatalogAsync()
+    {
+        try { await _catalog.EnsureLoadedAsync(CancellationToken.None); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Assistant tool catalog unavailable; listing without tool metadata."); }
     }
 
     // ── No-answer review queue ─────────────────────────────────────────
