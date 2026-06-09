@@ -193,23 +193,6 @@
                                         }
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-end text-sm font-medium">
-                                        @* Show shifts link for users who are cashiers *@
-                                        @if (user.Roles != null && user.Roles.Any(r => string.Equals(r.Name, "Cashier", StringComparison.OrdinalIgnoreCase) || string.Equals(r.NameEn, "Cashier", StringComparison.OrdinalIgnoreCase)))
-                                        {
-                                            <AuthorizeView Policy="Permission:shifts.read">
-                                                <Authorized>
-                                                    <button @onclick="() => OpenShiftsModal(user)" title="@Localizer["ViewShifts"]" class="text-amber-600 hover:text-amber-900 me-3">
-                                                        <i class="bi bi-clock-history"></i>
-                                                    </button>
-                                                </Authorized>
-                                                <NotAuthorized>
-                                                    <button disabled class="text-gray-300 me-3 cursor-not-allowed" title="@Localizer["ViewShifts"]">
-                                                        <i class="bi bi-clock-history"></i>
-                                                    </button>
-                                                </NotAuthorized>
-                                            </AuthorizeView>
-                                        }
-
                                         <AuthorizeView Policy="Permission:users.write">
                                             <Authorized>
                                                         @if (!user.IsSystemUser)
@@ -303,7 +286,6 @@
               OnCancel="@CancelDelete"
               IsDanger="true" />
 
-<CashierShiftsModal IsVisible="@showShiftsModal" CashierName="@shiftsModalCashierName" OnClose="CloseShiftsModal" />
 @code {
 private List<UserResponse> users = new();
 private List<RoleResponse> availableRoles = new();
@@ -410,30 +392,6 @@ private async Task ResetFilters()
     private void NavigateToEdit(Guid userId)
     {
         Navigation.NavigateTo($"/admin/users/edit/{userId}");
-    }
-
-    private void NavigateToShifts(UserResponse user)
-    {
-        // Navigate to admin shifts page with cashier filter in query string
-        // We'll use `search` query param to pass the cashier name or id; shifts page expects `search` to filter
-        var q = $"/admin/shifts?search={Uri.EscapeDataString(user.FullName)}";
-        Navigation.NavigateTo(q);
-    }
-
-    // Modal for showing cashier shifts
-    private bool showShiftsModal = false;
-    private string? shiftsModalCashierName;
-
-    private void OpenShiftsModal(UserResponse user)
-    {
-        shiftsModalCashierName = user.FullName;
-        showShiftsModal = true;
-    }
-
-    private void CloseShiftsModal()
-    {
-        showShiftsModal = false;
-        shiftsModalCashierName = null;
     }
 
     private void ConfirmDelete(Guid userId)

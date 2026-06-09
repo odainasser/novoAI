@@ -14,15 +14,8 @@
 
         if (user?.Identity?.IsAuthenticated == true)
         {
-            // Authenticated but not authorized -> send to appropriate dashboard
-            if (user.IsInRole(Roles.Cashier))
-            {
-                Navigation.NavigateTo("/cashier", forceLoad: true);
-            }
-            else
-            {
-                Navigation.NavigateTo("/admin", forceLoad: true);
-            }
+            // Authenticated but not authorized -> send to the dashboard
+            Navigation.NavigateTo("/admin", forceLoad: true);
         }
         else
         {

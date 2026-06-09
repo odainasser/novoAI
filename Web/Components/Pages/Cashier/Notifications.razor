@@ -1,9 +1,0 @@
-@page "/cashier/notifications"
-@layout CashierLayout
-@attribute [Authorize(Roles = Roles.Cashier)]
-@using Microsoft.AspNetCore.Authorization
-@using Web.Components.Common
-
-<PageTitle>@Localizer["Notifications"]</PageTitle>
-
-<NotificationsView />

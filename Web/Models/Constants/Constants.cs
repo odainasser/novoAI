@@ -37,17 +37,8 @@ public static class Permissions
     public const string PromotionsWrite = "promotions.write";
     public const string PromotionsDelete = "promotions.delete";
 
-    public const string ShiftsRead = "shifts.read";
-    public const string ShiftsWrite = "shifts.write";
-    public const string ShiftsDelete = "shifts.delete";
-    public const string ShiftsReadOwn = "shifts.read.own";
-
     public const string RequestsRead = "requests.read";
     public const string RequestsWrite = "requests.write";
-
-    public const string CashiersRead = "cashiers.read";
-    public const string CashiersWrite = "cashiers.write";
-    public const string CashiersDelete = "cashiers.delete";
 
     public const string BranchesRead = "branches.read";
     public const string BranchesWrite = "branches.write";
@@ -90,9 +81,7 @@ public static class Permissions
         OrdersRead, OrdersWrite, OrdersDelete, OrdersReadOwn,
         SuppliersRead, SuppliersWrite, SuppliersDelete,
         PromotionsRead, PromotionsWrite, PromotionsDelete,
-        ShiftsRead, ShiftsWrite, ShiftsDelete, ShiftsReadOwn,
         RequestsRead, RequestsWrite,
-        CashiersRead, CashiersWrite, CashiersDelete,
         BranchesRead, BranchesWrite, BranchesDelete,
         WarehousesRead, WarehousesWrite, WarehousesDelete,
         TerminalsRead, TerminalsWrite, TerminalsDelete,
@@ -107,7 +96,6 @@ public static class Permissions
 public static class Roles
 {
     public const string Administrator = "Administrator";
-    public const string Cashier = "Cashier";
     public const string User = "User";
     public const string Manager = "Manager";
     public const string Support = "Support";
@@ -116,7 +104,6 @@ public static class Roles
     public static readonly string[] All =
     {
         Administrator,
-        Cashier,
         BranchManager
     };
 

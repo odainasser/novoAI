@@ -43,12 +43,10 @@ public class ApplicationDbContext
     public DbSet<Promotion> Promotions { get; set; }
     public DbSet<PromotionUnit> PromotionUnits { get; set; }
     public DbSet<PromotionCategory> PromotionCategories { get; set; }
-    public DbSet<Domain.Entities.Shift> Shifts { get; set; }
     public DbSet<Domain.Entities.Request> Requests { get; set; }
     public DbSet<Domain.Entities.Branch> Branches { get; set; }
     public DbSet<Domain.Entities.Warehouse> Warehouses { get; set; }
     public DbSet<Domain.Entities.Terminal> Terminals { get; set; }
-    public DbSet<Domain.Entities.CashierWarehouse> CashierWarehouses { get; set; }
     public DbSet<Domain.Entities.UserBranch> UserBranches { get; set; }
 
     public DbSet<Unit> Units { get; set; }
@@ -407,7 +405,6 @@ public class ApplicationDbContext
             entity.Property(o => o.VatRate).IsRequired().HasColumnType("decimal(5,4)");
             entity.Property(o => o.VatAmount).IsRequired().HasColumnType("decimal(18,2)");
             entity.Property(o => o.Total).IsRequired().HasColumnType("decimal(18,2)");
-            entity.Property(o => o.CashierName).HasMaxLength(200);
             entity.Property(o => o.CustomerName).HasMaxLength(200);
             entity.Property(o => o.CustomerEmail).HasMaxLength(256);
             entity.Property(o => o.CustomerPhone).HasMaxLength(50);
@@ -423,7 +420,6 @@ public class ApplicationDbContext
             entity.HasIndex(o => o.IdempotencyKey)
                   .IsUnique()
                   .HasFilter("[IdempotencyKey] IS NOT NULL");
-            entity.HasIndex(o => o.CashierId);
             entity.HasIndex(o => o.Status);
             entity.HasIndex(o => o.Channel);
             entity.HasIndex(o => o.CreatedAt);
@@ -622,41 +618,6 @@ public class ApplicationDbContext
             entity.HasIndex(d => d.NameEn);
             entity.HasIndex(d => d.NameAr);
             entity.HasIndex(d => d.BranchId);
-        });
-
-        // Configure Shift entity
-        builder.Entity<Domain.Entities.Shift>(entity =>
-        {
-            entity.ToTable("Shifts");
-            entity.HasKey(s => s.Id);
-            entity.Property(s => s.StartTime).IsRequired();
-            entity.Property(s => s.EndTime);
-            entity.Property(s => s.TotalSales).HasColumnType("decimal(18,2)");
-            entity.Property(s => s.TotalReturns).HasColumnType("decimal(18,2)");
-            entity.Property(s => s.CashIn).HasColumnType("decimal(18,2)");
-            entity.Property(s => s.CashOut).HasColumnType("decimal(18,2)");
-            // Shift entity mapping
-            entity.Property(s => s.Status)
-                .IsRequired()
-                .HasMaxLength(50)
-                .HasConversion<string>();
-            entity.Property(s => s.Comments).HasMaxLength(1000);
-            entity.Property(s => s.WarehouseNameEn).HasMaxLength(200);
-            entity.Property(s => s.WarehouseNameAr).HasMaxLength(200);
-
-            entity.HasIndex(s => s.CashierId);
-            entity.HasIndex(s => s.Status);
-            entity.HasQueryFilter(s => !s.IsDeleted);
-        });
-
-        // Configure CashierWarehouse junction table
-        builder.Entity<Domain.Entities.CashierWarehouse>(entity =>
-        {
-            entity.ToTable("CashierWarehouses");
-            entity.HasKey(cw => new { cw.CashierId, cw.WarehouseId });
-
-            entity.HasIndex(cw => cw.CashierId);
-            entity.HasIndex(cw => cw.WarehouseId);
         });
 
         // Configure UserBranch junction table (branch-employee assignments)

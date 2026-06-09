@@ -19,10 +19,7 @@ public class OrderDto
     public decimal VatRate { get; set; }
     public decimal VatAmount { get; set; }
     public decimal Total { get; set; }
-    
-    public Guid? CashierId { get; set; }
-    public string? CashierName { get; set; }
-    
+
     public Guid? WarehouseId { get; set; }
     public string? WarehouseNameEn { get; set; }
     public string? WarehouseNameAr { get; set; }

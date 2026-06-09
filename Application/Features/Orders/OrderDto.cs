@@ -19,10 +19,7 @@ public class OrderDto
     public decimal VatRate { get; set; }
     public decimal VatAmount { get; set; }
     public decimal Total { get; set; }
-    
-    public Guid? CashierId { get; set; }
-    public string? CashierName { get; set; }
-    
+
     public Guid? WarehouseId { get; set; }
     public string? WarehouseNameEn { get; set; }
     public string? WarehouseNameAr { get; set; }
@@ -82,6 +79,9 @@ public class CreateOrderRequest
 {
     public OrderChannel Channel { get; set; } = OrderChannel.POS;
     public PaymentMethod PaymentMethod { get; set; }
+    // Store/warehouse the order is sold from. Required for POS orders so stock is
+    // deducted from (and validated against) that store only.
+    public Guid? WarehouseId { get; set; }
     // Required when PaymentMethod == Split
     public decimal? CashAmount { get; set; }
     public decimal? CardAmount { get; set; }

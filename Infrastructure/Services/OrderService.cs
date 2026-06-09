@@ -6,7 +6,6 @@ using Domain.Constants;
 using Domain.Entities;
 using Domain.Enums;
 using Infrastructure.Identity;
-using Infrastructure.Mapping;
 using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -51,7 +50,6 @@ public class OrderService : IOrderService
         DateTime? fromDate = null,
         DateTime? toDate = null,
         Guid? warehouseId = null,
-        Guid? cashierId = null,
         IEnumerable<Guid>? warehouseIds = null)
     {
         var query = _context.Orders
@@ -82,69 +80,16 @@ public class OrderService : IOrderService
             query = query.Where(o => ids.Contains(o.WarehouseId));
         }
 
-        // Filter by specific cashier
-        if (cashierId.HasValue)
-        {
-            query = query.Where(o => o.CashierId == cashierId.Value);
-        }
-
         query = query.OrderByDescending(o => o.CreatedAt);
 
         var count = await query.CountAsync();
-        
-        // LEFT JOIN with ApplicationUser (AspNetUsers) to get cashier names
-        var ordersWithCashiers = await (
-            from order in query
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-            join user in _context.Set<ApplicationUser>()
-                on order.CashierId equals user.Id into users
-            from cashier in users.DefaultIfEmpty()
-            select new { Order = order, Cashier = cashier }
-        ).ToListAsync();
 
-        var orderDtos = ordersWithCashiers.Select(x => MapToDto(x.Order, x.Cashier != null ? UserMapper.ToDomainUser(x.Cashier) : null)).ToList();
+        var orders = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
 
-        return new PaginatedList<OrderDto>(orderDtos, count, pageNumber, pageSize);
-    }
-
-    public async Task<PaginatedList<OrderDto>> GetOrdersByCashierAsync(
-        Guid cashierId,
-        int pageNumber,
-        int pageSize,
-        string? search = null,
-        OrderStatus? status = null,
-        PaymentMethod? paymentMethod = null,
-        DateTime? fromDate = null,
-        DateTime? toDate = null,
-        Guid? warehouseId = null)
-    {
-        var query = _context.Orders
-            .Include(o => o.Items)
-            .Include(o => o.Refunds).ThenInclude(r => r.Items)
-            .Where(o => o.CashierId == cashierId)
-            .AsQueryable();
-
-        if (warehouseId.HasValue)
-            query = query.Where(o => o.WarehouseId == warehouseId.Value);
-
-        query = ApplyFilters(query, search, status, null, paymentMethod, fromDate, toDate);
-        query = query.OrderByDescending(o => o.CreatedAt);
-
-        var count = await query.CountAsync();
-        
-        // LEFT JOIN with ApplicationUser (AspNetUsers) to get cashier name
-        var ordersWithCashiers = await (
-            from order in query
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-            join user in _context.Set<ApplicationUser>()
-                on order.CashierId equals user.Id into users
-            from cashier in users.DefaultIfEmpty()
-            select new { Order = order, Cashier = cashier }
-        ).ToListAsync();
-
-        var orderDtos = ordersWithCashiers.Select(x => MapToDto(x.Order, x.Cashier != null ? UserMapper.ToDomainUser(x.Cashier) : null)).ToList();
+        var orderDtos = orders.Select(MapToDto).ToList();
 
         return new PaginatedList<OrderDto>(orderDtos, count, pageNumber, pageSize);
     }
@@ -161,7 +106,7 @@ public class OrderService : IOrderService
         if (!string.IsNullOrWhiteSpace(search))
         {
             var searchLower = search.ToLower();
-            query = query.Where(o => 
+            query = query.Where(o =>
                 o.OrderNumber.ToLower().Contains(searchLower) ||
                 (o.CustomerName != null && o.CustomerName.ToLower().Contains(searchLower)) ||
                 (o.CustomerEmail != null && o.CustomerEmail.ToLower().Contains(searchLower)) ||
@@ -198,39 +143,28 @@ public class OrderService : IOrderService
 
     public async Task<OrderDto?> GetOrderByIdAsync(Guid id)
     {
-        // LEFT JOIN with ApplicationUser (AspNetUsers)
-        var result = await (
-            from order in _context.Orders.Include(o => o.Items).Include(o => o.Refunds).ThenInclude(r => r.Items)
-            where order.Id == id
-            join user in _context.Set<ApplicationUser>()
-                on order.CashierId equals user.Id into users
-            from cashier in users.DefaultIfEmpty()
-            select new { Order = order, Cashier = cashier }
-        ).FirstOrDefaultAsync();
+        var order = await _context.Orders
+            .Include(o => o.Items)
+            .Include(o => o.Refunds).ThenInclude(r => r.Items)
+            .FirstOrDefaultAsync(o => o.Id == id);
 
-        return result == null ? null : MapToDto(result.Order, result.Cashier != null ? UserMapper.ToDomainUser(result.Cashier) : null);
+        return order == null ? null : MapToDto(order);
     }
 
     public async Task<OrderDto?> GetOrderByNumberAsync(string orderNumber)
     {
-        // LEFT JOIN with ApplicationUser (AspNetUsers)
-        var result = await (
-            from order in _context.Orders.Include(o => o.Items).Include(o => o.Refunds).ThenInclude(r => r.Items)
-            where order.OrderNumber == orderNumber
-            join user in _context.Set<ApplicationUser>()
-                on order.CashierId equals user.Id into users
-            from cashier in users.DefaultIfEmpty()
-            select new { Order = order, Cashier = cashier }
-        ).FirstOrDefaultAsync();
+        var order = await _context.Orders
+            .Include(o => o.Items)
+            .Include(o => o.Refunds).ThenInclude(r => r.Items)
+            .FirstOrDefaultAsync(o => o.OrderNumber == orderNumber);
 
-        return result == null ? null : MapToDto(result.Order, result.Cashier != null ? UserMapper.ToDomainUser(result.Cashier) : null);
+        return order == null ? null : MapToDto(order);
     }
 
-    public async Task<OrderDto> CreateOrderAsync(CreateOrderRequest request, Guid? cashierId = null, string? cashierName = null)
+    public async Task<OrderDto> CreateOrderAsync(CreateOrderRequest request, string? createdByName = null)
     {
-        // Idempotency: if this exact sale was already created (e.g. an offline
-        // replay that re-POSTed after a failed queue-delete), return the existing
-        // order instead of creating a duplicate.
+        // Idempotency: if this exact sale was already created (e.g. a double-submit),
+        // return the existing order instead of creating a duplicate.
         if (!string.IsNullOrWhiteSpace(request.IdempotencyKey))
         {
             var existing = await _context.Orders
@@ -240,28 +174,10 @@ public class OrderService : IOrderService
             if (existing != null)
             {
                 _logger.LogInformation("Duplicate order submission ignored (idempotency key {Key}); returning existing order {OrderNumber}", request.IdempotencyKey, existing.OrderNumber);
-                var existingCashier = existing.CashierId.HasValue
-                    ? await _context.Set<ApplicationUser>().FirstOrDefaultAsync(u => u.Id == existing.CashierId.Value)
-                    : null;
-                return MapToDto(existing, existingCashier != null ? UserMapper.ToDomainUser(existingCashier) : null);
+                return MapToDto(existing);
             }
         }
 
-        // For POS orders, ensure cashier has an active shift
-        if (request.Channel == OrderChannel.POS)
-        {
-            if (!cashierId.HasValue)
-            {
-                throw new InvalidOperationException("Cashier information missing. Please sign in.");
-            }
-
-            var hasActiveShift = await _context.Shifts.AnyAsync(s => s.CashierId == cashierId.Value && s.Status == ShiftStatus.Active);
-            if (!hasActiveShift)
-            {
-                // Throw domain-specific exception so global handler returns consistent ProblemDetails
-                throw new Domain.Exceptions.ShiftNotStartedException();
-            }
-        }
         // Validate products and get their details
         var productIds = request.Items.Select(i => i.ProductId).Distinct().ToList();
         var products = await _context.Products
@@ -273,24 +189,21 @@ public class OrderService : IOrderService
             throw new InvalidOperationException("One or more products not found or inactive");
         }
 
-        // For POS orders, the customer is physically at the cashier's store, so stock
-        // must come from (and be validated against) that warehouse only. Resolve it now
-        // so we can validate per-warehouse before generating an order number.
-        var appUser = cashierId.HasValue
-            ? await _context.Set<ApplicationUser>().FirstOrDefaultAsync(u => u.Id == cashierId.Value)
-            : null;
-        Warehouse? cashierWarehouse = appUser?.WarehouseId.HasValue == true
-            ? await _context.Warehouses.FirstOrDefaultAsync(w => w.Id == appUser.WarehouseId.Value)
+        // POS orders are sold from a single store: stock must come from (and be
+        // validated against) that warehouse only. Resolve it now so we can validate
+        // per-warehouse before generating an order number.
+        var isPos = request.Channel == OrderChannel.POS;
+        Warehouse? warehouse = request.WarehouseId.HasValue
+            ? await _context.Warehouses.FirstOrDefaultAsync(w => w.Id == request.WarehouseId.Value)
             : null;
 
-        var isPos = request.Channel == OrderChannel.POS;
-        if (isPos && cashierWarehouse == null)
+        if (isPos && warehouse == null)
         {
-            throw new InvalidOperationException("Cashier has no active store assigned. Please switch to a store before creating orders.");
+            throw new InvalidOperationException("A store/warehouse is required for POS orders.");
         }
 
         // Check stock availability from StockBalance (stock is stored in base units).
-        // POS: validate against cashier's warehouse only.
+        // POS: validate against the order's warehouse only.
         // Online/other: validate aggregate stock across all warehouses (FIFO fulfillment).
         foreach (var item in request.Items)
         {
@@ -302,7 +215,7 @@ public class OrderService : IOrderService
             if (isPos)
             {
                 available = await _context.StockBalances
-                    .Where(sb => sb.UnitId == item.UnitId && sb.WarehouseId == cashierWarehouse!.Id)
+                    .Where(sb => sb.UnitId == item.UnitId && sb.WarehouseId == warehouse!.Id)
                     .Select(sb => (int?)sb.AvailableQuantity)
                     .FirstOrDefaultAsync() ?? 0;
             }
@@ -386,8 +299,6 @@ public class OrderService : IOrderService
             cardAmount = request.CardAmount.Value;
         }
 
-        // Offline-replayed orders carry the actual sale time in ClientCreatedAt.
-        // Online orders leave it null and get the server time.
         var saleTime = request.ClientCreatedAt ?? DateTime.UtcNow;
 
         var order = new Order
@@ -404,11 +315,9 @@ public class OrderService : IOrderService
             VatRate = VatRate,
             VatAmount = vatAmount,
             Total = total,
-            CashierId = cashierId,
-            CashierName = cashierName,
-            WarehouseId = cashierWarehouse?.Id,
-            WarehouseNameEn = cashierWarehouse?.NameEn,
-            WarehouseNameAr = cashierWarehouse?.NameAr,
+            WarehouseId = warehouse?.Id,
+            WarehouseNameEn = warehouse?.NameEn,
+            WarehouseNameAr = warehouse?.NameAr,
             CustomerName = request.CustomerName,
             CustomerEmail = request.CustomerEmail,
             CustomerPhone = request.CustomerPhone,
@@ -426,11 +335,11 @@ public class OrderService : IOrderService
             _context.Orders.Add(order);
 
             // Deduct stock from StockBalance and create InventoryHistory records.
-            // POS orders must deduct from the cashier's warehouse only; online/other
+            // POS orders must deduct from the order's warehouse only; online/other
             // orders may draw from any warehouse via FIFO fallback.
             foreach (var item in orderItems)
             {
-                await DeductStockForSaleAsync(item.UnitId!.Value, item.Quantity, order.Id, order.OrderNumber, item.ProductNameEn, cashierName, order.WarehouseId, restrictToPreferredWarehouse: isPos);
+                await DeductStockForSaleAsync(item.UnitId!.Value, item.Quantity, order.Id, order.OrderNumber, item.ProductNameEn, createdByName, order.WarehouseId, restrictToPreferredWarehouse: isPos);
             }
 
             await _context.SaveChangesAsync();
@@ -451,28 +360,23 @@ public class OrderService : IOrderService
                 .Include(o => o.Refunds).ThenInclude(r => r.Items)
                 .FirstOrDefaultAsync(o => o.IdempotencyKey == request.IdempotencyKey);
             if (winner == null) throw;
-            var winnerCashier = winner.CashierId.HasValue
-                ? await _context.Set<ApplicationUser>().FirstOrDefaultAsync(u => u.Id == winner.CashierId.Value)
-                : null;
-            return MapToDto(winner, winnerCashier != null ? UserMapper.ToDomainUser(winnerCashier) : null);
+            return MapToDto(winner);
         }
 
-        // Check low-stock levels for the ordered selling units at this store and notify
-        // admins + every cashier assigned to that store.
-        await NotifyLowStockAsync(order, appUser);
+        // Check low-stock levels for the ordered selling units at this store and notify admins.
+        await NotifyLowStockAsync(order);
 
-        var cashierUser = appUser != null ? UserMapper.ToDomainUser(appUser) : null;
-        return MapToDto(order, cashierUser);
+        return MapToDto(order);
     }
 
     /// <summary>
-    /// After a cashier (POS) sale, check each ordered selling unit at the order's store.
+    /// After a sale, check each ordered selling unit at the order's store.
     /// If a unit's remaining stock at that store has reached or fallen below its
-    /// LowStockThreshold, email every active administrator and every cashier assigned
-    /// to that store. Online/multi-warehouse orders are skipped — this check is per-store.
-    /// Failures are logged only so they never break order creation.
+    /// LowStockThreshold, email and notify every active administrator. Online/multi-warehouse
+    /// orders are skipped — this check is per-store. Failures are logged only so they never
+    /// break order creation.
     /// </summary>
-    private async Task NotifyLowStockAsync(Order order, ApplicationUser? cashier)
+    private async Task NotifyLowStockAsync(Order order)
     {
         try
         {
@@ -561,7 +465,7 @@ public class OrderService : IOrderService
                 })
                 .ToList();
 
-            // Recipients: all active admins + all active cashiers assigned to this store.
+            // Recipients: all active admins.
             var recipientEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var recipientUserIds = new HashSet<Guid>();
 
@@ -574,20 +478,6 @@ public class OrderService : IOrderService
                     if (!string.IsNullOrWhiteSpace(a.Email))
                         recipientEmails.Add(a.Email!);
                 }
-            }
-
-            var storeCashiers = await (from cw in _context.CashierWarehouses
-                                       join u in _context.Set<ApplicationUser>() on cw.CashierId equals u.Id
-                                       where cw.WarehouseId == warehouseId
-                                             && u.IsActive
-                                             && !u.IsDeleted
-                                       select new { u.Id, u.Email })
-                                      .ToListAsync();
-            foreach (var c in storeCashiers)
-            {
-                recipientUserIds.Add(c.Id);
-                if (!string.IsNullOrWhiteSpace(c.Email))
-                    recipientEmails.Add(c.Email!);
             }
 
             if (recipientEmails.Count == 0 && recipientUserIds.Count == 0)
@@ -615,7 +505,7 @@ public class OrderService : IOrderService
                 await _emailService.SendLowStockAlertAsync(
                     recipientEmails,
                     lowItems,
-                    cashier?.Email,
+                    null,
                     order.WarehouseNameEn,
                     order.WarehouseNameAr);
             }
@@ -699,12 +589,7 @@ public class OrderService : IOrderService
 
         await _context.SaveChangesAsync();
 
-        // Fetch cashier for the response
-        var cashierAppUser = order.CashierId.HasValue 
-            ? await _context.Set<ApplicationUser>().FirstOrDefaultAsync(u => u.Id == order.CashierId.Value)
-            : null;
-
-        return MapToDto(order, cashierAppUser != null ? UserMapper.ToDomainUser(cashierAppUser) : null);
+        return MapToDto(order);
     }
 
     public async Task<bool> CancelOrderAsync(Guid id, string? reason)
@@ -763,7 +648,7 @@ public class OrderService : IOrderService
                     });
 
                     // Restore stock for refunded items
-                    await RestoreStockForReturnAsync(item.UnitId!.Value, item.Quantity, order.Id, order.OrderNumber, item.ProductNameEn, order.CashierName, order.WarehouseId);
+                    await RestoreStockForReturnAsync(item.UnitId!.Value, item.Quantity, order.Id, order.OrderNumber, item.ProductNameEn, null, order.WarehouseId);
 
                     // Zero out the item quantity
                     item.Quantity = 0;
@@ -772,31 +657,6 @@ public class OrderService : IOrderService
 
                 refund.Amount = refundAmount;
                 _context.OrderRefunds.Add(refund);
-
-                // Adjust shift totals
-                if (order.CashierId.HasValue && refundAmount > 0)
-                {
-                    var cashierId = order.CashierId.Value;
-                    var shift = await _context.Shifts
-                        .FirstOrDefaultAsync(s => s.CashierId == cashierId && s.StartTime <= order.CreatedAt && (s.EndTime == null || s.EndTime >= order.CreatedAt));
-
-                    if (shift != null)
-                    {
-                        shift.TotalSales -= refundAmount;
-                        shift.TotalReturns += refundAmount;
-
-                        if (order.PaymentMethod == PaymentMethod.Cash)
-                        {
-                            shift.CashOut += refundAmount;
-                        }
-                        else if (order.PaymentMethod == PaymentMethod.Split && order.CashAmount.HasValue && order.Total > 0)
-                        {
-                            // Return only the proportional cash portion
-                            var cashProportion = order.CashAmount.Value / order.Total;
-                            shift.CashOut += Math.Round(refundAmount * cashProportion, 2);
-                        }
-                    }
-                }
 
                 // Recalculate order totals
                 order.Subtotal = 0;
@@ -820,32 +680,7 @@ public class OrderService : IOrderService
         // Restore stock to StockBalance and create InventoryHistory records
         foreach (var item in order.Items)
         {
-            await RestoreStockForReturnAsync(item.UnitId!.Value, item.Quantity, order.Id, order.OrderNumber, item.ProductNameEn, order.CashierName, order.WarehouseId);
-        }
-
-        // Adjust shift totals for the cashier who created the order
-        if (order.CashierId.HasValue)
-        {
-            var cashierId = order.CashierId.Value;
-            var shift = await _context.Shifts
-                .FirstOrDefaultAsync(s => s.CashierId == cashierId && s.StartTime <= order.CreatedAt && (s.EndTime == null || s.EndTime >= order.CreatedAt));
-
-            if (shift != null)
-            {
-                // Decrease total sales and increase total returns
-                shift.TotalSales -= order.Total;
-                shift.TotalReturns += order.Total;
-
-                // If the order was paid in cash, increase CashOut (money returned to customer)
-                if (order.PaymentMethod == PaymentMethod.Cash)
-                {
-                    shift.CashOut += order.Total;
-                }
-                else if (order.PaymentMethod == PaymentMethod.Split && order.CashAmount.HasValue)
-                {
-                    shift.CashOut += order.CashAmount.Value;
-                }
-            }
+            await RestoreStockForReturnAsync(item.UnitId!.Value, item.Quantity, order.Id, order.OrderNumber, item.ProductNameEn, null, order.WarehouseId);
         }
 
         await _context.SaveChangesAsync();
@@ -952,33 +787,7 @@ public class OrderService : IOrderService
         foreach (var refundItem in refund.Items)
         {
             var orderItem = order.Items.First(i => i.Id == refundItem.OrderItemId);
-            await RestoreStockForReturnAsync(orderItem.UnitId!.Value, refundItem.Quantity, order.Id, order.OrderNumber, orderItem.ProductNameEn, order.CashierName, order.WarehouseId);
-        }
-
-        // Adjust shift totals for the cashier who created the order
-        if (order.CashierId.HasValue && refundAmount > 0)
-        {
-            var cashierId = order.CashierId.Value;
-            var shift = await _context.Shifts
-                .FirstOrDefaultAsync(s => s.CashierId == cashierId && s.StartTime <= order.CreatedAt && (s.EndTime == null || s.EndTime >= order.CreatedAt));
-
-            if (shift != null)
-            {
-                shift.TotalSales -= refundAmount;
-                shift.TotalReturns += refundAmount;
-
-                if (order.PaymentMethod == PaymentMethod.Cash)
-                {
-                    shift.CashOut += refundAmount;
-                }
-                else if (order.PaymentMethod == PaymentMethod.Split && order.CashAmount.HasValue && order.Total > 0)
-                {
-                    // Return only the proportional cash portion
-                    var originalTotal = order.Total + refundAmount; // total before this refund
-                    var cashProportion = order.CashAmount.Value / originalTotal;
-                    shift.CashOut += Math.Round(refundAmount * cashProportion, 2);
-                }
-            }
+            await RestoreStockForReturnAsync(orderItem.UnitId!.Value, refundItem.Quantity, order.Id, order.OrderNumber, orderItem.ProductNameEn, null, order.WarehouseId);
         }
 
         // If no items left, mark as fully refunded; otherwise partial
@@ -1027,14 +836,9 @@ public class OrderService : IOrderService
         return $"{prefix}-{sequence:D4}";
     }
 
-    public async Task<OrderStatisticsDto> GetOrderStatisticsAsync(Guid? cashierId = null, DateTime? fromDate = null, DateTime? toDate = null)
+    public async Task<OrderStatisticsDto> GetOrderStatisticsAsync(DateTime? fromDate = null, DateTime? toDate = null)
     {
         var query = _context.Orders.AsQueryable();
-
-        if (cashierId.HasValue)
-        {
-            query = query.Where(o => o.CashierId == cashierId.Value);
-        }
 
         if (fromDate.HasValue)
         {
@@ -1062,10 +866,6 @@ public class OrderService : IOrderService
 
         // Separate query for today's statistics
         var todayQuery = _context.Orders.Where(o => o.CreatedAt >= today && o.CreatedAt < tomorrow);
-        if (cashierId.HasValue)
-        {
-            todayQuery = todayQuery.Where(o => o.CashierId == cashierId.Value);
-        }
 
         var todayStats = await todayQuery.GroupBy(o => 1)
             .Select(g => new
@@ -1100,7 +900,6 @@ public class OrderService : IOrderService
         DateTime? fromDate = null,
         DateTime? toDate = null,
         Guid? warehouseId = null,
-        Guid? cashierId = null,
         bool isArabic = false,
         IEnumerable<Guid>? warehouseIds = null)
     {
@@ -1133,19 +932,10 @@ public class OrderService : IOrderService
             query = query.Where(o => ids.Contains(o.WarehouseId));
         }
 
-        if (cashierId.HasValue)
-        {
-            query = query.Where(o => o.CashierId == cashierId.Value);
-        }
-
         query = query.OrderByDescending(o => o.CreatedAt);
 
-        var rows = await (
-            from order in query
-            join user in _context.Set<ApplicationUser>()
-                on order.CashierId equals user.Id into users
-            from cashier in users.DefaultIfEmpty()
-            select new
+        var rows = await query
+            .Select(order => new
             {
                 order.OrderNumber,
                 order.CreatedAt,
@@ -1153,13 +943,12 @@ public class OrderService : IOrderService
                 order.Status,
                 order.WarehouseNameEn,
                 order.WarehouseNameAr,
-                CashierName = order.CashierName ?? (cashier != null ? (cashier.FirstName + " " + cashier.LastName).Trim() : null),
                 ItemCount = order.Items.Sum(i => (int?)i.Quantity) ?? 0,
                 order.Subtotal,
                 order.VatAmount,
                 order.Total
-            }
-        ).ToListAsync();
+            })
+            .ToListAsync();
 
         using var workbook = new ClosedXML.Excel.XLWorkbook();
         var sheet = workbook.Worksheets.Add("Orders");
@@ -1172,7 +961,6 @@ public class OrderService : IOrderService
             isArabic ? "طريقة الدفع" : "Payment Method",
             isArabic ? "الحالة" : "Status",
             isArabic ? "المتجر" : "Store",
-            isArabic ? "أمين الصندوق" : "Cashier",
             isArabic ? "العناصر" : "Items",
             isArabic ? "المجموع الفرعي" : "Subtotal",
             isArabic ? "ضريبة القيمة المضافة" : "VAT",
@@ -1198,14 +986,13 @@ public class OrderService : IOrderService
             sheet.Cell(rowIndex, 3).Value = r.PaymentMethod.ToString();
             sheet.Cell(rowIndex, 4).Value = r.Status.ToString();
             sheet.Cell(rowIndex, 5).Value = isArabic ? (r.WarehouseNameAr ?? string.Empty) : (r.WarehouseNameEn ?? string.Empty);
-            sheet.Cell(rowIndex, 6).Value = r.CashierName ?? string.Empty;
-            sheet.Cell(rowIndex, 7).Value = r.ItemCount;
-            sheet.Cell(rowIndex, 8).Value = r.Subtotal;
+            sheet.Cell(rowIndex, 6).Value = r.ItemCount;
+            sheet.Cell(rowIndex, 7).Value = r.Subtotal;
+            sheet.Cell(rowIndex, 7).Style.NumberFormat.Format = "#,##0.00";
+            sheet.Cell(rowIndex, 8).Value = r.VatAmount;
             sheet.Cell(rowIndex, 8).Style.NumberFormat.Format = "#,##0.00";
-            sheet.Cell(rowIndex, 9).Value = r.VatAmount;
+            sheet.Cell(rowIndex, 9).Value = r.Total;
             sheet.Cell(rowIndex, 9).Style.NumberFormat.Format = "#,##0.00";
-            sheet.Cell(rowIndex, 10).Value = r.Total;
-            sheet.Cell(rowIndex, 10).Style.NumberFormat.Format = "#,##0.00";
             rowIndex++;
         }
 
@@ -1233,7 +1020,7 @@ public class OrderService : IOrderService
     /// Deducts stock from StockBalance and creates InventoryHistory audit records.
     /// When <paramref name="restrictToPreferredWarehouse"/> is true (POS), only the
     /// preferred warehouse is touched and an exception is thrown if it cannot cover
-    /// the full quantity. Otherwise the cashier's warehouse is drained first and any
+    /// the full quantity. Otherwise the preferred warehouse is drained first and any
     /// shortfall is taken from other warehouses by FIFO of CreatedAt.
     /// </summary>
     private async Task DeductStockForSaleAsync(Guid unitId, int quantity, Guid orderId, string orderNumber, string productName, string? performedBy, Guid? preferredWarehouseId = null, bool restrictToPreferredWarehouse = false)
@@ -1301,7 +1088,7 @@ public class OrderService : IOrderService
     /// Restores stock to StockBalance and creates InventoryHistory audit records.
     /// Reverses the original sale's per-warehouse deductions (recorded in
     /// InventoryHistory) so the stock returns to the warehouses it was taken from.
-    /// Falls back to the cashier's warehouse (or the first active warehouse) only
+    /// Falls back to the order's store warehouse (or the first active warehouse) only
     /// if no original sale history can be found for this order/unit.
     /// </summary>
     private async Task RestoreStockForReturnAsync(Guid unitId, int quantity, Guid orderId, string orderNumber, string productName, string? performedBy, Guid? preferredWarehouseId = null)
@@ -1440,19 +1227,8 @@ public class OrderService : IOrderService
         });
     }
 
-    private OrderDto MapToDto(Order order, User? cashier)
+    private OrderDto MapToDto(Order order)
     {
-        // Use cashier's current name if available, otherwise fall back to stored name
-        string? cashierName = order.CashierName;
-        if (cashier != null)
-        {
-            var fullName = $"{cashier.FirstName} {cashier.LastName}".Trim();
-            if (!string.IsNullOrEmpty(fullName))
-            {
-                cashierName = fullName;
-            }
-        }
-
         return new OrderDto
         {
             Id = order.Id,
@@ -1466,8 +1242,6 @@ public class OrderService : IOrderService
             VatRate = order.VatRate,
             VatAmount = order.VatAmount,
             Total = order.Total,
-            CashierId = order.CashierId,
-            CashierName = cashierName,
             WarehouseId = order.WarehouseId,
             WarehouseNameEn = order.WarehouseNameEn,
             WarehouseNameAr = order.WarehouseNameAr,

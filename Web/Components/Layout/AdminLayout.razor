@@ -150,7 +150,7 @@
                             @{
                                 var permissions = auth.User.FindAll("permission");
                                 var hasSalesPermissions = permissions.Any(p =>
-                                    p.Value == "orders.read" || p.Value == "shifts.read" ||
+                                    p.Value == "orders.read" ||
                                     p.Value == "promotions.read");
                                 var hasInventoryPermissions = permissions.Any(p =>
                                     p.Value == "suppliers.read" || p.Value == "products.read" ||
@@ -207,19 +207,6 @@
                                     </Authorized>
                                 </AuthorizeView>
 
-                                <AuthorizeView Policy="Permission:shifts.read" Context="shiftsAuth">
-                                    <Authorized Context="shiftsAuth">
-                                        <NavLink href="/admin/shifts"
-                                                 @onclick="CloseSidebar"
-                                                 class="sidebar-link group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium relative overflow-hidden"
-                                                 ActiveClass="sidebar-link-active">
-                                            <span class="sidebar-link-indicator"></span>
-                                            <span class="sidebar-link-icon"><i class="bi bi-stopwatch"></i></span>
-                                            <span class="sidebar-text">@Localizer["Shifts"]</span>
-                                            <span class="sidebar-tooltip">@Localizer["Shifts"]</span>
-                                        </NavLink>
-                                    </Authorized>
-                                </AuthorizeView>
                             }
 
                             @* === MERCHANDISE === *@
@@ -715,16 +702,6 @@
                      relative.StartsWith("cashier", StringComparison.OrdinalIgnoreCase))
                 {
                     Navigation.NavigateTo("/admin", forceLoad: true);
-                    return;
-                }
-            }
-
-            if (user.Identity?.IsAuthenticated == true && user.IsInRole(Roles.Cashier))
-            {
-                if (!string.IsNullOrEmpty(relative) &&
-                    relative.StartsWith("admin", StringComparison.OrdinalIgnoreCase))
-                {
-                    Navigation.NavigateTo("/cashier", forceLoad: true);
                     return;
                 }
             }

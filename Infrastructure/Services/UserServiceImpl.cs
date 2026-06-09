@@ -53,17 +53,6 @@ public class UserService : IUserService
         _logger = logger;
     }
 
-    private async Task<HashSet<Guid>> GetCashierUserIdsAsync()
-    {
-        var cashierUsers = await _userManager.GetUsersInRoleAsync(Roles.Cashier);
-        return cashierUsers.Select(u => u.Id).ToHashSet();
-    }
-
-    private async Task<bool> IsCashierAsync(ApplicationUser user)
-    {
-        return await _userManager.IsInRoleAsync(user, Roles.Cashier);
-    }
-
     public async Task<PaginatedList<UserResponse>> GetAllUsersAsync(int pageNumber, int pageSize, string? role = null, string? search = null, bool? isActive = null, CancellationToken cancellationToken = default)
     {
         var query = _userManager.Users.AsQueryable();
@@ -164,7 +153,7 @@ public class UserService : IUserService
         if (request.RoleId.HasValue)
         {
             var role = await _roleManager.FindByIdAsync(request.RoleId.Value.ToString());
-            if (role != null && !string.Equals(role.Name, Roles.Cashier, StringComparison.OrdinalIgnoreCase))
+            if (role != null)
             {
                 await _userManager.AddToRoleAsync(user, role.Name!);
             }
@@ -260,28 +249,11 @@ public class UserService : IUserService
             throw new UserNotFoundException($"User with ID '{userId}' not found.");
         }
 
-        // Cashier-role users are managed via the Cashiers module
-        if (await IsCashierAsync(user))
-        {
-            throw new UserNotFoundException($"User with ID '{userId}' not found.");
-        }
-
         // Prevent deleting system users
         if (user.IsSystemUser)
         {
             throw new SystemUserModificationException();
         }
-
-        var userIdValue = user.Id;
-
-        if (await _dbContext.Orders.AnyAsync(o => o.CashierId == userIdValue, cancellationToken))
-            throw new InvalidOperationException("Cannot delete user: linked to existing orders.");
-
-        if (await _dbContext.Shifts.AnyAsync(s => s.CashierId == userIdValue, cancellationToken))
-            throw new InvalidOperationException("Cannot delete user: linked to existing shifts.");
-
-        if (await _dbContext.CashierWarehouses.AnyAsync(cw => cw.CashierId == userIdValue, cancellationToken))
-            throw new InvalidOperationException("Cannot delete user: linked to warehouse assignments.");
 
         // Soft delete
         user.IsDeleted = true;
@@ -327,37 +299,18 @@ public class UserService : IUserService
             throw new SystemUserModificationException();
         }
 
-        var wasCashier = await IsCashierAsync(user);
-
         var currentRoles = await _userManager.GetRolesAsync(user);
         if (currentRoles.Any())
         {
             await _userManager.RemoveFromRolesAsync(user, currentRoles);
         }
 
-        bool willBeCashier = false;
         if (request.RoleId.HasValue)
         {
             var role = await _roleManager.FindByIdAsync(request.RoleId.Value.ToString());
             if (role != null)
             {
                 await _userManager.AddToRoleAsync(user, role.Name!);
-                willBeCashier = string.Equals(role.Name, Roles.Cashier, StringComparison.OrdinalIgnoreCase);
-            }
-        }
-
-        // Demotion out of Cashier: drop the cashier-warehouse junction rows so the user is no
-        // longer assigned to any POS stores. Cashier-specific fields on ApplicationUser
-        // (WarehouseId, CanRefund) are left alone — they're inert without the role.
-        if (wasCashier && !willBeCashier)
-        {
-            var assignments = await _dbContext.CashierWarehouses
-                .Where(cw => cw.CashierId == user.Id)
-                .ToListAsync(cancellationToken);
-            if (assignments.Count > 0)
-            {
-                _dbContext.CashierWarehouses.RemoveRange(assignments);
-                await _dbContext.SaveChangesAsync(cancellationToken);
             }
         }
 
@@ -423,9 +376,7 @@ public class UserService : IUserService
 
     public async Task<IEnumerable<UserResponse>> GetActiveUsersAsync(CancellationToken cancellationToken = default)
     {
-        // Exclude Cashier-role users (managed via the Cashiers module)
-        var cashierIds = await GetCashierUserIdsAsync();
-        var users = await _userManager.Users.Where(u => u.IsActive && !cashierIds.Contains(u.Id)).ToListAsync(cancellationToken);
+        var users = await _userManager.Users.Where(u => u.IsActive).ToListAsync(cancellationToken);
         
         var userResponses = new List<UserResponse>();
         foreach (var user in users)
@@ -551,12 +502,11 @@ public class UserService : IUserService
         if (!updateResult.Succeeded)
             throw new InvalidOperationException(string.Join(", ", updateResult.Errors.Select(e => e.Description)));
 
-        // Apply the requested role if any (matching CreateUserAsync: never grant Cashier here).
+        // Apply the requested role if any.
         if (request.RoleId.HasValue)
         {
             var role = await _roleManager.FindByIdAsync(request.RoleId.Value.ToString());
             if (role != null
-                && !string.Equals(role.Name, Roles.Cashier, StringComparison.OrdinalIgnoreCase)
                 && !await _userManager.IsInRoleAsync(user, role.Name!))
             {
                 await _userManager.AddToRoleAsync(user, role.Name!);

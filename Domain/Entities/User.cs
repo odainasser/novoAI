@@ -16,9 +16,6 @@ public class User : BaseAuditableEntity
     public bool LockoutEnabled { get; set; }
     public int AccessFailedCount { get; set; }
 
-    public Guid? WarehouseId { get; set; }
-    public bool CanRefund { get; set; } = true;
-
     public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 
     public string FullName => $"{FirstName} {LastName}".Trim();

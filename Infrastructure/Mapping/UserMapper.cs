@@ -21,8 +21,6 @@ public static class UserMapper
             LockoutEnd = identityUser.LockoutEnd?.UtcDateTime,
             LockoutEnabled = identityUser.LockoutEnabled,
             AccessFailedCount = identityUser.AccessFailedCount,
-            WarehouseId = identityUser.WarehouseId,
-            CanRefund = identityUser.CanRefund,
             CreatedAt = DateTime.UtcNow
         };
     }
@@ -45,9 +43,7 @@ public static class UserMapper
                 ? new DateTimeOffset(domainUser.LockoutEnd.Value) 
                 : null,
             LockoutEnabled = domainUser.LockoutEnabled,
-            AccessFailedCount = domainUser.AccessFailedCount,
-            WarehouseId = domainUser.WarehouseId,
-            CanRefund = domainUser.CanRefund
+            AccessFailedCount = domainUser.AccessFailedCount
         };
     }
 

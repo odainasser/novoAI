@@ -81,56 +81,6 @@ public class OrderClientService : IOrderService
             ?? new PaginatedList<OrderDto>(new List<OrderDto>(), 0, pageNumber, pageSize);
     }
 
-    public async Task<PaginatedList<OrderDto>> GetOrdersByCashierAsync(
-        Guid cashierId,
-        int pageNumber, 
-        int pageSize, 
-        string? search = null, 
-        OrderStatus? status = null,
-        PaymentMethod? paymentMethod = null,
-        DateTime? fromDate = null,
-        DateTime? toDate = null)
-    {
-        // This is called on the server side only
-        throw new NotImplementedException("Use GetMyOrdersAsync instead");
-    }
-
-    public async Task<PaginatedList<OrderDto>> GetMyOrdersAsync(
-        int pageNumber,
-        int pageSize,
-        string? search = null,
-        OrderStatus? status = null,
-        PaymentMethod? paymentMethod = null,
-        DateTime? fromDate = null,
-        DateTime? toDate = null,
-        Guid? warehouseId = null)
-    {
-        var queryParams = new List<string>
-        {
-            $"pageNumber={pageNumber}",
-            $"pageSize={pageSize}"
-        };
-
-        if (!string.IsNullOrWhiteSpace(search))
-            queryParams.Add($"search={Uri.EscapeDataString(search)}");
-        if (status.HasValue)
-            queryParams.Add($"status={status.Value}");
-        if (paymentMethod.HasValue)
-            queryParams.Add($"paymentMethod={paymentMethod.Value}");
-        if (fromDate.HasValue)
-            queryParams.Add($"fromDate={Uri.EscapeDataString(fromDate.Value.ToString("o"))}");
-        if (toDate.HasValue)
-            queryParams.Add($"toDate={Uri.EscapeDataString(toDate.Value.ToString("o"))}");
-        if (warehouseId.HasValue)
-            queryParams.Add($"warehouseId={warehouseId.Value}");
-
-        var response = await _httpClient.GetAsync($"api/orders/my-orders?{string.Join("&", queryParams)}");
-        response.EnsureSuccessStatusCode();
-        
-        return await response.Content.ReadFromJsonAsync<PaginatedList<OrderDto>>() 
-            ?? new PaginatedList<OrderDto>(new List<OrderDto>(), 0, pageNumber, pageSize);
-    }
-
     public async Task<OrderDto?> GetOrderByIdAsync(Guid id)
     {
         var response = await _httpClient.GetAsync($"api/orders/{id}");
@@ -234,23 +184,6 @@ public class OrderClientService : IOrderService
         response.EnsureSuccessStatusCode();
         
         return await response.Content.ReadFromJsonAsync<OrderStatisticsDto>() 
-            ?? new OrderStatisticsDto();
-    }
-
-    public async Task<OrderStatisticsDto> GetMyStatisticsAsync(DateTime? fromDate = null, DateTime? toDate = null)
-    {
-        var queryParams = new List<string>();
-
-        if (fromDate.HasValue)
-            queryParams.Add($"fromDate={Uri.EscapeDataString(fromDate.Value.ToString("o"))}");
-        if (toDate.HasValue)
-            queryParams.Add($"toDate={Uri.EscapeDataString(toDate.Value.ToString("o"))}");
-
-        var query = queryParams.Count > 0 ? $"?{string.Join("&", queryParams)}" : "";
-        var response = await _httpClient.GetAsync($"api/orders/my-statistics{query}");
-        response.EnsureSuccessStatusCode();
-
-        return await response.Content.ReadFromJsonAsync<OrderStatisticsDto>()
             ?? new OrderStatisticsDto();
     }
 

@@ -37,7 +37,7 @@ internal static class ToolDefinitions
                 {
                     var revenue = await BranchRevenueAsync(ctx, from, to);
                     var orders = (await ctx.Sp.GetRequiredService<IOrderService>().GetAllOrdersAsync(
-                        1, 1, null, null, null, null, from, to, ctx.WarehouseId, null, ctx.BranchWarehouseIds)).TotalCount;
+                        1, 1, null, null, null, null, from, to, ctx.WarehouseId, ctx.BranchWarehouseIds)).TotalCount;
                     return new ToolResult(new
                     {
                         period = ToolHelpers.PeriodLabel(period),
@@ -47,7 +47,7 @@ internal static class ToolDefinitions
                     });
                 }
 
-                var stats = await ctx.Sp.GetRequiredService<IOrderService>().GetOrderStatisticsAsync(null, from, to);
+                var stats = await ctx.Sp.GetRequiredService<IOrderService>().GetOrderStatisticsAsync(from, to);
                 return new ToolResult(new
                 {
                     period = ToolHelpers.PeriodLabel(period),
@@ -82,7 +82,7 @@ internal static class ToolDefinitions
                 var (from, to) = ToolHelpers.ResolvePeriod(ToolArgs.Str(args, "period"));
                 var count = (await ctx.Sp.GetRequiredService<IOrderService>().GetAllOrdersAsync(
                     1, 1, null, OrderStatusOf(ToolArgs.Str(args, "status")), null, null,
-                    from, to, ctx.WarehouseId, null, ctx.BranchWarehouseIds)).TotalCount;
+                    from, to, ctx.WarehouseId, ctx.BranchWarehouseIds)).TotalCount;
                 return new ToolResult(new { count, period = ToolHelpers.PeriodLabel(ToolArgs.Str(args, "period")) });
             }));
 
@@ -100,7 +100,7 @@ internal static class ToolDefinitions
                 var page = await ctx.Sp.GetRequiredService<IOrderService>().GetAllOrdersAsync(
                     1, ToolHelpers.ClampLimit(ToolArgs.Int(args, "limit")), null,
                     OrderStatusOf(ToolArgs.Str(args, "status")), null, null,
-                    from, to, ctx.WarehouseId, null, ctx.BranchWarehouseIds);
+                    from, to, ctx.WarehouseId, ctx.BranchWarehouseIds);
                 return new ToolResult(new { totalCount = page.TotalCount, items = page.Items });
             }));
 
@@ -129,7 +129,7 @@ internal static class ToolDefinitions
                 var (from, to) = ToolHelpers.ResolvePeriod(ToolArgs.Str(args, "period"));
                 var page = await ctx.Sp.GetRequiredService<IOrderService>().GetAllOrdersAsync(
                     1, ToolHelpers.ClampLimit(ToolArgs.Int(args, "limit")), null, OrderStatus.Refunded, null, null,
-                    from, to, ctx.WarehouseId, null, ctx.BranchWarehouseIds);
+                    from, to, ctx.WarehouseId, ctx.BranchWarehouseIds);
                 return new ToolResult(new { totalCount = page.TotalCount, items = page.Items });
             }));
 
@@ -253,24 +253,7 @@ internal static class ToolDefinitions
                 return new ToolResult(new { totalCount = page.TotalCount, items = page.Items });
             }));
 
-        // ── Shifts / approval requests / purchase requests ────────────
-        tools.Add(new DelegateTool(
-            "list_shifts",
-            "List cashier shifts (optionally by status active/completed and period).",
-            permissions: new[] { Permissions.ShiftsRead },
-            parametersSchema: ObjSchema(
-                ("period", ToolHelpers.PeriodParam("Time range; omit for all time.")),
-                ("status", StatusSchema("active", "completed")),
-                ("limit", LimitSchema())),
-            exec: async (args, ctx) =>
-            {
-                var (from, to) = ToolHelpers.ResolvePeriod(ToolArgs.Str(args, "period"));
-                var page = await ctx.Sp.GetRequiredService<IShiftService>().GetAllShiftsAsync(
-                    1, ToolHelpers.ClampLimit(ToolArgs.Int(args, "limit")), ShiftStatusOf(ToolArgs.Str(args, "status")),
-                    null, null, ctx.WarehouseId, ctx.BranchWarehouseIds, from, to);
-                return new ToolResult(new { totalCount = page.TotalCount, items = page.Items });
-            }));
-
+        // ── Approval requests / purchase requests ─────────────────────
         tools.Add(new DelegateTool(
             "list_approval_requests",
             "List approval requests (optionally by status pending/approved/rejected).",
@@ -360,16 +343,6 @@ internal static class ToolDefinitions
             exec: async (args, ctx) =>
             {
                 var page = await ctx.Sp.GetRequiredService<IRoleService>().GetAllRolesAsync(1, 50, ctx.Ct);
-                return new ToolResult(new { totalCount = page.TotalCount, items = page.Items });
-            }));
-
-        tools.Add(SimpleListTool(
-            "list_cashiers", "List or search cashiers.", Permissions.CashiersRead,
-            async (args, ctx) =>
-            {
-                var page = await ctx.Sp.GetRequiredService<ICashierService>().GetAllCashiersAsync(
-                    1, ToolHelpers.ClampLimit(ToolArgs.Int(args, "limit")), ToolArgs.Str(args, "search"),
-                    ctx.BranchLocked ? true : (bool?)null, ctx.WarehouseId, ctx.Ct, ctx.BranchWarehouseIds);
                 return new ToolResult(new { totalCount = page.TotalCount, items = page.Items });
             }));
 

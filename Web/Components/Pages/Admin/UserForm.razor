@@ -6,13 +6,10 @@
 @using Web.Authorization
 @using System.Globalization
 @using Web.Components.Common
-@using Web.Models.Cashiers
 @using Web.Models.Warehouses
 @using System.ComponentModel.DataAnnotations
 @inject IUserManagementService UserService
 @inject IRoleManagementService RoleService
-@inject ICashierManagementService CashierService
-@inject IWarehouseService WarehouseService
 @inject IBranchService BranchService
 @inject IMediaService MediaService
 @inject NavigationManager Navigation
@@ -151,47 +148,6 @@ else
                     </div>
                 </div>
 
-                @if (IsCashierRoleSelected)
-                {
-                    <!-- Card: Store Assignment (Cashier only) -->
-                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-                        <h2 class="text-sm font-semibold text-gray-900 mb-3">
-                            @Localizer["Store"] <span class="text-red-500">*</span>
-                        </h2>
-                        <div class="border border-gray-300 rounded-lg p-3 max-h-48 overflow-y-auto space-y-1">
-                            @if (!availableStores.Any())
-                            {
-                                <p class="text-sm text-gray-400 italic py-2">@Localizer["NoStoresAvailable"]</p>
-                            }
-                            else
-                            {
-                                @foreach (var store in availableStores)
-                                {
-                                    var storeId = store.Id;
-                                    var storeLabel = CultureInfo.CurrentUICulture.Name.StartsWith("ar") ? store.NameAr : store.NameEn;
-                                    <div class="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer" @onclick="@(() => ToggleStore(storeId))">
-                                        <input type="checkbox"
-                                               id="store_@storeId"
-                                               checked="@model.WarehouseIds.Contains(storeId)"
-                                               @onchange="@(e => OnStoreToggled(storeId, (bool)(e.Value ?? false)))"
-                                               @onclick:stopPropagation
-                                               class="h-4 w-4 rounded border-gray-300 text-bf-primary focus:ring-bf-primary cursor-pointer" />
-                                        <label for="store_@storeId" class="text-sm text-gray-700 cursor-pointer select-none flex-1">@storeLabel</label>
-                                    </div>
-                                }
-                            }
-                        </div>
-                        <ValidationMessage For="@(() => model.WarehouseIds)" class="text-red-600 text-xs mt-1" />
-                        @if (model.WarehouseIds.Any())
-                        {
-                            <p class="text-xs text-gray-500 mt-1.5 flex items-center gap-1">
-                                <i class="bi bi-check2-circle text-green-500"></i>
-                                @model.WarehouseIds.Count @Localizer["StoresSelected"]
-                            </p>
-                        }
-                    </div>
-                }
-
                 @if (IsBranchManagerRoleSelected)
                 {
                     <!-- Card: Branch Assignment (BranchManager only) -->
@@ -242,10 +198,6 @@ else
                     <h2 class="text-sm font-semibold text-gray-900 mb-3">@Localizer["Status"]</h2>
                     <div class="flex flex-wrap items-center gap-6">
                         <ToggleSwitch @bind-Value="model.IsActive" Disabled="@isSystemAdminUser" Label="@Localizer["Active"]" />
-                        @if (IsCashierRoleSelected)
-                        {
-                            <ToggleSwitch @bind-Value="model.CanRefund" Label="@Localizer["CanRefund"]" />
-                        }
                     </div>
                 </div>
 
@@ -277,7 +229,6 @@ else
 
     private UserFormModel model = new();
     private List<RoleResponse> availableRoles = new();
-    private List<WarehouseDto> availableStores = new();
     private List<BranchDto> availableBranches = new();
     private bool isLoading = true;
     private bool isSubmitting = false;
@@ -291,13 +242,8 @@ else
     private bool isSystemAdminUser = false;
     private string? originalEmail;
     private ServerValidator serverValidator = null!;
-    private Guid? cashierRoleId;
     private Guid? branchManagerRoleId;
-    private bool wasOriginallyCashier;
     private bool wasOriginallyBranchManager;
-
-    private bool IsCashierRoleSelected =>
-        model.RoleId.HasValue && cashierRoleId.HasValue && model.RoleId.Value == cashierRoleId.Value;
 
     private bool IsBranchManagerRoleSelected =>
         model.RoleId.HasValue && branchManagerRoleId.HasValue && model.RoleId.Value == branchManagerRoleId.Value;
@@ -305,7 +251,6 @@ else
     protected override async Task OnInitializedAsync()
     {
         await LoadRoles();
-        await LoadStores();
         await LoadBranches();
 
         if (IsEditMode)
@@ -324,8 +269,6 @@ else
         {
             var result = await RoleService.GetAllRolesAsync(1, 100);
             availableRoles = result.Items.ToList();
-            cashierRoleId = availableRoles
-                .FirstOrDefault(r => string.Equals(r.NameEn, Web.Models.Constants.Roles.Cashier, StringComparison.OrdinalIgnoreCase))?.Id;
             branchManagerRoleId = availableRoles
                 .FirstOrDefault(r => string.Equals(r.NameEn, Web.Models.Constants.Roles.BranchManager, StringComparison.OrdinalIgnoreCase))?.Id;
         }
@@ -335,26 +278,12 @@ else
         }
     }
 
-    private async Task LoadStores()
-    {
-        try
-        {
-            var allWarehouses = await WarehouseService.GetActiveWarehousesAsync();
-            availableStores = allWarehouses.Where(w => w.WarehouseTypeCode == "MS").ToList();
-        }
-        catch (Exception ex)
-        {
-            // Stores only matter for cashiers; surface the error only if user picks Cashier role.
-            Console.WriteLine($"Failed to load stores: {ex.Message}");
-        }
-    }
-
     private async Task LoadBranches()
     {
         try
         {
             // Active branches only — there's no UX value in assigning a user
-            // to an inactive branch, and matches CashierForm's filter for stores.
+            // to an inactive branch.
             availableBranches = await BranchService.GetActiveBranchesAsync();
         }
         catch (Exception ex)
@@ -391,26 +320,7 @@ else
                     avatarUrl = MediaService.GetMediaUrl(avatar);
                 }
 
-                // If this user is a cashier, hydrate cashier-specific fields
-                wasOriginallyCashier = cashierRoleId.HasValue && model.RoleId == cashierRoleId.Value;
-                if (wasOriginallyCashier)
-                {
-                    var cashier = await CashierService.GetCashierByIdAsync(id);
-                    if (cashier != null)
-                    {
-                        model.CanRefund = cashier.CanRefund;
-                        model.WarehouseIds = cashier.AssignedWarehouses.Select(w => w.Id).ToList();
-                        if (!model.WarehouseIds.Any() && cashier.WarehouseId.HasValue)
-                        {
-                            model.WarehouseIds.Add(cashier.WarehouseId.Value);
-                        }
-                    }
-                }
-
                 // If this user is a branch manager, hydrate their assigned branches.
-                // We fetch unconditionally on edit so a role change from BranchManager
-                // → something else can still display the previously assigned list
-                // until the user confirms — though we clear in OnRoleChanged.
                 wasOriginallyBranchManager = IsBranchManagerRoleSelected;
                 if (wasOriginallyBranchManager)
                 {
@@ -431,38 +341,12 @@ else
     private void OnRoleChanged(Guid? newRoleId)
     {
         model.RoleId = newRoleId;
-        if (!IsCashierRoleSelected)
-        {
-            // Clear cashier-only fields when leaving the cashier role
-            model.WarehouseIds.Clear();
-        }
         if (!IsBranchManagerRoleSelected)
         {
             // Demoting out of BranchManager: drop the staged branch list so a
             // subsequent save doesn't accidentally re-assign branches the
             // admin no longer wants linked.
             model.BranchIds.Clear();
-        }
-    }
-
-    private void ToggleStore(Guid storeId)
-    {
-        if (model.WarehouseIds.Contains(storeId))
-            model.WarehouseIds.Remove(storeId);
-        else
-            model.WarehouseIds.Add(storeId);
-    }
-
-    private void OnStoreToggled(Guid storeId, bool isChecked)
-    {
-        if (isChecked)
-        {
-            if (!model.WarehouseIds.Contains(storeId))
-                model.WarehouseIds.Add(storeId);
-        }
-        else
-        {
-            model.WarehouseIds.Remove(storeId);
         }
     }
 
@@ -492,10 +376,6 @@ else
         errorMessage = string.Empty;
         var errors = new Dictionary<string, string[]>();
 
-        if (IsCashierRoleSelected && !model.WarehouseIds.Any())
-        {
-            errors.Add(nameof(model.WarehouseIds), new[] { "StoreRequired" });
-        }
         if (IsBranchManagerRoleSelected && !model.BranchIds.Any())
         {
             errors.Add(nameof(model.BranchIds), new[] { "BranchRequired" });
@@ -504,9 +384,7 @@ else
         // Email uniqueness check
         if (!IsEditMode || (IsEditMode && !string.Equals(originalEmail, model.Email, StringComparison.OrdinalIgnoreCase)))
         {
-            var exists = IsCashierRoleSelected
-                ? await CashierService.CheckEmailExistsAsync(model.Email)
-                : await UserService.CheckEmailExistsAsync(model.Email);
+            var exists = await UserService.CheckEmailExistsAsync(model.Email);
             if (exists)
             {
                 string msg = Localizer["UserAlreadyExists"];
@@ -534,77 +412,16 @@ else
             {
                 affectedUserId = UserId!.Value;
 
-                if (IsCashierRoleSelected && wasOriginallyCashier)
+                var updateRequest = new UpdateUserRequest
                 {
-                    // Cashier stays a cashier: route everything through CashierService
-                    var updateCashier = new UpdateCashierRequest
-                    {
-                        FirstName = model.FirstName,
-                        LastName = model.LastName,
-                        Email = model.Email,
-                        PhoneNumber = model.PhoneNumber,
-                        IsActive = model.IsActive,
-                        CanRefund = model.CanRefund,
-                        WarehouseIds = model.WarehouseIds
-                    };
-                    await CashierService.UpdateCashierAsync(affectedUserId, updateCashier);
-                }
-                else if (IsCashierRoleSelected && !wasOriginallyCashier)
-                {
-                    // Promotion to cashier: update profile + assign role, then push cashier-specific data
-                    var updateRequest = new UpdateUserRequest
-                    {
-                        FirstName = model.FirstName,
-                        LastName = model.LastName,
-                        Email = model.Email,
-                        PhoneNumber = model.PhoneNumber,
-                        IsActive = model.IsActive
-                    };
-                    await UserService.UpdateUserAsync(affectedUserId, updateRequest);
-                    await UserService.AssignRolesToUserAsync(affectedUserId, new AssignRolesRequest { RoleId = model.RoleId });
-
-                    var updateCashier = new UpdateCashierRequest
-                    {
-                        FirstName = model.FirstName,
-                        LastName = model.LastName,
-                        Email = model.Email,
-                        PhoneNumber = model.PhoneNumber,
-                        IsActive = model.IsActive,
-                        CanRefund = model.CanRefund,
-                        WarehouseIds = model.WarehouseIds
-                    };
-                    await CashierService.UpdateCashierAsync(affectedUserId, updateCashier);
-                }
-                else
-                {
-                    // Non-cashier target: standard update + role assignment. Backend cleans up cashier
-                    // warehouse rows if this is a demotion from Cashier.
-                    var updateRequest = new UpdateUserRequest
-                    {
-                        FirstName = model.FirstName,
-                        LastName = model.LastName,
-                        Email = model.Email,
-                        PhoneNumber = model.PhoneNumber,
-                        IsActive = model.IsActive
-                    };
-                    await UserService.UpdateUserAsync(affectedUserId, updateRequest);
-                    await UserService.AssignRolesToUserAsync(affectedUserId, new AssignRolesRequest { RoleId = model.RoleId });
-                }
-            }
-            else if (IsCashierRoleSelected)
-            {
-                var createCashier = new CreateCashierRequest
-                {
-                    Email = model.Email,
                     FirstName = model.FirstName,
                     LastName = model.LastName,
+                    Email = model.Email,
                     PhoneNumber = model.PhoneNumber,
-                    IsActive = model.IsActive,
-                    CanRefund = model.CanRefund,
-                    WarehouseIds = model.WarehouseIds
+                    IsActive = model.IsActive
                 };
-                var created = await CashierService.CreateCashierAsync(createCashier);
-                affectedUserId = created?.Id ?? Guid.Empty;
+                await UserService.UpdateUserAsync(affectedUserId, updateRequest);
+                await UserService.AssignRolesToUserAsync(affectedUserId, new AssignRolesRequest { RoleId = model.RoleId });
             }
             else
             {
@@ -627,10 +444,9 @@ else
 
                 // Sync branch assignments only when the role is, or was,
                 // BranchManager — otherwise this is wasted network chatter on
-                // every Admin/Manager/Cashier save. The demotion case (was
-                // BranchManager, now isn't) still fires so previously assigned
-                // rows get cleared, because model.BranchIds was emptied in
-                // OnRoleChanged.
+                // every save. The demotion case (was BranchManager, now isn't)
+                // still fires so previously assigned rows get cleared, because
+                // model.BranchIds was emptied in OnRoleChanged.
                 if (IsBranchManagerRoleSelected || wasOriginallyBranchManager)
                 {
                     await UserService.SetUserBranchesAsync(affectedUserId, model.BranchIds);
@@ -735,8 +551,6 @@ else
         public string? PhoneNumber { get; set; }
         public bool IsActive { get; set; } = true;
         public Guid? RoleId { get; set; }
-        public bool CanRefund { get; set; } = true;
-        public List<Guid> WarehouseIds { get; set; } = new();
         public List<Guid> BranchIds { get; set; } = new();
     }
 }

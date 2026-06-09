@@ -64,20 +64,6 @@
                         <span class="font-medium text-sm">-</span>
                     }
                 </div>
-                @if (!hideCashierInfo)
-                {
-                    <div class="p-3 bg-gray-50 rounded-lg">
-                        <p class="text-xs text-gray-500 uppercase font-medium">@Localizer["Cashier"]</p>
-                        @if (Order.CashierId.HasValue && !string.IsNullOrEmpty(Order.CashierName))
-                        {
-                            <a href="/admin/users/edit/@Order.CashierId" class="font-medium text-sm text-bf-primary hover:underline">@Order.CashierName</a>
-                        }
-                        else
-                        {
-                            <span class="font-medium text-sm">-</span>
-                        }
-                    </div>
-                }
                 <div class="p-3 bg-gray-50 rounded-lg">
                     <p class="text-xs text-gray-500 uppercase font-medium">@Localizer["OrderDate"]</p>
                     <span class="font-medium text-sm">@Order.CreatedAt.ToLocal().ToString("g", cultureInfo)</span>
@@ -238,9 +224,6 @@
     [Parameter] public OrderDto? Order { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
 
-    private bool hideCashierInfo = false;
-    [CascadingParameter] public Task<AuthenticationState> AuthenticationStateTask { get; set; } = null!;
-
     private void Close()
     {
         OnClose.InvokeAsync();
@@ -249,32 +232,6 @@
     private void HandleBackgroundClick()
     {
         Close();
-    }
-
-    protected override async Task OnParametersSetAsync()
-    {
-        // Determine if current user is in role 'Cashier' and hide cashier info in that case
-        try
-        {
-            if (AuthenticationStateTask != null)
-            {
-                var authState = await AuthenticationStateTask;
-                var user = authState.User;
-                if (user?.Identity?.IsAuthenticated == true)
-                {
-                    // Check role claim or IsInRole (works for typical setups)
-                    hideCashierInfo = user.IsInRole("Cashier") || user.HasClaim(c => c.Type == "role" && c.Value == "Cashier");
-                }
-                else
-                {
-                    hideCashierInfo = false;
-                }
-            }
-        }
-        catch
-        {
-            hideCashierInfo = false;
-        }
     }
 
     private string GetStatusClass(OrderStatus status) => status switch

@@ -68,9 +68,6 @@ public class CustomAuthenticationStateProvider : AuthenticationStateProvider
                 }
             }
 
-            // Add can_refund claim
-            claims.Add(new Claim("can_refund", user.CanRefund.ToString().ToLowerInvariant()));
-
             var identity = new ClaimsIdentity(claims, "customAuth");
             var claimsPrincipal = new ClaimsPrincipal(identity);
 

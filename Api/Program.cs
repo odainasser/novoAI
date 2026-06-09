@@ -182,7 +182,6 @@ app.UseAuthorization();
 
 app.MapAuthEndpoints();
 app.MapUserEndpoints();
-app.MapCashierEndpoints();
 app.MapRoleEndpoints();
 app.MapPermissionEndpoints();
 app.MapUserLogEndpoints();
@@ -193,7 +192,6 @@ app.MapProductEndpoints();
 app.MapOrderEndpoints();
 app.MapSupplierEndpoints();
 app.MapPromotionEndpoints();
-app.MapShiftEndpoints();
 app.MapRequestEndpoints();
 app.MapBranchEndpoints();
 app.MapWarehouseEndpoints();
@@ -207,7 +205,6 @@ app.MapInventoryHistoryEndpoints();
 app.MapDashboardEndpoints();
 app.MapUnitEndpoints();
 app.MapNotificationEndpoints();
-app.MapCashierOfflineEndpoints();
 app.MapAssistantEndpoints();
 app.MapAssistantAdminEndpoints();
 

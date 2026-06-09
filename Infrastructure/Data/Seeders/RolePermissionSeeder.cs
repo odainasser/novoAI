@@ -26,8 +26,6 @@ public class RolePermissionSeeder
         // Get roles from Domain entities
         var adminRole = await _context.DomainRoles
             .FirstOrDefaultAsync(r => r.Name == Roles.Administrator);
-        var cashierRole = await _context.DomainRoles
-            .FirstOrDefaultAsync(r => r.Name == Roles.Cashier);
         var branchManagerRole = await _context.DomainRoles
             .FirstOrDefaultAsync(r => r.Name == Roles.BranchManager);
 
@@ -49,25 +47,6 @@ public class RolePermissionSeeder
         {
             adminRole.IsSystemRole = true;
             _context.Entry(adminRole).Property(r => r.IsSystemRole).IsModified = true;
-        }
-
-        if (cashierRole == null)
-        {
-            cashierRole = new Role
-            {
-                Id = Guid.NewGuid(),
-                Name = Roles.Cashier,
-                DescriptionEn = "Point of sale cashier with transaction access",
-                DescriptionAr = "\u0623\u0645\u064a\u0646 \u0627\u0644\u0635\u0646\u062f\u0648\u0642",
-                IsSystemRole = true,
-                CreatedAt = DateTime.UtcNow
-            };
-            _context.DomainRoles.Add(cashierRole);
-        }
-        else if (!cashierRole.IsSystemRole)
-        {
-            cashierRole.IsSystemRole = true;
-            _context.Entry(cashierRole).Property(r => r.IsSystemRole).IsModified = true;
         }
 
         if (branchManagerRole == null)
@@ -97,23 +76,6 @@ public class RolePermissionSeeder
         // Administrator - All permissions
         await AssignPermissionsToRoleAsync(adminRole, allPermissions);
 
-        // Cashier - Read permissions for products and categories (for POS), and order permissions
-        var cashierPermissions = allPermissions
-            .Where(p => p.Code == Permissions.ProductsRead ||
-                        p.Code == Permissions.CategoriesRead ||
-                        p.Code == Permissions.OrdersWrite ||
-                        p.Code == Permissions.OrdersReadOwn ||
-                        p.Code == Permissions.ShiftsWrite ||
-                        p.Code == Permissions.ShiftsReadOwn ||
-                        p.Code == Permissions.RequestsWrite)
-            .ToList();
-
-        _logger.LogInformation("Assigning {Count} permissions to Cashier role: {Permissions}",
-            cashierPermissions.Count,
-            string.Join(", ", cashierPermissions.Select(p => p.Code)));
-
-        await AssignPermissionsToRoleAsync(cashierRole, cashierPermissions);
-
         // BranchManager — read access to every section in the Branch Panel,
         // plus the ability to submit (write) requests. Membership in
         // UserBranches scopes the actual data the user sees; permissions only
@@ -131,8 +93,6 @@ public class RolePermissionSeeder
                         p.Code == Permissions.PurchaseRequestsWrite ||
                         p.Code == Permissions.RequestsRead ||
                         p.Code == Permissions.RequestsWrite ||
-                        p.Code == Permissions.ShiftsRead ||
-                        p.Code == Permissions.CashiersRead ||
                         p.Code == Permissions.WarehousesRead ||
                         p.Code == Permissions.UnitsRead ||
                         p.Code == Permissions.UnitsPrice ||

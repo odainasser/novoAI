@@ -4,7 +4,6 @@ using Web;
 using Web.Services;
 using Web.Authentication;
 using Web.Authorization;
-using Web.Offline;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Blazored.LocalStorage;
@@ -74,16 +73,6 @@ builder.Services.AddAuthorizationCore();
 
 // Add management services
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
-// Offline-aware wrapper around the cashier management service. Without it,
-// StartShiftModal's GetCurrentCashierProfileAsync/SwitchMyStoreAsync calls
-// fail when offline, or 400 when the server still sees a not-yet-replayed
-// active shift.
-builder.Services.AddScoped<CashierManagementService>();
-builder.Services.AddScoped<ICashierManagementService>(sp => new OfflineCashierManagementService(
-    sp.GetRequiredService<CashierManagementService>(),
-    sp.GetRequiredService<IIndexedDbService>(),
-    sp.GetRequiredService<ActiveStoreContext>(),
-    sp.GetRequiredService<OfflineNetworkMonitor>()));
 builder.Services.AddScoped<IRoleManagementService, RoleManagementService>();
 builder.Services.AddScoped<IPermissionManagementService, PermissionManagementService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
@@ -94,29 +83,8 @@ builder.Services.AddScoped<IMediaService, ClientMediaService>();
 builder.Services.AddScoped<ILookupService, ClientLookupService>();
 builder.Services.AddScoped<ICategoryService, ClientCategoryService>();
 
-// The cashier panel needs offline-aware decorators around three core services.
-// Concrete online implementations stay registered so the wrappers can delegate
-// when no local cache exists (or when the active store hasn't been picked).
-builder.Services.AddScoped<ClientProductService>();
-builder.Services.AddScoped<OrderClientService>();
-builder.Services.AddScoped<ShiftService>();
-builder.Services.AddScoped<IProductService>(sp => new OfflineProductService(
-    sp.GetRequiredService<ClientProductService>(),
-    sp.GetRequiredService<IIndexedDbService>(),
-    sp.GetRequiredService<ActiveStoreContext>(),
-    sp.GetRequiredService<OfflineNetworkMonitor>()));
-builder.Services.AddScoped<IOrderService>(sp => new OfflineOrderService(
-    sp.GetRequiredService<OrderClientService>(),
-    sp.GetRequiredService<IIndexedDbService>(),
-    sp.GetRequiredService<ActiveStoreContext>(),
-    sp.GetRequiredService<OfflineNetworkMonitor>(),
-    sp.GetRequiredService<IOfflineSyncService>()));
-builder.Services.AddScoped<IShiftService>(sp => new OfflineShiftService(
-    sp.GetRequiredService<ShiftService>(),
-    sp.GetRequiredService<IIndexedDbService>(),
-    sp.GetRequiredService<ActiveStoreContext>(),
-    sp.GetRequiredService<OfflineNetworkMonitor>(),
-    sp.GetRequiredService<IOfflineSyncService>()));
+builder.Services.AddScoped<IProductService, ClientProductService>();
+builder.Services.AddScoped<IOrderService, OrderClientService>();
 
 builder.Services.AddScoped<ISupplierService, ClientSupplierService>();
 builder.Services.AddScoped<IAssistantAdminService, ClientAssistantAdminService>();
@@ -129,14 +97,7 @@ builder.Services.AddScoped<IBranchService, ClientBranchService>();
 // branch selector. Branch pages call the same client services as Admin
 // (IOrderService, IGoodsReceivingClientService, …) with a branchId arg.
 builder.Services.AddScoped<ActiveBranchContext>();
-// Cashier-facing wrapper reads from the cached `stores` object store when the
-// inner service would 403 (cashier lacks warehouses.read). Admin requests with
-// an empty cache fall through to the inner service unchanged.
-builder.Services.AddScoped<ClientWarehouseService>();
-builder.Services.AddScoped<IWarehouseService>(sp => new OfflineWarehouseService(
-    sp.GetRequiredService<ClientWarehouseService>(),
-    sp.GetRequiredService<IIndexedDbService>(),
-    sp.GetRequiredService<OfflineNetworkMonitor>()));
+builder.Services.AddScoped<IWarehouseService, ClientWarehouseService>();
 builder.Services.AddScoped<ITerminalService, ClientTerminalService>();
 builder.Services.AddScoped<IGoodsReceivingClientService, ClientGoodsReceivingService>();
 builder.Services.AddScoped<IStockAdjustmentClientService, ClientStockAdjustmentService>();
@@ -148,17 +109,6 @@ builder.Services.AddScoped<IDashboardClientService, ClientDashboardService>();
 builder.Services.AddScoped<IAssistantClientService, ClientAssistantService>();
 builder.Services.AddScoped<IUnitService, ClientUnitService>();
 builder.Services.AddScoped<INotificationClientService, NotificationClientService>();
-
-// Cashier offline layer: IndexedDB, image cache, sync, and the active-store
-// context. In Blazor WASM, Scoped == Singleton lifetime-wise (one app per
-// tab) — Scoped is required here because ActiveStoreContext depends on the
-// scoped ILocalStorageService for persisting the cashier's switched store
-// across hard reloads.
-builder.Services.AddScoped<ActiveStoreContext>();
-builder.Services.AddScoped<IIndexedDbService, IndexedDbService>();
-builder.Services.AddScoped<IImageCacheService, ImageCacheService>();
-builder.Services.AddScoped<IOfflineSyncService, OfflineSyncService>();
-builder.Services.AddScoped<OfflineNetworkMonitor>();
 
 // Register other services
 // Note: We do NOT call AddApplication() or AddInfrastructure() as they are server-side.

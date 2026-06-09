@@ -16,29 +16,17 @@ public interface IOrderService
         DateTime? fromDate = null,
         DateTime? toDate = null,
         Guid? warehouseId = null,
-        Guid? cashierId = null,
         IEnumerable<Guid>? warehouseIds = null);
-    
-    Task<PaginatedList<OrderDto>> GetOrdersByCashierAsync(
-        Guid cashierId,
-        int pageNumber,
-        int pageSize,
-        string? search = null,
-        OrderStatus? status = null,
-        PaymentMethod? paymentMethod = null,
-        DateTime? fromDate = null,
-        DateTime? toDate = null,
-        Guid? warehouseId = null);
 
     Task<OrderDto?> GetOrderByIdAsync(Guid id);
     Task<OrderDto?> GetOrderByNumberAsync(string orderNumber);
-    Task<OrderDto> CreateOrderAsync(CreateOrderRequest request, Guid? cashierId = null, string? cashierName = null);
+    Task<OrderDto> CreateOrderAsync(CreateOrderRequest request, string? createdByName = null);
     Task<OrderDto> UpdateOrderStatusAsync(Guid id, UpdateOrderStatusRequest request);
     Task<bool> CancelOrderAsync(Guid id, string? reason);
     Task<bool> PartialRefundAsync(Guid id, List<PartialRefundItem> items, DateTime? clientCreatedAt = null);
-    
+
     Task<string> GenerateOrderNumberAsync();
-    Task<OrderStatisticsDto> GetOrderStatisticsAsync(Guid? cashierId = null, DateTime? fromDate = null, DateTime? toDate = null);
+    Task<OrderStatisticsDto> GetOrderStatisticsAsync(DateTime? fromDate = null, DateTime? toDate = null);
 
     Task<byte[]> ExportOrdersToExcelAsync(
         string? search = null,
@@ -48,7 +36,6 @@ public interface IOrderService
         DateTime? fromDate = null,
         DateTime? toDate = null,
         Guid? warehouseId = null,
-        Guid? cashierId = null,
         bool isArabic = false,
         IEnumerable<Guid>? warehouseIds = null);
 }

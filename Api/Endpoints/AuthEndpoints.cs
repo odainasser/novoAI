@@ -191,27 +191,16 @@ public static class AuthEndpoints
         .Produces(StatusCodes.Status401Unauthorized)
         .ProducesValidationProblem();
 
-        // Logout - requires authentication. Blocks cashiers with an active shift.
+        // Logout - requires authentication.
         group.MapPost("/logout", async (
             [FromBody] RefreshTokenRequest? request,
             HttpContext httpContext,
-            [FromServices] IShiftService shiftService,
             [FromServices] IAuthService authService) =>
         {
             var sub = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(sub) || !Guid.TryParse(sub, out var userId))
             {
                 return Results.Unauthorized();
-            }
-
-            if (httpContext.User.IsInRole(Domain.Constants.Roles.Cashier)
-                && await shiftService.HasActiveShiftAsync(userId))
-            {
-                return Results.BadRequest(new AuthResponse
-                {
-                    Success = false,
-                    Message = "ActiveShiftBlocksLogout"
-                });
             }
 
             if (!string.IsNullOrWhiteSpace(request?.RefreshToken))
@@ -225,7 +214,7 @@ public static class AuthEndpoints
         })
         .RequireAuthorization()
         .WithName("Logout")
-        .WithSummary("Logout - blocked for cashiers with an active shift")
+        .WithSummary("Logout")
         .Produces<AuthResponse>(StatusCodes.Status200OK)
         .Produces<AuthResponse>(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized);

@@ -19,27 +19,7 @@ public interface IOrderService
         Guid? warehouseId = null,
         Guid? cashierId = null,
         Guid? branchId = null);
-    
-    Task<PaginatedList<OrderDto>> GetOrdersByCashierAsync(
-        Guid cashierId,
-        int pageNumber, 
-        int pageSize, 
-        string? search = null, 
-        OrderStatus? status = null,
-        PaymentMethod? paymentMethod = null,
-        DateTime? fromDate = null,
-        DateTime? toDate = null);
 
-    Task<PaginatedList<OrderDto>> GetMyOrdersAsync(
-        int pageNumber,
-        int pageSize,
-        string? search = null,
-        OrderStatus? status = null,
-        PaymentMethod? paymentMethod = null,
-        DateTime? fromDate = null,
-        DateTime? toDate = null,
-        Guid? warehouseId = null);
-    
     Task<OrderDto?> GetOrderByIdAsync(Guid id);
     Task<OrderDto?> GetOrderByNumberAsync(string orderNumber);
     Task<OrderDto> CreateOrderAsync(CreateOrderRequest request);
@@ -49,7 +29,6 @@ public interface IOrderService
     Task<OrderDto?> PartialRefundAsync(Guid id, decimal amount);
     
     Task<OrderStatisticsDto> GetOrderStatisticsAsync(DateTime? fromDate = null, DateTime? toDate = null);
-    Task<OrderStatisticsDto> GetMyStatisticsAsync(DateTime? fromDate = null, DateTime? toDate = null);
 
     Task<byte[]> ExportOrdersToExcelAsync(
         string? search = null,

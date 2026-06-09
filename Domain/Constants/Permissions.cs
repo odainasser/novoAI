@@ -37,20 +37,9 @@ public static class Permissions
     public const string PromotionsWrite = "promotions.write";
     public const string PromotionsDelete = "promotions.delete";
 
-    // Shift Permissions
-    public const string ShiftsRead = "shifts.read";
-    public const string ShiftsWrite = "shifts.write";
-    public const string ShiftsDelete = "shifts.delete";
-    public const string ShiftsReadOwn = "shifts.read.own";
-
     // Request Permissions
     public const string RequestsRead = "requests.read";
     public const string RequestsWrite = "requests.write";
-
-    // Cashier Permissions
-    public const string CashiersRead = "cashiers.read";
-    public const string CashiersWrite = "cashiers.write";
-    public const string CashiersDelete = "cashiers.delete";
 
     // Branch Permissions
     public const string BranchesRead = "branches.read";
@@ -101,10 +90,8 @@ public static class Permissions
         ProductsRead, ProductsWrite, ProductsDelete,
         OrdersRead, OrdersWrite, OrdersDelete, OrdersReadOwn,
         SuppliersRead, SuppliersWrite, SuppliersDelete,
-        PromotionsRead, PromotionsWrite, PromotionsDelete
-        , ShiftsRead, ShiftsWrite, ShiftsDelete, ShiftsReadOwn,
+        PromotionsRead, PromotionsWrite, PromotionsDelete,
         RequestsRead, RequestsWrite,
-        CashiersRead, CashiersWrite, CashiersDelete,
         BranchesRead, BranchesWrite, BranchesDelete,
         WarehousesRead, WarehousesWrite, WarehousesDelete,
         TerminalsRead, TerminalsWrite, TerminalsDelete,

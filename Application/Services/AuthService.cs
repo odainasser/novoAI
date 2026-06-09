@@ -17,7 +17,6 @@ public class AuthService : IAuthService
     private readonly IAppConfiguration _configuration;
     private readonly ILogger<AuthService> _logger;
     private readonly IUserLogService _userLogService;
-    private readonly IWarehouseService _warehouseService;
     private readonly IRefreshTokenStore _refreshTokenStore;
 
     public AuthService(
@@ -27,7 +26,6 @@ public class AuthService : IAuthService
         IAppConfiguration configuration,
         ILogger<AuthService> logger,
         IUserLogService userLogService,
-        IWarehouseService warehouseService,
         IRefreshTokenStore refreshTokenStore)
     {
         _identityService = identityService;
@@ -36,7 +34,6 @@ public class AuthService : IAuthService
         _configuration = configuration;
         _logger = logger;
         _userLogService = userLogService;
-        _warehouseService = warehouseService;
         _refreshTokenStore = refreshTokenStore;
     }
 
@@ -74,9 +71,6 @@ public class AuthService : IAuthService
             };
         }
 
-        // Assign Cashier role by default for public registration because Client is removed
-        await _identityService.AddToRoleAsync(createdUser!.Id, Roles.Cashier);
-
         var roles = await _identityService.GetUserRolesAsync(createdUser!.Id);
         var permissions = await _identityService.GetUserPermissionsAsync(createdUser.Id);
         var createdUserDisplay = GetDisplayName(createdUser);
@@ -108,8 +102,6 @@ public class AuthService : IAuthService
                 LastName = createdUser.LastName,
                 DisplayName = createdUserDisplay,
                 IsActive = createdUser.IsActive,
-                WarehouseId = createdUser.WarehouseId,
-                CanRefund = createdUser.CanRefund,
                 Roles = roles.ToList(),
                 Permissions = permissions.ToList()
             }
@@ -137,21 +129,6 @@ public class AuthService : IAuthService
         var roles = await _identityService.GetUserRolesAsync(user.Id);
         var permissions = await _identityService.GetUserPermissionsAsync(user.Id);
 
-        // If user is a Cashier, check if their assigned warehouse (store) is active
-        if (roles.Contains(Roles.Cashier) && user.WarehouseId.HasValue)
-        {
-            var warehouse = await _warehouseService.GetWarehouseByIdAsync(user.WarehouseId.Value);
-            if (warehouse == null || !warehouse.IsActive)
-            {
-                _logger.LogWarning("Cashier login blocked - warehouse {WarehouseId} is deactivated for user {UserId}", user.WarehouseId, user.Id);
-                return new AuthResponse
-                {
-                    Success = false,
-                    Message = "StoreDeactivatedLoginError"
-                };
-            }
-        }
-
         var userDisplay = GetDisplayName(user);
         var token = _tokenService.GenerateJwtToken(user.Id, user.Email, userDisplay, roles, permissions);
         var refreshToken = await IssueRefreshTokenAsync(user.Id, clientIp);
@@ -173,8 +150,6 @@ public class AuthService : IAuthService
                 LastName = user.LastName,
                 DisplayName = userDisplay,
                 IsActive = user.IsActive,
-                WarehouseId = user.WarehouseId,
-                CanRefund = user.CanRefund,
                 Roles = roles.ToList(),
                 Permissions = permissions.ToList()
             }
@@ -256,8 +231,6 @@ public class AuthService : IAuthService
                 LastName = user.LastName,
                 DisplayName = display,
                 IsActive = user.IsActive,
-                WarehouseId = user.WarehouseId,
-                CanRefund = user.CanRefund,
                 Roles = roles.ToList(),
                 Permissions = permissions.ToList()
             }

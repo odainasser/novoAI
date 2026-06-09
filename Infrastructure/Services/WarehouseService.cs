@@ -197,12 +197,6 @@ public class WarehouseService : IWarehouseService
         var warehouse = await _context.Warehouses.FirstOrDefaultAsync(w => w.Id == id)
             ?? throw new KeyNotFoundException($"Warehouse with ID {id} not found.");
 
-        if (await _context.Users.AnyAsync(u => u.WarehouseId == id))
-            throw new InvalidOperationException("Cannot delete warehouse: it is set as the active store for one or more cashiers.");
-
-        if (await _context.CashierWarehouses.AnyAsync(cw => cw.WarehouseId == id))
-            throw new InvalidOperationException("Cannot delete warehouse: it is assigned to one or more cashiers.");
-
         if (await _context.StockBalances.AnyAsync(sb => sb.WarehouseId == id &&
                 (sb.AvailableQuantity != 0 || sb.ReservedQuantity != 0 || sb.InTransitQuantity != 0)))
             throw new InvalidOperationException("Cannot delete warehouse: it has stock balances.");
@@ -215,9 +209,6 @@ public class WarehouseService : IWarehouseService
 
         if (await _context.StockTransfers.AnyAsync(t => t.FromWarehouseId == id || t.ToWarehouseId == id))
             throw new InvalidOperationException("Cannot delete warehouse: it is linked to stock transfers.");
-
-        if (await _context.Shifts.AnyAsync(s => s.WarehouseId == id))
-            throw new InvalidOperationException("Cannot delete warehouse: it is linked to shifts.");
 
         if (await _context.Orders.AnyAsync(o => o.WarehouseId == id))
             throw new InvalidOperationException("Cannot delete warehouse: it is linked to orders.");

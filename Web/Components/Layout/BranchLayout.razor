@@ -170,7 +170,7 @@
                             @{
                                 var permissions = auth.User.FindAll("permission");
                                 var hasSalesPermissions = permissions.Any(p =>
-                                    p.Value == "orders.read" || p.Value == "shifts.read" || p.Value == "cashiers.read");
+                                    p.Value == "orders.read");
                                 var hasMerchandisePermissions = permissions.Any(p =>
                                     p.Value == "inventory.read" || p.Value == "requests.read");
                             }
@@ -200,33 +200,6 @@
                                     </Authorized>
                                 </AuthorizeView>
 
-                                <AuthorizeView Policy="Permission:shifts.read" Context="shiftsAuth">
-                                    <Authorized Context="shiftsAuth">
-                                        <NavLink href="/branch/shifts"
-                                                 @onclick="CloseSidebar"
-                                                 class="sidebar-link group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium relative overflow-hidden"
-                                                 ActiveClass="sidebar-link-active">
-                                            <span class="sidebar-link-indicator"></span>
-                                            <span class="sidebar-link-icon"><i class="bi bi-stopwatch"></i></span>
-                                            <span class="sidebar-text">@Localizer["Shifts"]</span>
-                                            <span class="sidebar-tooltip">@Localizer["Shifts"]</span>
-                                        </NavLink>
-                                    </Authorized>
-                                </AuthorizeView>
-
-                                <AuthorizeView Policy="Permission:cashiers.read" Context="cashiersAuth">
-                                    <Authorized Context="cashiersAuth">
-                                        <NavLink href="/branch/cashiers"
-                                                 @onclick="CloseSidebar"
-                                                 class="sidebar-link group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium relative overflow-hidden"
-                                                 ActiveClass="sidebar-link-active">
-                                            <span class="sidebar-link-indicator"></span>
-                                            <span class="sidebar-link-icon"><i class="bi bi-person-badge"></i></span>
-                                            <span class="sidebar-text">@Localizer["Cashiers"]</span>
-                                            <span class="sidebar-tooltip">@Localizer["Cashiers"]</span>
-                                        </NavLink>
-                                    </Authorized>
-                                </AuthorizeView>
                             }
 
                             @* === MERCHANDISE === *@

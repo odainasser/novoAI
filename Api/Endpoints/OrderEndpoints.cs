@@ -28,7 +28,6 @@ public static class OrderEndpoints
             [FromQuery] DateTime? fromDate,
             [FromQuery] DateTime? toDate,
             [FromQuery] Guid? warehouseId,
-            [FromQuery] Guid? cashierId,
             [FromQuery] Guid? branchId,
             HttpContext httpContext,
             [FromServices] IOrderService orderService,
@@ -46,7 +45,7 @@ public static class OrderEndpoints
             var orders = await orderService.GetAllOrdersAsync(
                 pageNumber ?? 1, pageSize ?? 10,
                 search, status, channel, paymentMethod,
-                fromDate, toDate, warehouseId, cashierId,
+                fromDate, toDate, warehouseId,
                 warehouseIds: warehouseIds);
             return Results.Ok(orders);
         })
@@ -67,7 +66,6 @@ public static class OrderEndpoints
             [FromQuery] DateTime? fromDate,
             [FromQuery] DateTime? toDate,
             [FromQuery] Guid? warehouseId,
-            [FromQuery] Guid? cashierId,
             [FromQuery] Guid? branchId,
             [FromQuery] bool? ar,
             HttpContext httpContext,
@@ -84,7 +82,7 @@ public static class OrderEndpoints
             }
 
             var bytes = await orderService.ExportOrdersToExcelAsync(
-                search, status, channel, paymentMethod, fromDate, toDate, warehouseId, cashierId,
+                search, status, channel, paymentMethod, fromDate, toDate, warehouseId,
                 isArabic: ar == true,
                 warehouseIds: warehouseIds);
             var fileName = $"orders-{DateTime.UtcNow:yyyyMMdd-HHmm}.xlsx";
@@ -94,46 +92,6 @@ public static class OrderEndpoints
         .WithSummary("Export orders to xlsx with the same filters as the list endpoint")
         .RequireAuthorization()
         .WithMetadata(new RequirePermissionAttribute(Permissions.OrdersRead));
-
-        // Get my orders (Cashier own orders)
-        group.MapGet("/my-orders", async (
-            [FromQuery] int? pageNumber,
-            [FromQuery] int? pageSize,
-            [FromQuery] string? search,
-            [FromQuery] OrderStatus? status,
-            [FromQuery] PaymentMethod? paymentMethod,
-            [FromQuery] DateTime? fromDate,
-            [FromQuery] DateTime? toDate,
-            [FromQuery] Guid? warehouseId,
-            [FromServices] IOrderService orderService,
-            HttpContext httpContext,
-            CancellationToken cancellationToken) =>
-        {
-            var userIdClaim = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-            {
-                return Results.Unauthorized();
-            }
-
-            var orders = await orderService.GetOrdersByCashierAsync(
-                userId,
-                pageNumber ?? 1,
-                pageSize ?? 10,
-                search,
-                status,
-                paymentMethod,
-                fromDate,
-                toDate,
-                warehouseId);
-            return Results.Ok(orders);
-        })
-        .WithName("GetMyOrders")
-        .WithSummary("Get current user's orders - Requires orders.read.own permission")
-        .Produces<PaginatedList<OrderDto>>(StatusCodes.Status200OK)
-        .Produces(StatusCodes.Status401Unauthorized)
-        .Produces(StatusCodes.Status403Forbidden)
-        .RequireAuthorization()
-        .WithMetadata(new RequirePermissionAttribute(Permissions.OrdersReadOwn));
 
         // Get order by ID
         group.MapGet("/{id:guid}", async (
@@ -148,22 +106,16 @@ public static class OrderEndpoints
                 return Results.NotFound();
             }
 
-            // Check if user has full access or is the cashier who created the order
-            var userIdClaim = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var hasFullAccess = httpContext.User.HasClaim("permission", Permissions.OrdersRead);
-            
-            if (!hasFullAccess && userIdClaim != null && Guid.TryParse(userIdClaim, out var userId))
+            var hasReadAccess = httpContext.User.HasClaim("permission", Permissions.OrdersRead);
+            if (!hasReadAccess)
             {
-                if (order.CashierId != userId)
-                {
-                    return Results.Forbid();
-                }
+                return Results.Forbid();
             }
 
             return Results.Ok(order);
         })
         .WithName("GetOrderById")
-        .WithSummary("Get order by ID")
+        .WithSummary("Get order by ID - Requires orders.read permission")
         .Produces<OrderDto>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status403Forbidden)
@@ -174,37 +126,16 @@ public static class OrderEndpoints
             Guid id,
             [FromBody] PartialRefundRequest? request,
             [FromServices] IOrderService orderService,
-            [FromServices] IShiftService shiftService,
-            [FromServices] ICashierService cashierService,
             HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
-            var userIdClaim = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId)) return Results.Unauthorized();
-
-            // load order to check ownership
+            // load order
             var order = await orderService.GetOrderByIdAsync(id);
             if (order == null) return Results.NotFound();
 
-            // Allow if caller has orders.write permission OR is the cashier who created the order
-            var hasWritePermission = httpContext.User.HasClaim("permission", Permissions.OrdersWrite);
-            if (!hasWritePermission)
+            if (!httpContext.User.HasClaim("permission", Permissions.OrdersWrite))
             {
-                if (!order.CashierId.HasValue || order.CashierId.Value != userId)
-                {
-                    return Results.Forbid();
-                }
-
-                // Check if cashier is allowed to refund
-                var cashier = await cashierService.GetCashierByIdAsync(userId, cancellationToken);
-                if (cashier != null && !cashier.CanRefund)
-                {
-                    return Results.Forbid();
-                }
-
-                // Ensure cashier has an active shift
-                var hasShift = await shiftService.HasActiveShiftAsync(userId);
-                if (!hasShift) return Results.BadRequest(new { error = "Shift not started" });
+                return Results.Forbid();
             }
 
             if (request == null) return Results.BadRequest(new { error = "Invalid request" });
@@ -253,7 +184,7 @@ public static class OrderEndpoints
             return Results.Ok(updatedOrder2);
         })
         .WithName("PartialRefund")
-        .WithSummary("Partially refund an order - allowed for admins or the cashier who created the order")
+        .WithSummary("Partially refund an order - Requires orders.write permission")
         .Produces(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status404NotFound)
@@ -282,17 +213,10 @@ public static class OrderEndpoints
             HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
-            var userIdClaim = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var userNameClaim = httpContext.User.FindFirst(ClaimTypes.Name)?.Value 
+            var userNameClaim = httpContext.User.FindFirst(ClaimTypes.Name)?.Value
                 ?? httpContext.User.FindFirst(ClaimTypes.Email)?.Value;
 
-            Guid? cashierId = null;
-            if (!string.IsNullOrEmpty(userIdClaim) && Guid.TryParse(userIdClaim, out var userId))
-            {
-                cashierId = userId;
-            }
-
-            var order = await orderService.CreateOrderAsync(request, cashierId, userNameClaim);
+            var order = await orderService.CreateOrderAsync(request, userNameClaim);
             return Results.Created($"/api/orders/{order.Id}", order);
         })
         .WithName("CreateOrder")
@@ -334,36 +258,15 @@ public static class OrderEndpoints
             Guid id,
             [FromBody] RefundOrderRequest? request,
             [FromServices] IOrderService orderService,
-            [FromServices] IShiftService shiftService,
-            [FromServices] ICashierService cashierService,
             HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
-            var userIdClaim = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId)) return Results.Unauthorized();
-
-            // load order to check ownership
             var order = await orderService.GetOrderByIdAsync(id);
             if (order == null) return Results.NotFound();
 
-            // Allow if caller has orders.write permission OR is the cashier who created the order
-            var hasWritePermission = httpContext.User.HasClaim("permission", Permissions.OrdersWrite);
-            if (!hasWritePermission)
+            if (!httpContext.User.HasClaim("permission", Permissions.OrdersWrite))
             {
-                if (!order.CashierId.HasValue || order.CashierId.Value != userId)
-                {
-                    return Results.Forbid();
-                }
-
-                // Check if cashier is allowed to refund
-                var cashier = await cashierService.GetCashierByIdAsync(userId, cancellationToken);
-                if (cashier != null && !cashier.CanRefund)
-                {
-                    return Results.Forbid();
-                }
-
-                var hasShift = await shiftService.HasActiveShiftAsync(userId);
-                if (!hasShift) return Results.BadRequest(new { error = "Shift not started" });
+                return Results.Forbid();
             }
 
             var result = await orderService.CancelOrderAsync(id, request?.Reason);
@@ -373,7 +276,7 @@ public static class OrderEndpoints
             return Results.Ok(updated);
         })
         .WithName("RefundOrder")
-        .WithSummary("Refund an order - allowed for admins or the cashier who created the order")
+        .WithSummary("Refund an order - Requires orders.write permission")
         .Produces(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status403Forbidden)
@@ -386,7 +289,7 @@ public static class OrderEndpoints
             [FromServices] IOrderService orderService,
             CancellationToken cancellationToken) =>
         {
-            var stats = await orderService.GetOrderStatisticsAsync(null, fromDate, toDate);
+            var stats = await orderService.GetOrderStatisticsAsync(fromDate, toDate);
             return Results.Ok(stats);
         })
         .WithName("GetOrderStatistics")
@@ -395,31 +298,6 @@ public static class OrderEndpoints
         .Produces(StatusCodes.Status403Forbidden)
         .RequireAuthorization()
         .WithMetadata(new RequirePermissionAttribute(Permissions.OrdersRead));
-
-        // Get my statistics (Cashier own stats)
-        group.MapGet("/my-statistics", async (
-            [FromQuery] DateTime? fromDate,
-            [FromQuery] DateTime? toDate,
-            [FromServices] IOrderService orderService,
-            HttpContext httpContext,
-            CancellationToken cancellationToken) =>
-        {
-            var userIdClaim = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-            {
-                return Results.Unauthorized();
-            }
-
-            var stats = await orderService.GetOrderStatisticsAsync(userId, fromDate, toDate);
-            return Results.Ok(stats);
-        })
-        .WithName("GetMyOrderStatistics")
-        .WithSummary("Get current user's order statistics - Requires orders.read.own permission")
-        .Produces<OrderStatisticsDto>(StatusCodes.Status200OK)
-        .Produces(StatusCodes.Status401Unauthorized)
-        .Produces(StatusCodes.Status403Forbidden)
-        .RequireAuthorization()
-        .WithMetadata(new RequirePermissionAttribute(Permissions.OrdersReadOwn));
     }
 }
 
@@ -437,8 +315,7 @@ public class PartialRefundRequest
 {
     public decimal Amount { get; set; }
     public List<PartialRefundItemRequest>? Items { get; set; }
-    // UTC time the refund was performed on the client. Used by offline-replayed
-    // refunds so the server records the actual refund time, not the sync time.
+    // UTC time the refund was performed on the client.
     public DateTime? ClientCreatedAt { get; set; }
 }
 

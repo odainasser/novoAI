@@ -25,8 +25,7 @@ public class RoleSeeder
         var roles = new List<(string Name, string NameAr, string DescriptionEn, string DescriptionAr)>
         {
             (Roles.Administrator, "\u0645\u0633\u0624\u0648\u0644 \u0627\u0644\u0646\u0638\u0627\u0645", "Full system access with all permissions", "\u0635\u0644\u0627\u062d\u064a\u0627\u062a \u0643\u0627\u0645\u0644\u0629 \u0644\u0644\u0646\u0638\u0627\u0645"),
-            (Roles.Cashier, "\u0623\u0645\u064a\u0646 \u0627\u0644\u0635\u0646\u062f\u0648\u0642", "Point of sale cashier with transaction access", "\u0623\u0645\u064a\u0646 \u0627\u0644\u0635\u0646\u062f\u0648\u0642 \u0645\u0639 \u0648\u0635\u0648\u0644 \u0644\u0644\u0645\u0639\u0627\u0645\u0644\u0627\u062a"),
-            (Roles.BranchManager, "\u0645\u062f\u064a\u0631 \u0641\u0631\u0639", "Branch-scoped access to orders, inventory, requests, and shifts", "\u0648\u0635\u0648\u0644 \u0645\u062d\u062f\u0648\u062f \u0628\u0627\u0644\u0641\u0631\u0639 \u0644\u0644\u0637\u0644\u0628\u0627\u062a \u0648\u0627\u0644\u0645\u062e\u0632\u0648\u0646 \u0648\u0627\u0644\u0637\u0644\u0628\u0627\u062a \u0648\u0627\u0644\u0648\u0631\u062f\u064a\u0627\u062a")
+            (Roles.BranchManager, "\u0645\u062f\u064a\u0631 \u0641\u0631\u0639", "Branch-scoped access to orders, inventory, and requests", "\u0648\u0635\u0648\u0644 \u0645\u062d\u062f\u0648\u062f \u0628\u0627\u0644\u0641\u0631\u0639 \u0644\u0644\u0637\u0644\u0628\u0627\u062a \u0648\u0627\u0644\u0645\u062e\u0632\u0648\u0646")
         };
 
         foreach (var (name, nameAr, descriptionEn, descriptionAr) in roles)

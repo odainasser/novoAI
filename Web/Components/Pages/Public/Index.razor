@@ -212,11 +212,7 @@
             return;
         }
 
-        if (user.IsInRole(Roles.Cashier))
-        {
-            Navigation.NavigateTo("/cashier", forceLoad: true);
-        }
-        else if (user.IsInRole(Roles.BranchManager))
+        if (user.IsInRole(Roles.BranchManager))
         {
             Navigation.NavigateTo("/branch", forceLoad: true);
         }
@@ -241,11 +237,6 @@
 
                 if (response.User?.Roles != null)
                 {
-                    if (response.User.Roles.Contains(Roles.Cashier))
-                    {
-                        Navigation.NavigateTo("/cashier", forceLoad: true);
-                        return;
-                    }
                     if (response.User.Roles.Contains(Roles.BranchManager))
                     {
                         Navigation.NavigateTo("/branch", forceLoad: true);

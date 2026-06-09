@@ -11,12 +11,6 @@ public class ApplicationUser : IdentityUser<Guid>
     // Mark certain seeded users as system users so they cannot be deleted/modified by normal UI
     public bool IsSystemUser { get; set; } = false;
 
-    // Warehouse/Store assignment (required for Cashier role users)
-    public Guid? WarehouseId { get; set; }
-
-    // Whether this cashier is allowed to perform refunds
-    public bool CanRefund { get; set; } = true;
-
     // Audit fields
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }

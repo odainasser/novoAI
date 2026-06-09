@@ -150,7 +150,6 @@ public static class DependencyInjection
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<IUserService, UserService>();
-        services.AddScoped<ICashierService, CashierService>();
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<ILookupService, LookupService>();
@@ -161,7 +160,6 @@ public static class DependencyInjection
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<ISupplierService, SupplierService>();
         services.AddScoped<IPromotionService, PromotionService>();
-        services.AddScoped<IShiftService, ShiftService>();
         services.AddScoped<IRequestService, RequestService>();
         services.AddScoped<IBranchService, BranchService>();
         services.AddScoped<IWarehouseService, WarehouseService>();
@@ -175,7 +173,6 @@ public static class DependencyInjection
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IUnitService, UnitService>();
         services.AddScoped<INotificationService, NotificationService>();
-        services.AddScoped<ICashierOfflineService, CashierOfflineService>();
 
         // Register infrastructure CurrentUserService (uses IHttpContextAccessor only)
         services.AddScoped<Application.Common.Interfaces.ICurrentUserService, CurrentUserService>();

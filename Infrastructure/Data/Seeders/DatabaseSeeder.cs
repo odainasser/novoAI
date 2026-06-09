@@ -68,9 +68,6 @@ public class DatabaseSeeder
             var warehouseSeeder = new WarehouseSeeder(context, warehouseSeederLogger);
             await warehouseSeeder.SeedAsync();
 
-            // 7.5 Assign stores to the seeded cashier (must run after warehouses)
-            await userSeeder.AssignCashierStoresAsync();
-
             // 7.6 Assign every active branch to the seeded BranchManager user
             // via UserBranches. Branches are already seeded in step 2.
             await userSeeder.AssignBranchManagerBranchesAsync();

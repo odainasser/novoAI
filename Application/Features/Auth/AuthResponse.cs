@@ -25,8 +25,6 @@ public class UserDto
     public bool LockoutEnabled { get; set; }
     public DateTime? LockoutEnd { get; set; }
     public int AccessFailedCount { get; set; }
-    public Guid? WarehouseId { get; set; }
-    public bool CanRefund { get; set; } = true;
     public List<string> Roles { get; set; } = new();
     public List<string> Permissions { get; set; } = new();
 }

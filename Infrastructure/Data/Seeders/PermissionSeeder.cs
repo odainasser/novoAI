@@ -61,18 +61,9 @@ public class PermissionSeeder
             (Permissions.PromotionsWrite, "Write Promotions", "إدارة العروض", "Create and update promotions", "إنشاء وتحديث العروض", "Promotions"),
             (Permissions.PromotionsDelete, "Delete Promotions", "حذف العروض", "Delete promotions", "حذف العروض", "Promotions")
             ,
-            // Shift Permissions
-            (Permissions.ShiftsRead, "Read Shifts", "عرض الشيفتات", "View all shifts in the system", "عرض جميع الشيفتات في النظام", "Shifts"),
-            (Permissions.ShiftsWrite, "Manage Shifts", "إدارة الشيفتات", "Create and manage shifts (start/end)", "إنشاء وإدارة الشيفتات (ابدأ/انهِ)", "Shifts"),
-            (Permissions.ShiftsDelete, "Delete Shifts", "حذف الشيفتات", "Delete shifts", "حذف الشيفتات", "Shifts"),
-            (Permissions.ShiftsReadOwn, "Read Own Shifts", "عرض شيفتاتي", "View own shifts only", "عرض شيفتاتي فقط", "Shifts"),
             // Request Permissions
             (Permissions.RequestsRead, "Read Requests", "عرض الطلبات", "View all requests in the system", "عرض جميع الطلبات في النظام", "Requests"),
             (Permissions.RequestsWrite, "Manage Requests", "إدارة الطلبات", "Create and review requests", "إنشاء ومراجعة الطلبات", "Requests"),
-            // Cashier Permissions
-            (Permissions.CashiersRead, "Read Cashiers", "عرض الكاشير", "View cashier information and list cashiers", "عرض بيانات وقائمة الكاشير", "Cashiers"),
-            (Permissions.CashiersWrite, "Write Cashiers", "إدارة الكاشير", "Create and update cashiers", "إنشاء وتحديث الكاشير", "Cashiers"),
-            (Permissions.CashiersDelete, "Delete Cashiers", "حذف الكاشير", "Delete cashier accounts", "حذف حسابات الكاشير", "Cashiers"),
             // Branch Permissions
             (Permissions.BranchesRead, "Read Branches", "عرض المتاحف", "View branches information and list branches", "عرض بيانات وقائمة المتاحف", "Branches"),
             (Permissions.BranchesWrite, "Write Branches", "إدارة المتاحف", "Create and update branches", "إنشاء وتحديث المتاحف", "Branches"),

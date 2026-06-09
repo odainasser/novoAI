@@ -10,42 +10,15 @@
 @inject ILocalStorageService LocalStorage
 @inject IJsonStringLocalizer Localizer
 
-@if (logoutBlocked)
-{
-    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-        <div class="bg-white rounded-xl shadow-lg max-w-md w-full mx-4 overflow-hidden">
-            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-                <div class="flex items-center gap-2">
-                    <i class="bi bi-exclamation-triangle-fill bf-icon-warning text-xl"></i>
-                    <h3 class="text-lg font-semibold text-gray-900">@Localizer["CannotSignOut"]</h3>
-                </div>
-            </div>
-            <div class="px-5 py-4">
-                <p class="text-sm text-gray-700">@Localizer["EndShiftBeforeSignOut"]</p>
-            </div>
-            <div class="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-200">
-                <button type="button" class="px-4 py-2 text-sm font-medium bf-bg-warning-600 bf-hover-bg-warning-700 rounded-lg transition-colors" @onclick="GoToShifts">
-                    <i class="bi bi-clock-history me-1"></i>
-                    @Localizer["GoToShifts"]
-                </button>
-            </div>
-        </div>
+<div class="flex items-center justify-center min-h-screen bg-gray-50">
+    <div class="text-center">
+        <div class="mb-4 flex justify-center"><Spinner Size="Spinner.SpinnerSize.Xl" /></div>
+        <h2 class="text-xl font-semibold text-gray-900">@Localizer["LoggingOut"]</h2>
+        <p class="text-gray-500 mt-2">@Localizer["SigningOutMessage"]</p>
     </div>
-}
-else
-{
-    <div class="flex items-center justify-center min-h-screen bg-gray-50">
-        <div class="text-center">
-            <div class="mb-4 flex justify-center"><Spinner Size="Spinner.SpinnerSize.Xl" /></div>
-            <h2 class="text-xl font-semibold text-gray-900">@Localizer["LoggingOut"]</h2>
-            <p class="text-gray-500 mt-2">@Localizer["SigningOutMessage"]</p>
-        </div>
-    </div>
-}
+</div>
 
 @code {
-    private bool logoutBlocked = false;
-
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender)
@@ -53,15 +26,6 @@ else
 
         try
         {
-            var serverResult = await AuthService.LogoutWithValidationAsync();
-            if (!serverResult.Success
-                && string.Equals(serverResult.Message, "ActiveShiftBlocksLogout", StringComparison.OrdinalIgnoreCase))
-            {
-                logoutBlocked = true;
-                StateHasChanged();
-                return;
-            }
-
             await AuthService.LogoutAsync();
 
             try { await LocalStorage.ClearAsync(); } catch { }
@@ -71,10 +35,5 @@ else
         }
 
         Navigation.NavigateTo("/", forceLoad: true);
-    }
-
-    private void GoToShifts()
-    {
-        Navigation.NavigateTo("/cashier/shifts", forceLoad: true);
     }
 }
