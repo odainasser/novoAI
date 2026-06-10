@@ -1,7 +1,10 @@
 using System.Text.RegularExpressions;
+using Application.Common.Interfaces;
 using Application.Features.Apps;
+using Application.Features.UserLogs;
 using Application.Services;
 using Domain.Entities;
+using Domain.Enums;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -18,11 +21,19 @@ internal class AppsAdminService : IAppsAdminService
     private static readonly Regex CodePattern = new("^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$", RegexOptions.Compiled);
 
     private readonly ApplicationDbContext _context;
+    private readonly ICurrentUserService _currentUserService;
+    private readonly IUserLogService _userLogService;
     private readonly ILogger<AppsAdminService> _logger;
 
-    public AppsAdminService(ApplicationDbContext context, ILogger<AppsAdminService> logger)
+    public AppsAdminService(
+        ApplicationDbContext context,
+        ICurrentUserService currentUserService,
+        IUserLogService userLogService,
+        ILogger<AppsAdminService> logger)
     {
         _context = context;
+        _currentUserService = currentUserService;
+        _userLogService = userLogService;
         _logger = logger;
     }
 
@@ -62,6 +73,7 @@ internal class AppsAdminService : IAppsAdminService
         await _context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Registered app '{Code}' -> {BaseUrl}.", app.Code, app.BaseUrl);
+        await LogActionAsync(AuditAction.Created, app, $"Created app '{app.Code}' ({app.BaseUrl})");
         return Map(app);
     }
 
@@ -82,6 +94,8 @@ internal class AppsAdminService : IAppsAdminService
         app.PersonaPrompt = Blank(request.PersonaPrompt);
         app.IsActive = request.IsActive;
         await _context.SaveChangesAsync(cancellationToken);
+
+        await LogActionAsync(AuditAction.Updated, app, $"Updated app '{app.Code}' ({app.BaseUrl})");
     }
 
     public async Task SetActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken = default)
@@ -90,6 +104,33 @@ internal class AppsAdminService : IAppsAdminService
             ?? throw new KeyNotFoundException($"App {id} not found.");
         app.IsActive = isActive;
         await _context.SaveChangesAsync(cancellationToken);
+
+        await LogActionAsync(AuditAction.Updated, app,
+            $"{(isActive ? "Activated" : "Deactivated")} app '{app.Code}'");
+    }
+
+    // Audit trail (best-effort: never blocks the operation itself).
+    private async Task LogActionAsync(AuditAction action, App app, string details)
+    {
+        try
+        {
+            var (currentUserId, currentUserName) = await _currentUserService.GetCurrentUserAsync();
+            if (currentUserId == Guid.Empty) return;
+
+            await _userLogService.LogAsync(new CreateUserLogRequest
+            {
+                UserId = currentUserId,
+                UserName = currentUserName,
+                Action = action,
+                EntityName = "App",
+                EntityId = app.Id.ToString(),
+                Details = details
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to write audit log for app '{Code}'.", app.Code);
+        }
     }
 
     private static (string Code, string Name, string BaseUrl) Validate(SaveAppRequest request)

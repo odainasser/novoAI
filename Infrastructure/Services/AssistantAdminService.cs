@@ -2,6 +2,7 @@ using System.Text.Json;
 using Application.Common.Interfaces;
 using Application.Common.Models;
 using Application.Features.Assistant;
+using Application.Features.UserLogs;
 using Application.Services;
 using Domain.Entities;
 using Domain.Enums;
@@ -24,6 +25,7 @@ internal class AssistantAdminService : IAssistantAdminService
     private readonly ApplicationDbContext _context;
     private readonly ToolCatalog _catalog;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IUserLogService _userLogService;
     private readonly ILogger<AssistantAdminService> _logger;
 
     private static readonly JsonSerializerOptions Json = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
@@ -32,12 +34,38 @@ internal class AssistantAdminService : IAssistantAdminService
         ApplicationDbContext context,
         ToolCatalog catalog,
         ICurrentUserService currentUserService,
+        IUserLogService userLogService,
         ILogger<AssistantAdminService> logger)
     {
         _context = context;
         _catalog = catalog;
         _currentUserService = currentUserService;
+        _userLogService = userLogService;
         _logger = logger;
+    }
+
+    // Audit trail (best-effort: never blocks the operation itself).
+    private async Task LogActionAsync(Domain.Enums.AuditAction action, string entityName, string entityId, string details)
+    {
+        try
+        {
+            var (currentUserId, currentUserName) = await _currentUserService.GetCurrentUserAsync();
+            if (currentUserId == Guid.Empty) return;
+
+            await _userLogService.LogAsync(new CreateUserLogRequest
+            {
+                UserId = currentUserId,
+                UserName = currentUserName,
+                Action = action,
+                EntityName = entityName,
+                EntityId = entityId,
+                Details = details
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to write audit log for {Entity} {Id}.", entityName, entityId);
+        }
     }
 
     // ── Interactions ───────────────────────────────────────────────────
@@ -190,6 +218,10 @@ internal class AssistantAdminService : IAssistantAdminService
         }
 
         await _context.SaveChangesAsync();
+
+        await LogActionAsync(Domain.Enums.AuditAction.ApprovedRequest, "AssistantPlan",
+            (interaction?.Id ?? Guid.Empty).ToString(),
+            $"Confirmed assistant plan ({Blank(request.Domain) ?? "-"}/{Blank(request.Action) ?? "list"}/{Blank(request.Entity) ?? request.Entities.FirstOrDefault() ?? "-"}) for app '{app.Code}'");
     }
 
     // ── Build a starter definition from a corrected plan ──────────────
@@ -442,6 +474,9 @@ internal class AssistantAdminService : IAssistantAdminService
         report.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+
+        await LogActionAsync(Domain.Enums.AuditAction.Updated, "AssistantReportedAnswer", report.Id.ToString(),
+            $"{(resolved ? "Resolved" : "Re-opened")} reported answer");
     }
 
     private static ReportedAnswerDto MapReport(AssistantReportedAnswer r) => new()
