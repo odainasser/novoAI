@@ -17,17 +17,17 @@
                 extend: {
                     colors: {
                         purple: {
-                            50: '#EBF7FF',
-                            100: '#D7F0FF',
-                            200: '#B0E2FF',
-                            300: '#88D3FF',
-                            400: '#61C5FF',
-                            500: '#38B6FF',
-                            600: '#38B6FF', // Primary brand
-                            700: '#2D92CC',
-                            800: '#1A8FD6',
-                            900: '#1070AC',
-                            950: '#0A4F7A',
+                            50: '#EAF3F2',
+                            100: '#D6E7E6',
+                            200: '#ADCFCE',
+                            300: '#80B5B3',
+                            400: '#4D9795',
+                            500: '#006a67',
+                            600: '#006a67', // Primary brand
+                            700: '#005552',
+                            800: '#004543',
+                            900: '#003534',
+                            950: '#002524',
                         }
                     }
                 }
@@ -629,7 +629,7 @@
     };
 
     // Log initialization
-    console.log(`%c? App v${App.version} loaded`, 'color: #38B6FF; font-weight: bold;');
+    console.log(`%c? App v${App.version} loaded`, 'color: #006a67; font-weight: bold;');
     console.log(`  Culture: ${Culture.current} | RTL: ${Culture.isRTL()}`);
 
 })(window, document);
