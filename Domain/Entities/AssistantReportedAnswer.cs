@@ -11,6 +11,9 @@ namespace Domain.Entities;
 /// </summary>
 public class AssistantReportedAnswer : BaseAuditableEntity
 {
+    /// <summary>The registered app this report belongs to.</summary>
+    public Guid? AppId { get; set; }
+
     /// <summary>Snapshot of the question that produced the reported answer.</summary>
     public string Question { get; set; } = string.Empty;
 

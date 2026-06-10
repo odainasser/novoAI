@@ -17,6 +17,9 @@ namespace Domain.Entities;
 /// </summary>
 public class AssistantPlan : BaseAuditableEntity
 {
+    /// <summary>The registered app this plan belongs to. Plans never match across apps.</summary>
+    public Guid? AppId { get; set; }
+
     // ── 1. Identity / matching ────────────────────────────────────────
     /// <summary>One or two domains, comma-separated, normalised (lower, sorted).</summary>
     public string MatchDomains { get; set; } = string.Empty;

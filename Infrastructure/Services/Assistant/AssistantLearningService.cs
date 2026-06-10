@@ -29,6 +29,7 @@ public class AssistantLearningService : IAssistantLearningService
     private static readonly Regex Numbers = new(@"\d+", RegexOptions.Compiled);
 
     public async Task<Guid> RecordInteractionAsync(
+        Guid appId,
         string question,
         string locale,
         IReadOnlyList<string> toolsUsed,
@@ -44,6 +45,7 @@ public class AssistantLearningService : IAssistantLearningService
             _context.Set<AssistantInteraction>().Add(new AssistantInteraction
             {
                 Id = id,
+                AppId = appId,
                 Question = Truncate(question, 2000),
                 Locale = locale,
                 ToolsUsed = toolsUsed.Count == 0 ? null : string.Join(",", toolsUsed),
@@ -65,6 +67,7 @@ public class AssistantLearningService : IAssistantLearningService
     }
 
     public async Task RecordNoAnswerAsync(
+        Guid appId,
         string question,
         string locale,
         NoAnswerReason reason,
@@ -78,14 +81,16 @@ public class AssistantLearningService : IAssistantLearningService
             var normalized = Normalize(question);
             var clusterKey = $"{(int)reason}|{normalized}";
 
+            // Clusters are per app — the same uncovered phrasing in two apps is two needs.
             var cluster = await _context.Set<AssistantNoAnswer>()
-                .FirstOrDefaultAsync(c => c.ClusterKey == clusterKey, cancellationToken);
+                .FirstOrDefaultAsync(c => c.AppId == appId && c.ClusterKey == clusterKey, cancellationToken);
 
             if (cluster is null)
             {
                 _context.Set<AssistantNoAnswer>().Add(new AssistantNoAnswer
                 {
                     Id = Guid.NewGuid(),
+                    AppId = appId,
                     Reason = reason,
                     NormalizedQuestion = normalized,
                     ClusterKey = clusterKey,
@@ -118,6 +123,7 @@ public class AssistantLearningService : IAssistantLearningService
     }
 
     public async Task RecordReportedAnswerAsync(
+        Guid appId,
         string question,
         string answer,
         string? feedback,
@@ -131,6 +137,7 @@ public class AssistantLearningService : IAssistantLearningService
             _context.Set<AssistantReportedAnswer>().Add(new AssistantReportedAnswer
             {
                 Id = Guid.NewGuid(),
+                AppId = appId,
                 Question = Truncate(question, 2000),
                 Answer = Truncate(answer, 8000),
                 Feedback = string.IsNullOrWhiteSpace(feedback) ? null : Truncate(feedback.Trim(), 2000),
@@ -160,13 +167,13 @@ public class AssistantLearningService : IAssistantLearningService
     }
 
     public async Task<IReadOnlyList<ConfirmedPlanExample>> GetConfirmedPlanExamplesAsync(
-        int max, CancellationToken cancellationToken = default)
+        Guid appId, int max, CancellationToken cancellationToken = default)
     {
         try
         {
             var rows = await _context.Set<AssistantInteraction>()
                 .AsNoTracking()
-                .Where(i => i.PlanConfirmed && i.ConfirmedTools != null && i.ConfirmedTools != "")
+                .Where(i => i.AppId == appId && i.PlanConfirmed && i.ConfirmedTools != null && i.ConfirmedTools != "")
                 .OrderByDescending(i => i.ReviewedAt)
                 .Take(Math.Clamp(max, 1, 20))
                 .Select(i => new { i.Question, i.ConfirmedTools })

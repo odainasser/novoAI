@@ -54,7 +54,7 @@ internal sealed class AssistantPlanEngine
     public async Task<PlanExecutionResult> TryExecuteAsync(string question, string locale, ToolContext ctx)
     {
         // Call 1 â€” classify the question into a match key.
-        var match = await ClassifyAsync(question, ctx.Ct);
+        var match = await ClassifyAsync(ctx.App.Id, question, ctx.Ct);
         var classifyEvidence = ClassifyEvidence(match);
         if (match is null || !match.IsUsable)
             return PlanExecutionResult.NotMatched(classifyEvidence);
@@ -63,12 +63,12 @@ internal sealed class AssistantPlanEngine
         // honest "not supported" â€” a no-answer with a precise, code-set reason. The
         // classifier names the real subject (even one outside the catalog) so a question
         // about, say, customers or tax surfaces here instead of being silently mis-mapped.
-        var coveredDomains = match.Domains.Select(CanonicalDomain).OfType<string>().Distinct().ToList();
+        var coveredDomains = match.Domains.Select(d => CanonicalDomain(ctx.App.Id, d)).OfType<string>().Distinct().ToList();
         if (coveredDomains.Count == 0)
             return PlanExecutionResult.NoAnswer(Unsupported(locale), NoAnswerReason.UnsupportedDomain,
                 $"{{\"classify\":{classifyEvidence},\"unsupported\":\"domain\"}}");
 
-        var canonEntity = CanonicalEntity(match.Entity);
+        var canonEntity = CanonicalEntity(ctx.App.Id, match.Entity);
         if (canonEntity is null)
             return PlanExecutionResult.NoAnswer(Unsupported(locale), NoAnswerReason.UnsupportedEntity,
                 $"{{\"classify\":{classifyEvidence},\"unsupported\":\"entity\"}}");
@@ -76,7 +76,7 @@ internal sealed class AssistantPlanEngine
         // A mixing question whose SECOND dataset isn't covered is also unsupported.
         if (match.SecondaryEntity is not null)
         {
-            var canonSecondary = CanonicalEntity(match.SecondaryEntity);
+            var canonSecondary = CanonicalEntity(ctx.App.Id, match.SecondaryEntity);
             if (canonSecondary is null)
                 return PlanExecutionResult.NoAnswer(Unsupported(locale), NoAnswerReason.UnsupportedEntity,
                     $"{{\"classify\":{classifyEvidence},\"unsupported\":\"secondaryEntity\"}}");
@@ -91,7 +91,7 @@ internal sealed class AssistantPlanEngine
         var db = ctx.Sp.GetRequiredService<ApplicationDbContext>();
         var key = match.Key();
         var plan = await db.Set<AssistantPlan>()
-            .Where(p => p.Status == PlanStatus.Confirmed && p.MatchKey == key)
+            .Where(p => p.AppId == ctx.App.Id && p.Status == PlanStatus.Confirmed && p.MatchKey == key)
             .OrderByDescending(p => p.Version).ThenByDescending(p => p.SuccessScore)
             .FirstOrDefaultAsync(ctx.Ct);
         if (plan is null)
@@ -114,7 +114,7 @@ internal sealed class AssistantPlanEngine
         var tools = new Dictionary<string, IAssistantTool>();
         foreach (var pt in def.Tools)
         {
-            var tool = _catalog.Find(pt.Name);
+            var tool = _catalog.Find(ctx.App.Id, pt.Name);
             if (tool is null)
             {
                 _logger.LogWarning("Plan {Id} references unknown tool '{Tool}'; falling back.", plan.Id, pt.Name);
@@ -197,10 +197,10 @@ internal sealed class AssistantPlanEngine
 
     // â”€â”€ Call 1: classification â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    private async Task<PlanMatch?> ClassifyAsync(string question, CancellationToken ct)
+    private async Task<PlanMatch?> ClassifyAsync(Guid appId, string question, CancellationToken ct)
     {
-        var domains = _catalog.All.Select(t => t.Domain).Where(d => !string.IsNullOrWhiteSpace(d)).Distinct().OrderBy(d => d);
-        var entities = _catalog.All.SelectMany(t => t.Entities).Distinct().OrderBy(e => e);
+        var domains = _catalog.All(appId).Select(t => t.Domain).Where(d => !string.IsNullOrWhiteSpace(d)).Distinct().OrderBy(d => d);
+        var entities = _catalog.All(appId).SelectMany(t => t.Entities).Distinct().OrderBy(e => e);
 
         var system =
             "Classify the retail business question into a compact JSON object and output ONLY that JSON.\n" +
@@ -512,14 +512,14 @@ internal sealed class AssistantPlanEngine
 
     // Map a classifier-named domain/entity to the catalog's exact spelling, or null if no
     // tool covers it (case-insensitive). Used to set Unsupported* and to canonicalize keys.
-    private string? CanonicalDomain(string? d) =>
+    private string? CanonicalDomain(Guid appId, string? d) =>
         string.IsNullOrWhiteSpace(d) ? null
-        : _catalog.All.Select(t => t.Domain)
+        : _catalog.All(appId).Select(t => t.Domain)
             .FirstOrDefault(x => string.Equals(x, d, StringComparison.OrdinalIgnoreCase));
 
-    private string? CanonicalEntity(string? e) =>
+    private string? CanonicalEntity(Guid appId, string? e) =>
         string.IsNullOrWhiteSpace(e) ? null
-        : _catalog.All.SelectMany(t => t.Entities)
+        : _catalog.All(appId).SelectMany(t => t.Entities)
             .FirstOrDefault(x => string.Equals(x, e, StringComparison.OrdinalIgnoreCase));
 }
 

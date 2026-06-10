@@ -36,8 +36,9 @@ public static class AssistantAdminEndpoints
         .WithMetadata(new RequirePermissionAttribute(Permissions.AssistantKeywordsRead));
 
         group.MapGet("/plan-options", async (
+            [FromQuery] Guid? appId,
             [FromServices] IAssistantAdminService service) =>
-            Results.Ok(await service.GetPlanOptionsAsync()))
+            Results.Ok(await service.GetPlanOptionsAsync(appId)))
         .WithName("GetAssistantPlanOptions")
         .Produces<AssistantPlanOptionsDto>(StatusCodes.Status200OK)
         .RequireAuthorization()

@@ -20,13 +20,17 @@ public static class Permissions
     public const string AssistantKeywordsWrite = "assistant.keywords.write";
     public const string AssistantKeywordsApprove = "assistant.keywords.approve";
 
+    public const string AppsRead = "apps.read";
+    public const string AppsWrite = "apps.write";
+
     public static readonly string[] All =
     {
         UsersRead, UsersWrite, UsersDelete,
         RolesRead, RolesWrite, RolesDelete,
         SystemAudit,
         LookupsRead, LookupsWrite, LookupsDelete,
-        AssistantKeywordsRead, AssistantKeywordsWrite, AssistantKeywordsApprove
+        AssistantKeywordsRead, AssistantKeywordsWrite, AssistantKeywordsApprove,
+        AppsRead, AppsWrite
     };
 
     public static bool IsValid(string permission) => All.Contains(permission);

@@ -171,17 +171,18 @@ public static class DependencyInjection
         });
         services.AddScoped<OllamaClient>();
 
-        // ByteMart tool provider: the read tools are owned by ByteMart and executed
-        // there over HTTP under the calling user's own bearer token. The catalog is a
-        // cached singleton snapshot of ByteMart's /api/assistant-data/tools.
-        services.Configure<Configuration.MartIntegrationSettings>(configuration.GetSection("MartIntegration"));
-        var martSettings = configuration.GetSection("MartIntegration").Get<Configuration.MartIntegrationSettings>() ?? new();
-        services.AddHttpClient("Mart", client =>
+        // Apps integration module: client systems REGISTER with ByteAI (a row in the
+        // Apps table) and expose their read tools at <BaseUrl>/api/assistant-data.
+        // Tools execute remotely under the calling user's own bearer token; the
+        // per-app catalogs are cached singleton snapshots.
+        services.Configure<Configuration.AppsIntegrationSettings>(configuration.GetSection("AppsIntegration"));
+        var appsSettings = configuration.GetSection("AppsIntegration").Get<Configuration.AppsIntegrationSettings>() ?? new();
+        services.AddHttpClient("AppTools", client =>
         {
-            client.BaseAddress = new Uri(martSettings.BaseUrl.TrimEnd('/') + "/");
-            client.Timeout = TimeSpan.FromSeconds(martSettings.TimeoutSeconds);
+            client.Timeout = TimeSpan.FromSeconds(appsSettings.TimeoutSeconds);
         });
-        services.AddSingleton<Services.Assistant.MartToolsClient>();
+        services.AddSingleton<Services.Assistant.AppToolsClient>();
+        services.AddScoped<IAppsAdminService, AppsAdminService>();
 
         // Tool-calling assistant: the model picks read tools (function-calling) and
         // phrases answers; the application owns every query, permission gate, branch

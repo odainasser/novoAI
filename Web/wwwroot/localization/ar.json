@@ -1677,5 +1677,18 @@
   "RejectReason": "سبب الرفض",
   "ConvertedDocument": "المستند المحوّل",
   "UnitRequired": "المنتج مطلوب",
-  "SupplierRequiredForSupplierSource": "المورّد مطلوب عندما يكون مصدر التوريد من المورّد"
+  "SupplierRequiredForSupplierSource": "المورّد مطلوب عندما يكون مصدر التوريد من المورّد",
+  "Apps": "التطبيقات",
+  "AppsManagement": "إدارة التطبيقات",
+  "AppsManagementDesc": "تسجيل التطبيقات التي تتكامل مع خدمة مساعد ByteAI",
+  "RegisterApp": "تسجيل تطبيق",
+  "EditApp": "تعديل التطبيق",
+  "NoAppsRegistered": "لا توجد تطبيقات مسجلة بعد",
+  "AppCode": "رمز التطبيق",
+  "AppCodeHint": "معرّف ثابت بأحرف صغيرة يرسله التطبيق مع كل طلب للمساعد (مثال: bytemart)",
+  "BaseUrl": "الرابط الأساسي",
+  "BaseUrlHint": "رابط واجهة التطبيق التي تعرض /api/assistant-data (الأدوات والتنفيذ)",
+  "PersonaPrompt": "الشخصية",
+  "Activate": "تفعيل",
+  "Deactivate": "تعطيل"
 }

@@ -1,13 +1,12 @@
 namespace Infrastructure.Configuration;
 
 /// <summary>
-/// Connection settings for the ByteMart tool provider — the system that owns the
-/// business data and the code-owned read tools the assistant executes.
+/// Cross-app settings for the Apps integration module. Per-app data (base URL,
+/// persona, currency) lives in the Apps table — registered through the admin UI,
+/// never in configuration.
 /// </summary>
-public class MartIntegrationSettings
+public class AppsIntegrationSettings
 {
-    public string BaseUrl { get; set; } = "http://localhost:5050";
-
     /// <summary>How long a fetched tool catalog snapshot is served before refreshing.</summary>
     public int CatalogCacheSeconds { get; set; } = 300;
 

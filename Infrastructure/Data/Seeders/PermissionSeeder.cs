@@ -42,7 +42,10 @@ public class PermissionSeeder
             // AI Assistant Keyword Permissions
             (Permissions.AssistantKeywordsRead, "Read Assistant Keywords", "عرض كلمات المساعد", "View assistant keyword dictionary, misses, and suggestions", "عرض قاموس كلمات المساعد والأسئلة غير المفهومة والاقتراحات", "Assistant"),
             (Permissions.AssistantKeywordsWrite, "Manage Assistant Keywords", "إدارة كلمات المساعد", "Create, edit, and delete assistant keyword triggers", "إنشاء وتعديل وحذف كلمات المساعد", "Assistant"),
-            (Permissions.AssistantKeywordsApprove, "Approve Keyword Suggestions", "اعتماد اقتراحات الكلمات", "Approve or reject suggested assistant keywords", "اعتماد أو رفض الكلمات المقترحة للمساعد", "Assistant")
+            (Permissions.AssistantKeywordsApprove, "Approve Keyword Suggestions", "اعتماد اقتراحات الكلمات", "Approve or reject suggested assistant keywords", "اعتماد أو رفض الكلمات المقترحة للمساعد", "Assistant"),
+            // Apps integration module
+            (Permissions.AppsRead, "Read Apps", "عرض التطبيقات", "View registered client applications", "عرض التطبيقات المسجلة", "Apps"),
+            (Permissions.AppsWrite, "Manage Apps", "إدارة التطبيقات", "Register, edit, activate, and deactivate client applications", "تسجيل وتعديل وتفعيل وتعطيل التطبيقات", "Apps")
         };
 
         foreach (var (code, nameEn, nameAr, descriptionEn, descriptionAr, module) in permissions)

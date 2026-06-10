@@ -43,13 +43,15 @@ internal interface IAssistantTool
 }
 
 /// <summary>
-/// Per-turn execution context handed to a tool. Identity and branch scope come
-/// from the authenticated request — never from model-supplied arguments.
+/// Per-turn execution context handed to a tool. The registered <see cref="App"/>
+/// scopes every catalog/plan decision; identity and branch scope come from the
+/// authenticated request — never from model-supplied arguments.
 /// <see cref="BranchWarehouseIds"/> is the active branch's warehouses (resolved
 /// once by the orchestrator) when branch-locked; null otherwise.
 /// </summary>
 internal sealed record ToolContext(
     IServiceProvider Sp,
+    Domain.Entities.App App,
     string UserId,
     ISet<string> Permissions,
     Guid? BranchId,

@@ -84,6 +84,7 @@ builder.Services.AddScoped<ILookupService, ClientLookupService>();
 builder.Services.AddScoped<IAssistantAdminService, ClientAssistantAdminService>();
 builder.Services.AddScoped<IDashboardClientService, ClientDashboardService>();
 builder.Services.AddScoped<IAssistantClientService, ClientAssistantService>();
+builder.Services.AddScoped<IAppsClientService, AppsClientService>();
 builder.Services.AddScoped<INotificationClientService, NotificationClientService>();
 
 // Register other services

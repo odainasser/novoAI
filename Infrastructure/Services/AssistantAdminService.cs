@@ -46,7 +46,7 @@ internal class AssistantAdminService : IAssistantAdminService
         int pageNumber, int pageSize, string? search = null,
         bool? unansweredOnly = null, bool? confirmedOnly = null)
     {
-        await TryLoadCatalogAsync();   // tool domain/entity enrichment is best-effort
+        await TryLoadCatalogsAsync();   // tool domain/entity enrichment is best-effort
 
         var query = _context.Set<AssistantInteraction>().AsQueryable();
 
@@ -65,11 +65,13 @@ internal class AssistantAdminService : IAssistantAdminService
         return new PaginatedList<AssistantInteractionDto>(items.Select(MapInteraction).ToList(), count, pageNumber, pageSize);
     }
 
-    public async Task<AssistantPlanOptionsDto> GetPlanOptionsAsync()
+    public async Task<AssistantPlanOptionsDto> GetPlanOptionsAsync(Guid? appId = null)
     {
-        await _catalog.EnsureLoadedAsync(CancellationToken.None);
+        var app = await GetAppAsync(appId)
+            ?? throw new KeyNotFoundException("No registered app found for plan options.");
+        await _catalog.EnsureLoadedAsync(app, CancellationToken.None);
 
-        var tools = _catalog.All
+        var tools = _catalog.All(app.Id)
             .OrderBy(t => t.Domain).ThenBy(t => t.Name)
             .Select(t => new AssistantToolInfoDto
             {
@@ -98,9 +100,6 @@ internal class AssistantAdminService : IAssistantAdminService
 
     public async Task ConfirmPlanAsync(Guid interactionId, ConfirmAssistantPlanRequest request)
     {
-        // Validation below resolves tools by name — the catalog must be loaded.
-        await _catalog.EnsureLoadedAsync(CancellationToken.None);
-
         // interactionId may be Guid.Empty when the plan is created from a no-answer
         // cluster (there is no owning interaction in that case).
         AssistantInteraction? interaction = null;
@@ -108,12 +107,20 @@ internal class AssistantAdminService : IAssistantAdminService
             interaction = await _context.Set<AssistantInteraction>().FindAsync(interactionId)
                 ?? throw new KeyNotFoundException($"Assistant interaction {interactionId} not found.");
 
+        // The plan belongs to the interaction's app (or the explicitly chosen /
+        // default app when created from the no-answer queue).
+        var app = await GetAppAsync(interaction?.AppId ?? request.AppId)
+            ?? throw new KeyNotFoundException("No registered app found to own this plan.");
+
+        // Validation below resolves tools by name — the app's catalog must be loaded.
+        await _catalog.EnsureLoadedAsync(app, CancellationToken.None);
+
         var (_, actorName) = await _currentUserService.GetCurrentUserAsync();
 
         // Completeness gate: a plan can only be confirmed when EVERY parameter of EVERY
         // chosen tool has an explicit source (static/extract/context/omit). This makes
         // "the period filter was silently left at its default" an impossible state.
-        ValidateComplete(request);
+        ValidateComplete(app.Id, request);
 
         var sampleQuestion = Truncate(interaction?.Question ?? request.SampleQuestion ?? string.Empty, 2000);
 
@@ -144,15 +151,17 @@ internal class AssistantAdminService : IAssistantAdminService
             // match key, which the engine uses immediately on the next matching
             // question. No separate draft/promote step.
             var key = match.Key();
-            var definition = BuildDefinition(request.Tools, match);
+            var definition = BuildDefinition(app.Id, request.Tools, match);
             var defJson = JsonSerializer.Serialize(definition, Json);
 
-            var plan = await _context.Set<AssistantPlan>().FirstOrDefaultAsync(p => p.MatchKey == key);
+            var plan = await _context.Set<AssistantPlan>()
+                .FirstOrDefaultAsync(p => p.AppId == app.Id && p.MatchKey == key);
             if (plan is null)
             {
                 _context.Set<AssistantPlan>().Add(new AssistantPlan
                 {
                     Id = Guid.NewGuid(),
+                    AppId = app.Id,
                     MatchDomains = NormalizeDomains(match.Domains),
                     Action = (match.Action ?? "list").ToLowerInvariant(),
                     Entity = match.Entity!.Trim(),
@@ -185,14 +194,14 @@ internal class AssistantAdminService : IAssistantAdminService
 
     // ── Build a starter definition from a corrected plan ──────────────
 
-    private PlanDefinition BuildDefinition(List<PlanToolInput> toolInputs, PlanMatch match)
+    private PlanDefinition BuildDefinition(Guid appId, List<PlanToolInput> toolInputs, PlanMatch match)
     {
         var def = new PlanDefinition();
         var perms = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var idx = 1;
         foreach (var input in toolInputs.Where(t => !string.IsNullOrWhiteSpace(t.Name)))
         {
-            var tool = _catalog.Find(input.Name);
+            var tool = _catalog.Find(appId, input.Name);
             if (tool is null) continue;
 
             var planTool = new PlanTool { Id = $"t{idx++}", Name = input.Name };
@@ -226,14 +235,14 @@ internal class AssistantAdminService : IAssistantAdminService
 
     // The completeness gate: every parameter of every chosen tool must have an explicit
     // source. "omit" counts (a deliberate use-the-default); a missing decision does not.
-    private void ValidateComplete(ConfirmAssistantPlanRequest request)
+    private void ValidateComplete(Guid appId, ConfirmAssistantPlanRequest request)
     {
         if (request.Tools.Count == 0)
             throw new PlanIncompleteException("Select at least one tool.");
 
         foreach (var input in request.Tools)
         {
-            var tool = _catalog.Find(input.Name)
+            var tool = _catalog.Find(appId, input.Name)
                 ?? throw new PlanIncompleteException($"Unknown tool '{input.Name}'.");
 
             var decided = input.Params
@@ -261,7 +270,7 @@ internal class AssistantAdminService : IAssistantAdminService
         var entities = new List<string>();
         foreach (var name in tools)
         {
-            var tool = _catalog.Find(name);
+            var tool = i.AppId.HasValue ? _catalog.Find(i.AppId.Value, name) : null;
             if (tool is null) continue;
             if (!string.IsNullOrWhiteSpace(tool.Domain) && !domains.Contains(tool.Domain)) domains.Add(tool.Domain);
             foreach (var e in tool.Entities) if (!entities.Contains(e)) entities.Add(e);
@@ -290,18 +299,38 @@ internal class AssistantAdminService : IAssistantAdminService
 
     public async Task<AssistantInteractionDto?> GetInteractionAsync(Guid id)
     {
-        await TryLoadCatalogAsync();   // tool domain/entity enrichment is best-effort
+        await TryLoadCatalogsAsync();   // tool domain/entity enrichment is best-effort
 
         var i = await _context.Set<AssistantInteraction>().FindAsync(id);
         return i is null ? null : MapInteraction(i);
     }
 
-    // Read paths only enrich rows with tool metadata — don't fail the page when the
-    // ByteMart catalog is unreachable.
-    private async Task TryLoadCatalogAsync()
+    /// <summary>The app to operate on: by id when given, else the oldest active app.</summary>
+    private async Task<Domain.Entities.App?> GetAppAsync(Guid? appId)
     {
-        try { await _catalog.EnsureLoadedAsync(CancellationToken.None); }
-        catch (Exception ex) { _logger.LogWarning(ex, "Assistant tool catalog unavailable; listing without tool metadata."); }
+        var query = _context.Apps.AsNoTracking();
+        return appId.HasValue
+            ? await query.FirstOrDefaultAsync(a => a.Id == appId.Value)
+            : await query.Where(a => a.IsActive).OrderBy(a => a.CreatedAt).FirstOrDefaultAsync();
+    }
+
+    // Read paths only enrich rows with tool metadata — don't fail the page when an
+    // app's catalog is unreachable.
+    private async Task TryLoadCatalogsAsync()
+    {
+        try
+        {
+            var apps = await _context.Apps.AsNoTracking().Where(a => a.IsActive).ToListAsync();
+            foreach (var app in apps)
+            {
+                try { await _catalog.EnsureLoadedAsync(app, CancellationToken.None); }
+                catch (Exception ex) { _logger.LogWarning(ex, "Tool catalog unavailable for app '{App}'; listing without its tool metadata.", app.Code); }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not list registered apps for catalog enrichment.");
+        }
     }
 
     // ── No-answer review queue ─────────────────────────────────────────

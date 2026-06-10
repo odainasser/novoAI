@@ -13,6 +13,9 @@ namespace Domain.Entities;
 /// </summary>
 public class AssistantInteraction : BaseEntity
 {
+    /// <summary>The registered app this turn belongs to.</summary>
+    public Guid? AppId { get; set; }
+
     public string Question { get; set; } = string.Empty;
     public string Locale { get; set; } = "en";
 

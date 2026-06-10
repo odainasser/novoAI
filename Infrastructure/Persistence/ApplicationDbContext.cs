@@ -42,6 +42,9 @@ public class ApplicationDbContext
     public DbSet<AssistantNoAnswer> AssistantNoAnswers { get; set; }
     public DbSet<AssistantReportedAnswer> AssistantReportedAnswers { get; set; }
 
+    // Apps integration module — registered client applications served by the assistant
+    public DbSet<App> Apps { get; set; }
+
     // Atomic document-number counters
     public DbSet<NumberSequence> NumberSequences { get; set; }
 
@@ -58,6 +61,20 @@ public class ApplicationDbContext
             entity.Property(s => s.Value).IsConcurrencyToken(false);
         });
 
+        // ── Apps integration module: registered client applications ──────
+        builder.Entity<App>(entity =>
+        {
+            entity.ToTable("Apps");
+            entity.Property(a => a.Code).IsRequired().HasMaxLength(50);
+            entity.Property(a => a.Name).IsRequired().HasMaxLength(100);
+            entity.Property(a => a.Description).HasMaxLength(500);
+            entity.Property(a => a.BaseUrl).IsRequired().HasMaxLength(500);
+            entity.Property(a => a.PersonaPrompt).HasMaxLength(500);
+            entity.Property(a => a.Currency).IsRequired().HasMaxLength(10);
+            entity.HasIndex(a => a.Code).IsUnique();
+            entity.HasQueryFilter(a => !a.IsDeleted);
+        });
+
         // ── AI assistant (tool-calling): turn log shown as reviewable plans ──
         builder.Entity<AssistantInteraction>(entity =>
         {
@@ -71,6 +88,7 @@ public class ApplicationDbContext
             entity.Property(i => i.ReviewedBy).HasMaxLength(256);
             entity.HasIndex(i => i.CreatedAt);
             entity.HasIndex(i => i.PlanConfirmed);
+            entity.HasIndex(i => i.AppId);
         });
 
         builder.Entity<AssistantPlan>(entity =>
@@ -83,7 +101,7 @@ public class ApplicationDbContext
             entity.Property(p => p.SampleQuestion).HasMaxLength(2000);
             entity.Property(p => p.Locale).HasMaxLength(10);
             entity.Property(p => p.ConfirmedBy).HasMaxLength(256);
-            entity.HasIndex(p => new { p.MatchKey, p.Status });
+            entity.HasIndex(p => new { p.AppId, p.MatchKey, p.Status });
             entity.HasQueryFilter(p => !p.IsDeleted);
         });
 
@@ -96,7 +114,7 @@ public class ApplicationDbContext
             entity.Property(c => c.Evidence).HasMaxLength(2000);
             entity.Property(c => c.UserFacingMessage).HasMaxLength(1000);
             entity.Property(c => c.ReviewedBy).HasMaxLength(256);
-            entity.HasIndex(c => c.ClusterKey).IsUnique();
+            entity.HasIndex(c => new { c.AppId, c.ClusterKey }).IsUnique();
             entity.HasIndex(c => c.Frequency);
             entity.HasQueryFilter(c => !c.IsDeleted);
         });
@@ -111,6 +129,7 @@ public class ApplicationDbContext
             entity.Property(r => r.ReviewedBy).HasMaxLength(256);
             entity.HasIndex(r => r.CreatedAt);
             entity.HasIndex(r => r.Resolved);
+            entity.HasIndex(r => r.AppId);
             entity.HasQueryFilter(r => !r.IsDeleted);
         });
 

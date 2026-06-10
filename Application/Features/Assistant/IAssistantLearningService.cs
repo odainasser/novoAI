@@ -9,6 +9,7 @@ public interface IAssistantLearningService
 {
     /// <summary>Logs a turn; returns the created interaction id (Guid.Empty on failure).</summary>
     Task<Guid> RecordInteractionAsync(
+        Guid appId,
         string question,
         string locale,
         IReadOnlyList<string> toolsUsed,
@@ -24,6 +25,7 @@ public interface IAssistantLearningService
     /// Best-effort — never blocks the answer pipeline.
     /// </summary>
     Task RecordNoAnswerAsync(
+        Guid appId,
         string question,
         string locale,
         Domain.Enums.NoAnswerReason reason,
@@ -37,6 +39,7 @@ public interface IAssistantLearningService
     /// "reported answers" queue. Best-effort — never blocks the report request.
     /// </summary>
     Task RecordReportedAnswerAsync(
+        Guid appId,
         string question,
         string answer,
         string? feedback,
@@ -51,7 +54,7 @@ public interface IAssistantLearningService
     /// error so phrasing is never blocked.
     /// </summary>
     Task<IReadOnlyList<ConfirmedPlanExample>> GetConfirmedPlanExamplesAsync(
-        int max, CancellationToken cancellationToken = default);
+        Guid appId, int max, CancellationToken cancellationToken = default);
 }
 
 /// <summary>A confirmed question → tools mapping used as a few-shot example.</summary>

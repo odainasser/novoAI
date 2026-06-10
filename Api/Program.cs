@@ -191,6 +191,7 @@ app.MapDashboardEndpoints();
 app.MapNotificationEndpoints();
 app.MapAssistantEndpoints();
 app.MapAssistantAdminEndpoints();
+app.MapAppsEndpoints();
 
 // Liveness/readiness probe (DB connectivity included).
 app.MapHealthChecks("/health");

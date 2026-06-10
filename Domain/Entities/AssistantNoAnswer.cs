@@ -18,6 +18,9 @@ namespace Domain.Entities;
 /// </summary>
 public class AssistantNoAnswer : BaseAuditableEntity
 {
+    /// <summary>The registered app this cluster belongs to.</summary>
+    public Guid? AppId { get; set; }
+
     /// <summary>The code-set reason this turn produced no answer.</summary>
     public NoAnswerReason Reason { get; set; }
 

@@ -63,6 +63,10 @@ public class ToolParamDto
 /// </summary>
 public class ConfirmAssistantPlanRequest
 {
+    /// <summary>The app this plan belongs to. Optional: derived from the owning
+    /// interaction when present, else falls back to the oldest active app.</summary>
+    public Guid? AppId { get; set; }
+
     /// <summary>The chosen tools, each with an explicit source decision for EVERY parameter.</summary>
     public List<PlanToolInput> Tools { get; set; } = new();
 

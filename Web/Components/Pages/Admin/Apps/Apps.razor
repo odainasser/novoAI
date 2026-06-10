@@ -1,0 +1,271 @@
+@page "/admin/apps"
+@attribute [Authorize]
+@attribute [RequirePermission(Permissions.AppsRead)]
+@using Microsoft.AspNetCore.Authorization
+@using Web.Authorization
+@using Web.Components.Common
+@using Web.Models.Apps
+@inject IAppsClientService AppsService
+
+<PageTitle>@Localizer["AppsManagement"]</PageTitle>
+
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+                <i class="bi bi-grid-3x3-gap text-purple-600"></i>
+                @Localizer["AppsManagement"]
+            </h1>
+            <p class="text-gray-600 mt-2 text-sm sm:text-base">@Localizer["AppsManagementDesc"]</p>
+        </div>
+
+        <AuthorizeView Policy="Permission:apps.write">
+            <Authorized>
+                <button @onclick="OpenCreate" class="btn-primary-action">
+                    <i class="bi bi-plus-circle"></i>
+                    <span>@Localizer["RegisterApp"]</span>
+                </button>
+            </Authorized>
+        </AuthorizeView>
+    </div>
+
+    @if (isLoading)
+    {
+        <Spinner Size="Spinner.SpinnerSize.Lg" Centered="true" />
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="p-4 bf-bg-danger-50 border bf-border-danger rounded-lg flex items-start gap-3 mb-4">
+            <i class="bi bi-exclamation-triangle-fill bf-icon-danger text-lg mt-0.5"></i>
+            <span class="bf-text-danger">@errorMessage</span>
+        </div>
+    }
+
+    @if (!isLoading && apps.Count == 0)
+    {
+        <div class="text-center py-12">
+            <i class="bi bi-grid-3x3-gap text-6xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500 text-lg">@Localizer["NoAppsRegistered"]</p>
+        </div>
+    }
+    else if (!isLoading)
+    {
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["AppCode"]</th>
+                        <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Name"]</th>
+                        <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["BaseUrl"]</th>
+                        <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Currency"]</th>
+                        <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Status"]</th>
+                        <th class="px-6 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Actions"]</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    @foreach (var app in apps)
+                    {
+                        <tr class="hover:bg-gray-50 transition-colors duration-150">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">@app.Code</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">@app.Name</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">@app.BaseUrl</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">@app.Currency</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                @if (app.IsActive)
+                                {
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bf-bg-success-100 bf-text-success">
+                                        <i class="bi bi-check-circle-fill me-1"></i> @Localizer["Active"]
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bf-bg-danger-100 bf-text-danger">
+                                        <i class="bi bi-x-circle-fill me-1"></i> @Localizer["Inactive"]
+                                    </span>
+                                }
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-end text-sm font-medium">
+                                <AuthorizeView Policy="Permission:apps.write" Context="aw">
+                                    <Authorized Context="aw">
+                                        <button @onclick="() => OpenEdit(app)" class="text-purple-600 hover:text-purple-900 me-3" title="@Localizer["Edit"]">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                        <button @onclick="() => ToggleActive(app)" class="@(app.IsActive ? "bf-text-danger" : "bf-text-success")" title="@(app.IsActive ? Localizer["Deactivate"] : Localizer["Activate"])">
+                                            <i class="bi @(app.IsActive ? "bi-pause-circle" : "bi-play-circle")"></i>
+                                        </button>
+                                    </Authorized>
+                                </AuthorizeView>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@if (showForm)
+{
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl p-8 max-w-lg w-full mx-4">
+            <h3 class="text-xl font-bold text-gray-900 mb-4">
+                @(editingId is null ? Localizer["RegisterApp"] : Localizer["EditApp"])
+            </h3>
+
+            @if (!string.IsNullOrEmpty(formError))
+            {
+                <div class="p-3 mb-4 bf-bg-danger-50 border bf-border-danger rounded-lg text-sm bf-text-danger">@formError</div>
+            }
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["AppCode"] *</label>
+                    <input @bind="form.Code" disabled="@(editingId is not null)" placeholder="bytemart"
+                           class="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-bf-primary disabled:bg-gray-100" />
+                    <p class="text-xs text-gray-400 mt-1">@Localizer["AppCodeHint"]</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["Name"] *</label>
+                    <input @bind="form.Name" placeholder="ByteMart"
+                           class="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-bf-primary" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["BaseUrl"] *</label>
+                    <input @bind="form.BaseUrl" placeholder="https://localhost:7050"
+                           class="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-bf-primary" />
+                    <p class="text-xs text-gray-400 mt-1">@Localizer["BaseUrlHint"]</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["PersonaPrompt"]</label>
+                    <input @bind="form.PersonaPrompt" placeholder="retail business assistant"
+                           class="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-bf-primary" />
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["Currency"]</label>
+                        <input @bind="form.Currency" placeholder="AED"
+                               class="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-bf-primary" />
+                    </div>
+                    <div class="flex items-end pb-2">
+                        <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                            <input type="checkbox" @bind="form.IsActive" class="rounded border-gray-300" />
+                            @Localizer["Active"]
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["Description"]</label>
+                    <textarea @bind="form.Description" rows="2"
+                              class="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-bf-primary"></textarea>
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-6">
+                <button @onclick="CloseForm"
+                        class="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors duration-200 font-medium">
+                    @Localizer["Cancel"]
+                </button>
+                <button @onclick="SaveAsync" disabled="@isSaving"
+                        class="flex-1 py-2 px-4 btn-primary-action justify-center disabled:opacity-60">
+                    @(isSaving ? Localizer["Saving"] : Localizer["Save"])
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<AppDto> apps = new();
+    private bool isLoading = true;
+    private string errorMessage = string.Empty;
+
+    private bool showForm;
+    private bool isSaving;
+    private string formError = string.Empty;
+    private Guid? editingId;
+    private SaveAppRequest form = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+        try
+        {
+            apps = await AppsService.GetAppsAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OpenCreate()
+    {
+        editingId = null;
+        form = new SaveAppRequest();
+        formError = string.Empty;
+        showForm = true;
+    }
+
+    private void OpenEdit(AppDto app)
+    {
+        editingId = app.Id;
+        form = new SaveAppRequest
+        {
+            Code = app.Code,
+            Name = app.Name,
+            Description = app.Description,
+            BaseUrl = app.BaseUrl,
+            PersonaPrompt = app.PersonaPrompt,
+            Currency = app.Currency,
+            IsActive = app.IsActive
+        };
+        formError = string.Empty;
+        showForm = true;
+    }
+
+    private void CloseForm() => showForm = false;
+
+    private async Task SaveAsync()
+    {
+        isSaving = true;
+        formError = string.Empty;
+        try
+        {
+            if (editingId is null)
+                await AppsService.CreateAppAsync(form);
+            else
+                await AppsService.UpdateAppAsync(editingId.Value, form);
+            showForm = false;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            formError = ex.Message;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task ToggleActive(AppDto app)
+    {
+        try
+        {
+            await AppsService.SetActiveAsync(app.Id, !app.IsActive);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+}

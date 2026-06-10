@@ -59,6 +59,9 @@ public class DatabaseSeeder
             var lookupSeeder = new LookupSeeder(context, lookupSeederLogger);
             await lookupSeeder.SeedAsync();
 
+            // Registered apps are MODULE DATA, never seeded or configured: client
+            // systems are onboarded through the Apps admin page (/api/apps).
+
             // The tool-calling assistant needs no seed data — its tools are
             // code-owned, and the model understands natural language directly.
 

@@ -14,6 +14,9 @@ public interface IAssistantService
 
 public class AssistantReportRequest
 {
+    /// <summary>The registered app this report belongs to (e.g. "bytemart").</summary>
+    public string? AppCode { get; set; }
+
     public string Question { get; set; } = string.Empty;
     public string Answer { get; set; } = string.Empty;
     public string? Feedback { get; set; }
@@ -23,6 +26,12 @@ public class AssistantReportRequest
 
 public class AssistantRequest
 {
+    /// <summary>
+    /// The registered app whose tools should answer this question (e.g. "bytemart").
+    /// Optional for single-app deployments: when empty, the oldest active app is used.
+    /// </summary>
+    public string? AppCode { get; set; }
+
     public string Question { get; set; } = string.Empty;
     public List<AssistantMessage> History { get; set; } = new();
     public string Locale { get; set; } = "en";
