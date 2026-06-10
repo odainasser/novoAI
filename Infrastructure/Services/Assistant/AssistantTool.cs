@@ -98,7 +98,7 @@ internal sealed class DelegateTool : IAssistantTool
     public bool IsMixing { get; }
     public object ParametersSchema { get; }
 
-    // Set once, after construction, from the code-owned metadata map in ToolDefinitions.
+    // Set once, after construction, from the tool descriptor fetched from the provider.
     public string Domain { get; set; } = string.Empty;
     public IReadOnlyList<string> Entities { get; set; } = Array.Empty<string>();
 
