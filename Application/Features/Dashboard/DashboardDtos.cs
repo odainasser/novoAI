@@ -18,6 +18,18 @@ public class DashboardSummaryDto
     /// <summary>Share of logged turns that produced a grounded answer (0-100).</summary>
     public int AnsweredRatePercent { get; set; }
 
+    /// <summary>
+    /// Answer quality (0-100): good turns / all turns, where all turns include the
+    /// failed (no-answer) ones and user-reported answers count against quality.
+    /// </summary>
+    public int QualityPercent { get; set; }
+
+    /// <summary>Turns that ended in the no-answer queue (cluster frequencies summed).</summary>
+    public int FailedTurns { get; set; }
+
+    /// <summary>All user-reported answers (resolved or not) — each was a bad answer.</summary>
+    public int ReportedTotal { get; set; }
+
     // Governance & review queues
     public int ConfirmedPlans { get; set; }
     public int OpenNoAnswers { get; set; }

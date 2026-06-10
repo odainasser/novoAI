@@ -108,8 +108,28 @@
             </a>
         </div>
 
-        <!-- Governance -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+        <!-- Answer quality + governance -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div class="dash-card p-4 sm:col-span-2">
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                        <i class="bi bi-stars text-purple-600"></i>
+                        @Localizer["AnswerQuality"]
+                    </p>
+                    <p class="text-xl font-bold leading-none @QualityTextClass">@summary.QualityPercent%</p>
+                </div>
+                <div class="w-full h-3 bg-gray-100 rounded-full overflow-hidden" role="progressbar"
+                     aria-valuenow="@summary.QualityPercent" aria-valuemin="0" aria-valuemax="100">
+                    <div class="h-full rounded-full transition-all duration-700 @QualityBarClass"
+                         style="width: @(summary.QualityPercent)%"></div>
+                </div>
+                <p class="text-[11px] text-gray-400 mt-2">
+                    @summary.AnsweredQuestions @Localizer["QualityAnsweredLabel"] ·
+                    @summary.FailedTurns @Localizer["QualityFailedLabel"] ·
+                    @summary.ReportedTotal @Localizer["QualityReportedLabel"]
+                </p>
+            </div>
+
             <a href="/admin/assistant/plans" class="dash-card p-4 flex items-center gap-3 hover:shadow-md transition-shadow">
                 <span class="dash-chip w-10 h-10 text-lg"><i class="bi bi-diagram-3"></i></span>
                 <div class="min-w-0">
@@ -183,6 +203,20 @@
 @code {
     private bool isLoading = true;
     private DashboardSummaryDto summary = new();
+
+    private string QualityBarClass => summary.QualityPercent switch
+    {
+        >= 80 => "bg-emerald-500",
+        >= 50 => "bg-amber-500",
+        _ => "bg-red-500"
+    };
+
+    private string QualityTextClass => summary.QualityPercent switch
+    {
+        >= 80 => "text-emerald-600",
+        >= 50 => "text-amber-600",
+        _ => "text-red-600"
+    };
 
     protected override async Task OnInitializedAsync()
     {

@@ -11,6 +11,9 @@ public class DashboardSummaryDto
     public int QuestionsToday { get; set; }
     public int AnsweredQuestions { get; set; }
     public int AnsweredRatePercent { get; set; }
+    public int QualityPercent { get; set; }
+    public int FailedTurns { get; set; }
+    public int ReportedTotal { get; set; }
 
     // Governance & review queues
     public int ConfirmedPlans { get; set; }

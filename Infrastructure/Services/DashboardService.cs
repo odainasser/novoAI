@@ -35,6 +35,14 @@ public class DashboardService : IDashboardService
         var openNoAnswers = await _context.AssistantNoAnswers.CountAsync();
         var unresolvedReports = await _context.AssistantReportedAnswers.CountAsync(r => !r.Resolved);
 
+        // Answer quality: good turns / all turns. Failed turns (the no-answer queue,
+        // cluster frequencies summed) and user-reported answers both count against it.
+        var failedTurns = await _context.AssistantNoAnswers.SumAsync(c => (int?)c.Frequency) ?? 0;
+        var reportedTotal = await _context.AssistantReportedAnswers.CountAsync();
+        var allTurns = totalQuestions + failedTurns;
+        var goodTurns = Math.Max(0, totalQuestions - reportedTotal);
+        var qualityPercent = allTurns == 0 ? 0 : (int)Math.Round(goodTurns * 100.0 / allTurns);
+
         // Recent questions with their app name (subquery left-join — legacy rows keep working).
         var recentQuestions = await _context.AssistantInteractions.AsNoTracking()
             .OrderByDescending(i => i.CreatedAt)
@@ -62,6 +70,9 @@ public class DashboardService : IDashboardService
             AnsweredRatePercent = totalQuestions == 0
                 ? 0
                 : (int)Math.Round(answeredQuestions * 100.0 / totalQuestions),
+            QualityPercent = qualityPercent,
+            FailedTurns = failedTurns,
+            ReportedTotal = reportedTotal,
             ConfirmedPlans = confirmedPlans,
             OpenNoAnswers = openNoAnswers,
             UnresolvedReports = unresolvedReports,
