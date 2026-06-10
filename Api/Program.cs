@@ -161,7 +161,14 @@ app.UseSwaggerUI(options =>
     options.DocumentTitle = "Retail API Documentation";
 });
 
-app.UseHttpsRedirection();
+// In Development, integrated systems (and the Novologs chat) call this API over
+// plain HTTP via host.docker.internal — an HTTP→HTTPS redirect would bounce them
+// to the untrusted dev certificate and break the call. Only enforce HTTPS in
+// non-Development (where TLS is terminated by the reverse proxy).
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 // Serve static files from wwwroot (uploads, assets, etc.) so media URLs like /uploads/... are reachable
 app.UseStaticFiles();
