@@ -10,97 +10,185 @@
 <PageTitle>@Localizer["AppsManagement"]</PageTitle>
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-6">
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-        <div>
-            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
-                <i class="bi bi-grid-3x3-gap text-purple-600"></i>
-                @Localizer["AppsManagement"]
-            </h1>
-            <p class="text-gray-600 mt-2 text-sm sm:text-base">@Localizer["AppsManagementDesc"]</p>
-        </div>
+            <!-- Header -->
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+                        <i class="bi bi-grid-3x3-gap text-purple-600"></i>
+                        @Localizer["AppsManagement"]
+                    </h1>
+                    <p class="text-gray-600 mt-2 text-sm sm:text-base">@Localizer["AppsManagementDesc"]</p>
+                </div>
 
-        <AuthorizeView Policy="Permission:apps.write">
-            <Authorized>
-                <button @onclick="OpenCreate" class="btn-primary-action">
-                    <i class="bi bi-plus-circle"></i>
-                    <span>@Localizer["CreateApp"]</span>
-                </button>
-            </Authorized>
-        </AuthorizeView>
-    </div>
+                <AuthorizeView Policy="Permission:apps.write">
+                    <Authorized>
+                        <button @onclick="OpenCreate"
+                                class="btn-primary-action">
+                            <i class="bi bi-plus-circle"></i>
+                            <span>@Localizer["CreateApp"]</span>
+                        </button>
+                    </Authorized>
+                    <NotAuthorized>
+                        <button disabled
+                                class="inline-flex items-center gap-2 py-3 px-6 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed font-medium">
+                            <i class="bi bi-plus-circle"></i>
+                            <span>@Localizer["CreateApp"]</span>
+                        </button>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
 
-    @if (isLoading)
-    {
-        <Spinner Size="Spinner.SpinnerSize.Lg" Centered="true" />
-    }
-    else if (!string.IsNullOrEmpty(errorMessage))
-    {
-        <div class="p-4 bf-bg-danger-50 border bf-border-danger rounded-lg flex items-start gap-3 mb-4">
-            <i class="bi bi-exclamation-triangle-fill bf-icon-danger text-lg mt-0.5"></i>
-            <span class="bf-text-danger">@errorMessage</span>
-        </div>
-    }
+            <!-- Filters -->
+            <div class="mb-6 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                <div class="flex flex-wrap items-center gap-3 p-4">
+                    <div class="flex-1 min-w-[200px]">
+                        <SearchInput @bind-Value="searchTerm"
+                                     OnSearch="HandleSearch"
+                                     Placeholder="@Localizer["SearchApps"]" />
+                    </div>
 
-    @if (!isLoading && apps.Count == 0)
-    {
-        <div class="text-center py-12">
-            <i class="bi bi-grid-3x3-gap text-6xl text-gray-300 mb-4"></i>
-            <p class="text-gray-500 text-lg">@Localizer["NoAppsRegistered"]</p>
-        </div>
-    }
-    else if (!isLoading)
-    {
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["AppCode"]</th>
-                        <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Name"]</th>
-                        <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["BaseUrl"]</th>
-                        <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Status"]</th>
-                        <th class="px-6 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Actions"]</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    @foreach (var app in apps)
+                    <button @onclick="() => showFiltersPanel = !showFiltersPanel"
+                            class="@($"inline-flex items-center gap-2 py-2 px-4 rounded-lg border transition-all duration-200 font-medium text-sm {(showFiltersPanel ? "bg-purple-50 border-purple-300 text-purple-700" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50")}")">
+                        <i class="bi bi-funnel"></i>
+                        <span>@Localizer["Filters"]</span>
+                        @if (ActiveFilterCount > 0)
+                        {
+                            <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-purple-600 rounded-full">@ActiveFilterCount</span>
+                        }
+                        <i class="@($"bi bi-chevron-{(showFiltersPanel ? "up" : "down")} text-xs")"></i>
+                    </button>
+
+                    @if (HasActiveFilters())
                     {
-                        <tr class="hover:bg-gray-50 transition-colors duration-150">
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">@app.Code</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">@app.Name</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">@app.BaseUrl</td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                @if (app.IsActive)
-                                {
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bf-bg-success-100 bf-text-success">
-                                        <i class="bi bi-check-circle-fill me-1"></i> @Localizer["Active"]
-                                    </span>
-                                }
-                                else
-                                {
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bf-bg-danger-100 bf-text-danger">
-                                        <i class="bi bi-x-circle-fill me-1"></i> @Localizer["Inactive"]
-                                    </span>
-                                }
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-end text-sm font-medium">
-                                <AuthorizeView Policy="Permission:apps.write" Context="aw">
-                                    <Authorized Context="aw">
-                                        <button @onclick="() => OpenEdit(app)" class="text-purple-600 hover:text-purple-900 me-3" title="@Localizer["Edit"]">
-                                            <i class="bi bi-pencil-square"></i>
-                                        </button>
-                                        <button @onclick="() => ToggleActive(app)" class="@(app.IsActive ? "bf-text-danger" : "bf-text-success")" title="@(app.IsActive ? Localizer["Deactivate"] : Localizer["Activate"])">
-                                            <i class="bi @(app.IsActive ? "bi-pause-circle" : "bi-play-circle")"></i>
-                                        </button>
-                                    </Authorized>
-                                </AuthorizeView>
-                            </td>
-                        </tr>
+                        <button @onclick="ResetFilters" class="inline-flex items-center gap-2 py-2 px-4 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                            <i class="bi bi-x-circle"></i>
+                            <span>@Localizer["ResetFilters"]</span>
+                        </button>
                     }
-                </tbody>
-            </table>
-        </div>
-    }
+                </div>
+
+                @if (showFiltersPanel)
+                {
+                    <div class="px-4 pb-4 pt-0 border-t border-gray-200">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">@Localizer["Status"]</label>
+                                <div class="relative">
+                                    <select @bind="selectedStatus" @bind:after="ApplyFilters" class="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2 px-3 pe-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-bf-primary text-sm">
+                                        <option value="">@Localizer["AllStatuses"]</option>
+                                        <option value="true">@Localizer["Active"]</option>
+                                        <option value="false">@Localizer["Inactive"]</option>
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 end-0 flex items-center px-2 text-gray-400"><svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (isLoading)
+            {
+                <Spinner Size="Spinner.SpinnerSize.Lg" Centered="true" />
+            }
+            else if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="p-4 bf-bg-danger-50 border bf-border-danger rounded-lg flex items-start gap-3">
+                    <i class="bi bi-exclamation-triangle-fill bf-icon-danger text-lg mt-0.5"></i>
+                    <span class="bf-text-danger">@errorMessage</span>
+                </div>
+            }
+            else if (!PagedApps.Any())
+            {
+                <div class="text-center py-12">
+                    <i class="bi bi-grid-3x3-gap text-6xl text-gray-300 mb-4"></i>
+                    <p class="text-gray-500 text-lg">@Localizer["NoAppsRegistered"]</p>
+                </div>
+            }
+            else
+            {
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["AppCode"]</th>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Name"]</th>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["BaseUrl"]</th>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Status"]</th>
+                                <th class="px-6 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Actions"]</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            @foreach (var app in PagedApps)
+                            {
+                                <tr class="hover:bg-gray-50 transition-colors duration-150">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <AuthorizeView Policy="Permission:apps.write" Context="cw">
+                                            <Authorized Context="cw">
+                                                <a href="" @onclick="() => OpenEdit(app)" @onclick:preventDefault
+                                                   class="text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline">
+                                                    @app.Code
+                                                </a>
+                                            </Authorized>
+                                            <NotAuthorized>
+                                                <span class="text-indigo-600">@app.Code</span>
+                                            </NotAuthorized>
+                                        </AuthorizeView>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        @app.Name
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
+                                        @app.BaseUrl
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        @if (app.IsActive)
+                                        {
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bf-bg-success-100 bf-text-success">
+                                                <i class="bi bi-check-circle-fill me-1"></i> @Localizer["Active"]
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bf-bg-danger-100 bf-text-danger">
+                                                <i class="bi bi-x-circle-fill me-1"></i> @Localizer["Inactive"]
+                                            </span>
+                                        }
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-end text-sm font-medium">
+                                        <AuthorizeView Policy="Permission:apps.write" Context="aw">
+                                            <Authorized Context="aw">
+                                                <button @onclick="() => OpenEdit(app)"
+                                                        class="text-purple-600 hover:text-purple-900 me-3" title="@Localizer["Edit"]">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </button>
+                                                <button @onclick="() => ToggleActive(app)"
+                                                        class="@(app.IsActive ? "bf-text-danger bf-hover-text-danger-strong" : "bf-text-success")"
+                                                        title="@(app.IsActive ? Localizer["Deactivate"] : Localizer["Activate"])">
+                                                    <i class="bi @(app.IsActive ? "bi-pause-circle" : "bi-play-circle")"></i>
+                                                </button>
+                                            </Authorized>
+                                            <NotAuthorized>
+                                                <button disabled class="text-gray-400 me-3 cursor-not-allowed">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </button>
+                                                <button disabled class="text-gray-400 cursor-not-allowed">
+                                                    <i class="bi bi-pause-circle"></i>
+                                                </button>
+                                            </NotAuthorized>
+                                        </AuthorizeView>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <Pagination PageIndex="@pageIndex"
+                                TotalPages="@TotalPages"
+                                TotalCount="@FilteredApps.Count"
+                                PageSize="@pageSize"
+                                OnPageChanged="@OnPageChanged" />
+                </div>
+            }
 </div>
 
 @if (showForm)
@@ -140,15 +228,15 @@
                            class="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-bf-primary" />
                 </div>
                 <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["Description"]</label>
+                    <textarea @bind="form.Description" rows="2"
+                              class="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-bf-primary"></textarea>
+                </div>
+                <div>
                     <label class="inline-flex items-center gap-2 text-sm text-gray-700">
                         <input type="checkbox" @bind="form.IsActive" class="rounded border-gray-300" />
                         @Localizer["Active"]
                     </label>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">@Localizer["Description"]</label>
-                    <textarea @bind="form.Description" rows="2"
-                              class="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-bf-primary"></textarea>
                 </div>
             </div>
 
@@ -171,6 +259,32 @@
     private bool isLoading = true;
     private string errorMessage = string.Empty;
 
+    // Filters
+    private string searchTerm = string.Empty;
+    private string selectedStatus = string.Empty;
+    private bool showFiltersPanel = false;
+
+    private bool HasActiveFilters() => !string.IsNullOrEmpty(selectedStatus);
+    private int ActiveFilterCount => string.IsNullOrEmpty(selectedStatus) ? 0 : 1;
+
+    // Pagination (client-side: the registry is a short list)
+    private int pageIndex = 1;
+    private int pageSize = 10;
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(FilteredApps.Count / (double)pageSize));
+
+    private List<AppDto> FilteredApps => apps
+        .Where(a => string.IsNullOrWhiteSpace(searchTerm)
+                    || a.Code.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+                    || a.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+                    || a.BaseUrl.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+        .Where(a => string.IsNullOrEmpty(selectedStatus) || a.IsActive == bool.Parse(selectedStatus))
+        .ToList();
+
+    private IEnumerable<AppDto> PagedApps => FilteredApps
+        .Skip((pageIndex - 1) * pageSize)
+        .Take(pageSize);
+
+    // Form modal
     private bool showForm;
     private bool isSaving;
     private string formError = string.Empty;
@@ -196,6 +310,23 @@
             isLoading = false;
         }
     }
+
+    private void HandleSearch(string searchValue)
+    {
+        searchTerm = searchValue;
+        pageIndex = 1;
+    }
+
+    private void ApplyFilters() => pageIndex = 1;
+
+    private void ResetFilters()
+    {
+        searchTerm = string.Empty;
+        selectedStatus = string.Empty;
+        pageIndex = 1;
+    }
+
+    private void OnPageChanged(int newPageIndex) => pageIndex = newPageIndex;
 
     private void OpenCreate()
     {

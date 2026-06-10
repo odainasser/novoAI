@@ -1682,6 +1682,7 @@
   "AppsManagement": "إدارة التطبيقات",
   "AppsManagementDesc": "تسجيل التطبيقات التي تتكامل مع خدمة مساعد ByteAI",
   "CreateApp": "إنشاء تطبيق",
+  "SearchApps": "البحث في التطبيقات...",
   "EditApp": "تعديل التطبيق",
   "NoAppsRegistered": "لا توجد تطبيقات مسجلة بعد",
   "AppCode": "رمز التطبيق",
