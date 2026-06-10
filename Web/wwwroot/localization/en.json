@@ -1706,6 +1706,8 @@
   "AppCodeHint": "Stable lowercase identifier the client sends with every assistant request (e.g. bytemart)",
   "BaseUrl": "Base URL",
   "BaseUrlHint": "Root URL of the app's API exposing /api/assistant-data (tools, execute)",
+  "JwtAuthority": "JWT Authority",
+  "JwtAuthorityHint": "Optional: the app's OIDC token issuer. Tokens it signs are accepted by the assistant (keys discovered from /.well-known/openid-configuration). Leave empty when the app shares ByteAI's JWT secret.",
   "PersonaPrompt": "Persona",
   "Activate": "Activate",
   "Deactivate": "Deactivate"

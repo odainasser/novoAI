@@ -66,6 +66,7 @@ internal class AppsAdminService : IAppsAdminService
             Description = Blank(request.Description),
             BaseUrl = baseUrl,
             PersonaPrompt = Blank(request.PersonaPrompt),
+            JwtAuthority = ValidateAuthority(request.JwtAuthority),
             IsActive = request.IsActive,
             CreatedAt = DateTime.UtcNow
         };
@@ -92,6 +93,7 @@ internal class AppsAdminService : IAppsAdminService
         app.Description = Blank(request.Description);
         app.BaseUrl = baseUrl;
         app.PersonaPrompt = Blank(request.PersonaPrompt);
+        app.JwtAuthority = ValidateAuthority(request.JwtAuthority);
         app.IsActive = request.IsActive;
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -153,6 +155,16 @@ internal class AppsAdminService : IAppsAdminService
 
     private static string? Blank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
+    private static string? ValidateAuthority(string? authority)
+    {
+        var a = Blank(authority)?.TrimEnd('/');
+        if (a is null) return null;
+        if (!Uri.TryCreate(a, UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
+            throw new ArgumentException("JwtAuthority must be an absolute http(s) URL (the token issuer).");
+        return a;
+    }
+
     private static AppDto Map(App a) => new()
     {
         Id = a.Id,
@@ -161,6 +173,7 @@ internal class AppsAdminService : IAppsAdminService
         Description = a.Description,
         BaseUrl = a.BaseUrl,
         PersonaPrompt = a.PersonaPrompt,
+        JwtAuthority = a.JwtAuthority,
         IsActive = a.IsActive,
         CreatedAt = a.CreatedAt
     };

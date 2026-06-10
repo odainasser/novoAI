@@ -134,6 +134,19 @@ public static class DependencyInjection
             };
         });
 
+        // Apps integration module: in addition to ByteAI's own symmetric key,
+        // accept bearer tokens issued by a registered ACTIVE app's OIDC authority
+        // (App.JwtAuthority — e.g. Novologs' tenant service). Keys are discovered
+        // from the authority's metadata; audience is enforced only for own tokens.
+        services.AddSingleton<Identity.AppTokenTrust>();
+        services.AddOptions<Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+            .Configure<Identity.AppTokenTrust>((options, trust) =>
+            {
+                options.TokenValidationParameters.IssuerValidator = trust.ValidateIssuer;
+                options.TokenValidationParameters.IssuerSigningKeyResolver = trust.ResolveSigningKeys;
+                options.TokenValidationParameters.AudienceValidator = trust.ValidateAudience;
+            });
+
         // Register repositories
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         services.AddScoped<IUserRepository, UserRepository>();

@@ -59,8 +59,11 @@ public class DatabaseSeeder
             var lookupSeeder = new LookupSeeder(context, lookupSeederLogger);
             await lookupSeeder.SeedAsync();
 
-            // Registered apps are MODULE DATA, never seeded or configured: client
-            // systems are onboarded through the Apps admin page (/api/apps).
+            // 7. Seed the registered client applications (ByteMart + Novologs).
+            // Create-if-missing only — admin edits via the Apps page are never overwritten.
+            var appSeederLogger = services.GetRequiredService<ILogger<AppSeeder>>();
+            var appSeeder = new AppSeeder(context, appSeederLogger);
+            await appSeeder.SeedAsync();
 
             // The tool-calling assistant needs no seed data — its tools are
             // code-owned, and the model understands natural language directly.

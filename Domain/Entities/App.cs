@@ -30,6 +30,14 @@ public class App : BaseAuditableEntity
     /// </summary>
     public string? PersonaPrompt { get; set; }
 
+    /// <summary>
+    /// Optional OIDC token issuer/authority of the app. When set, bearer tokens
+    /// issued by this authority are accepted by the assistant API (signing keys
+    /// are discovered from {JwtAuthority}/.well-known/openid-configuration).
+    /// Null = the app shares ByteAI's own JWT signing configuration (ByteMart).
+    /// </summary>
+    public string? JwtAuthority { get; set; }
+
     /// <summary>Inactive apps are refused service without being deleted.</summary>
     public bool IsActive { get; set; } = true;
 }
