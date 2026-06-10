@@ -19,7 +19,7 @@
             <span>@Localizer["Filters"]</span>
             @if (HasActiveFilters())
             {
-                <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-purple-600 rounded-full">1</span>
+                <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-purple-600 rounded-full">@ActiveFilterCount</span>
             }
             <i class="@($"bi bi-chevron-{(showFiltersPanel ? "up" : "down")} text-xs")"></i>
         </button>
@@ -36,13 +36,26 @@
     @if (showFiltersPanel)
     {
         <div class="px-4 pb-4 pt-0 border-t border-gray-200">
-            <div class="grid grid-cols-1 sm:grid-cols-1 gap-3 pt-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4">
                 <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1">@Localizer["NoAnswerReason"]</label>
                     <SearchableDropdown TItem="string" TValue="string" Compact="true" Clearable="false"
                                         Items="NaqReasonFilters"
                                         DisplayText="@(r => string.IsNullOrEmpty(r) ? Localizer["AllReasons"] : ReasonLabel(r))"
                                         ItemValue="@(r => r)" @bind-Value="naqReasonFilter" OnChanged="ApplyFilters" />
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">@Localizer["App"]</label>
+                    <div class="relative">
+                        <select @bind="selectedAppId" @bind:after="ApplyFilters" class="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2 px-3 pe-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-bf-primary text-sm">
+                            <option value="">@Localizer["AllApps"]</option>
+                            @foreach (var a in appOptions)
+                            {
+                                <option value="@a.Id">@a.Name</option>
+                            }
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 end-0 flex items-center px-2 text-gray-400"><svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -184,7 +197,15 @@ else
         : c.IsCoverageGap ? "bg-amber-50 text-amber-700"
         : "bg-gray-100 text-gray-600";
 
-    protected override async Task OnInitializedAsync() => await LoadNaq();
+    private List<AppOptionDto> appOptions = new();
+    private string selectedAppId = string.Empty;
+    private Guid? SelectedAppGuid => Guid.TryParse(selectedAppId, out var g) ? g : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { appOptions = await AdminService.GetAppOptionsAsync(); } catch { /* filter simply stays empty */ }
+        await LoadNaq();
+    }
 
     private async Task LoadNaq()
     {
@@ -192,7 +213,7 @@ else
         naqError = string.Empty;
         try
         {
-            var result = await AdminService.GetNoAnswersAsync(naqPage, naqPageSize, naqReasonFilter, naqSearch);
+            var result = await AdminService.GetNoAnswersAsync(naqPage, naqPageSize, naqReasonFilter, naqSearch, SelectedAppGuid);
             naqItems = result.Items;
             naqTotalPages = result.TotalPages;
             naqTotalCount = result.TotalCount;
@@ -205,8 +226,9 @@ else
     private async Task ApplyFilters() { naqPage = 1; await LoadNaq(); }
     private async Task OnNaqPageChanged(int p) { naqPage = p; await LoadNaq(); }
 
-    private bool HasActiveFilters() => !string.IsNullOrEmpty(naqReasonFilter);
-    private async Task ResetFilters() { naqReasonFilter = string.Empty; naqPage = 1; await LoadNaq(); }
+    private bool HasActiveFilters() => !string.IsNullOrEmpty(naqReasonFilter) || !string.IsNullOrEmpty(selectedAppId);
+    private int ActiveFilterCount => (string.IsNullOrEmpty(naqReasonFilter) ? 0 : 1) + (string.IsNullOrEmpty(selectedAppId) ? 0 : 1);
+    private async Task ResetFilters() { naqReasonFilter = string.Empty; selectedAppId = string.Empty; naqPage = 1; await LoadNaq(); }
 
     // ── No-answer review modal (read-only) ────────────────────────────
     private bool showNaqModal = false;

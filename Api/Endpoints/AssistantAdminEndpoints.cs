@@ -25,13 +25,24 @@ public static class AssistantAdminEndpoints
             [FromQuery] string? search,
             [FromQuery] bool? unansweredOnly,
             [FromQuery] bool? confirmedOnly,
+            [FromQuery] Guid? appId,
             [FromServices] IAssistantAdminService service) =>
         {
-            var result = await service.GetInteractionsAsync(pageNumber ?? 1, pageSize ?? 20, search, unansweredOnly, confirmedOnly);
+            var result = await service.GetInteractionsAsync(pageNumber ?? 1, pageSize ?? 20, search, unansweredOnly, confirmedOnly, appId);
             return Results.Ok(result);
         })
         .WithName("GetAssistantInteractions")
         .Produces<PaginatedList<AssistantInteractionDto>>(StatusCodes.Status200OK)
+        .RequireAuthorization()
+        .WithMetadata(new RequirePermissionAttribute(Permissions.AssistantKeywordsRead));
+
+        // Registered apps (id + name) for the review-page app filter — readable with
+        // the assistant permission, no apps.read needed.
+        group.MapGet("/app-options", async (
+            [FromServices] IAssistantAdminService service) =>
+            Results.Ok(await service.GetAppOptionsAsync()))
+        .WithName("GetAssistantAppOptions")
+        .Produces<IReadOnlyList<AppOptionDto>>(StatusCodes.Status200OK)
         .RequireAuthorization()
         .WithMetadata(new RequirePermissionAttribute(Permissions.AssistantKeywordsRead));
 
@@ -86,8 +97,9 @@ public static class AssistantAdminEndpoints
             [FromQuery] int? pageSize,
             [FromQuery] string? reason,
             [FromQuery] string? search,
+            [FromQuery] Guid? appId,
             [FromServices] IAssistantAdminService service) =>
-            Results.Ok(await service.GetNoAnswersAsync(pageNumber ?? 1, pageSize ?? 20, reason, search)))
+            Results.Ok(await service.GetNoAnswersAsync(pageNumber ?? 1, pageSize ?? 20, reason, search, appId)))
         .WithName("GetAssistantNoAnswers")
         .Produces<PaginatedList<NoAnswerClusterDto>>(StatusCodes.Status200OK)
         .RequireAuthorization()
@@ -99,8 +111,9 @@ public static class AssistantAdminEndpoints
             [FromQuery] int? pageSize,
             [FromQuery] bool? resolved,
             [FromQuery] string? search,
+            [FromQuery] Guid? appId,
             [FromServices] IAssistantAdminService service) =>
-            Results.Ok(await service.GetReportedAnswersAsync(pageNumber ?? 1, pageSize ?? 20, resolved, search)))
+            Results.Ok(await service.GetReportedAnswersAsync(pageNumber ?? 1, pageSize ?? 20, resolved, search, appId)))
         .WithName("GetAssistantReportedAnswers")
         .Produces<PaginatedList<ReportedAnswerDto>>(StatusCodes.Status200OK)
         .RequireAuthorization()

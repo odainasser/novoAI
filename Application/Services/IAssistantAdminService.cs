@@ -15,7 +15,10 @@ public interface IAssistantAdminService
     // ── Interactions (the turn log) ────────────────────────────────────
     Task<PaginatedList<AssistantInteractionDto>> GetInteractionsAsync(
         int pageNumber, int pageSize, string? search = null,
-        bool? unansweredOnly = null, bool? confirmedOnly = null);
+        bool? unansweredOnly = null, bool? confirmedOnly = null, Guid? appId = null);
+
+    /// <summary>Registered apps (id + name) for the review-page app filter.</summary>
+    Task<IReadOnlyList<AppOptionDto>> GetAppOptionsAsync();
 
     /// <summary>The tool/domain/entity vocabulary for the correction dropdowns,
     /// fetched from the registered app's tool catalog (default: oldest active app).</summary>
@@ -36,12 +39,12 @@ public interface IAssistantAdminService
     /// coverage gaps, then by frequency. EmptyResult is excluded unless explicitly filtered.
     /// </summary>
     Task<PaginatedList<NoAnswerClusterDto>> GetNoAnswersAsync(
-        int pageNumber, int pageSize, string? reason = null, string? search = null);
+        int pageNumber, int pageSize, string? reason = null, string? search = null, Guid? appId = null);
 
     // ── Reported answers review queue ──────────────────────────────────
     /// <summary>User-reported answers (snapshots), newest first; filter by resolved state.</summary>
     Task<PaginatedList<ReportedAnswerDto>> GetReportedAnswersAsync(
-        int pageNumber, int pageSize, bool? resolved = null, string? search = null);
+        int pageNumber, int pageSize, bool? resolved = null, string? search = null, Guid? appId = null);
 
     /// <summary>Mark a reported answer resolved (or re-open it).</summary>
     Task ResolveReportedAnswerAsync(Guid id, bool resolved);

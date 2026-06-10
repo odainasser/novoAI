@@ -1,5 +1,12 @@
 namespace Web.Models.Assistant;
 
+/// <summary>A registered app (id + name) for the review-page app filter.</summary>
+public class AppOptionDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
 /// <summary>One logged assistant turn as a reviewable plan (admin read model).</summary>
 public class AssistantInteractionDto
 {

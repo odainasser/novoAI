@@ -1684,6 +1684,8 @@
   "AppsManagementDesc": "Register client applications that integrate with the ByteAI assistant service",
   "CreateApp": "Create App",
   "SearchApps": "Search apps...",
+  "App": "App",
+  "AllApps": "All Apps",
   "EditApp": "Edit App",
   "NoAppsRegistered": "No applications registered yet",
   "AppCode": "App Code",

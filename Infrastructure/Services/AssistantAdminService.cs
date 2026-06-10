@@ -72,12 +72,13 @@ internal class AssistantAdminService : IAssistantAdminService
 
     public async Task<PaginatedList<AssistantInteractionDto>> GetInteractionsAsync(
         int pageNumber, int pageSize, string? search = null,
-        bool? unansweredOnly = null, bool? confirmedOnly = null)
+        bool? unansweredOnly = null, bool? confirmedOnly = null, Guid? appId = null)
     {
         await TryLoadCatalogsAsync();   // tool domain/entity enrichment is best-effort
 
         var query = _context.Set<AssistantInteraction>().AsQueryable();
 
+        if (appId.HasValue) query = query.Where(i => i.AppId == appId.Value);
         if (!string.IsNullOrWhiteSpace(search))
         {
             var s = search.ToLower();
@@ -350,6 +351,12 @@ internal class AssistantAdminService : IAssistantAdminService
             : await query.Where(a => a.IsActive).OrderBy(a => a.CreatedAt).FirstOrDefaultAsync();
     }
 
+    public async Task<IReadOnlyList<AppOptionDto>> GetAppOptionsAsync()
+        => await _context.Apps.AsNoTracking()
+            .OrderBy(a => a.CreatedAt)
+            .Select(a => new AppOptionDto { Id = a.Id, Name = a.Name })
+            .ToListAsync();
+
     // App-name lookup for row display, loaded once per request. Ignores the soft-delete
     // filter so rows of a deleted app still show its name.
     private Dictionary<Guid, string>? _appNames;
@@ -382,9 +389,11 @@ internal class AssistantAdminService : IAssistantAdminService
     // ── No-answer review queue ─────────────────────────────────────────
 
     public async Task<PaginatedList<NoAnswerClusterDto>> GetNoAnswersAsync(
-        int pageNumber, int pageSize, string? reason = null, string? search = null)
+        int pageNumber, int pageSize, string? reason = null, string? search = null, Guid? appId = null)
     {
         var query = _context.Set<AssistantNoAnswer>().AsQueryable();
+
+        if (appId.HasValue) query = query.Where(c => c.AppId == appId.Value);
 
         if (!string.IsNullOrWhiteSpace(reason) && Enum.TryParse<NoAnswerReason>(reason, true, out var rf))
             query = query.Where(c => c.Reason == rf || c.ReviewedReason == rf);
@@ -457,9 +466,11 @@ internal class AssistantAdminService : IAssistantAdminService
     // ── Reported answers review queue ──────────────────────────────────
 
     public async Task<PaginatedList<ReportedAnswerDto>> GetReportedAnswersAsync(
-        int pageNumber, int pageSize, bool? resolved = null, string? search = null)
+        int pageNumber, int pageSize, bool? resolved = null, string? search = null, Guid? appId = null)
     {
         var query = _context.Set<AssistantReportedAnswer>().AsQueryable();
+
+        if (appId.HasValue) query = query.Where(r => r.AppId == appId.Value);
 
         if (resolved.HasValue)
             query = query.Where(r => r.Resolved == resolved.Value);

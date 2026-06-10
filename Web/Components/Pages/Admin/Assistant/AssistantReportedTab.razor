@@ -19,7 +19,7 @@
             <span>@Localizer["Filters"]</span>
             @if (HasActiveFilters())
             {
-                <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-purple-600 rounded-full">1</span>
+                <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-purple-600 rounded-full">@ActiveFilterCount</span>
             }
             <i class="@($"bi bi-chevron-{(showFiltersPanel ? "up" : "down")} text-xs")"></i>
         </button>
@@ -36,13 +36,26 @@
     @if (showFiltersPanel)
     {
         <div class="px-4 pb-4 pt-0 border-t border-gray-200">
-            <div class="grid grid-cols-1 sm:grid-cols-1 gap-3 pt-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4">
                 <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1">@Localizer["Status"]</label>
                     <SearchableDropdown TItem="string" TValue="string" Compact="true" Clearable="false"
                                         Items="StatusFilters"
                                         DisplayText="@(s => StatusLabel(s))"
                                         ItemValue="@(s => s)" @bind-Value="statusFilter" OnChanged="ApplyFilters" />
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">@Localizer["App"]</label>
+                    <div class="relative">
+                        <select @bind="selectedAppId" @bind:after="ApplyFilters" class="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2 px-3 pe-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-bf-primary text-sm">
+                            <option value="">@Localizer["AllApps"]</option>
+                            @foreach (var a in appOptions)
+                            {
+                                <option value="@a.Id">@a.Name</option>
+                            }
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 end-0 flex items-center px-2 text-gray-400"><svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -235,7 +248,15 @@ else
         _ => null
     };
 
-    protected override async Task OnInitializedAsync() => await Load();
+    private List<AppOptionDto> appOptions = new();
+    private string selectedAppId = string.Empty;
+    private Guid? SelectedAppGuid => Guid.TryParse(selectedAppId, out var g) ? g : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { appOptions = await AdminService.GetAppOptionsAsync(); } catch { /* filter simply stays empty */ }
+        await Load();
+    }
 
     private async Task Load()
     {
@@ -243,7 +264,7 @@ else
         error = string.Empty;
         try
         {
-            var result = await AdminService.GetReportedAnswersAsync(pageIndex, pageSize, ResolvedFilter(), search);
+            var result = await AdminService.GetReportedAnswersAsync(pageIndex, pageSize, ResolvedFilter(), search, SelectedAppGuid);
             items = result.Items;
             totalPages = result.TotalPages;
             totalCount = result.TotalCount;
@@ -257,8 +278,9 @@ else
     private async Task OnPageChanged(int p) { pageIndex = p; await Load(); }
 
     // "open" is the default view, so a non-default status counts as an active filter.
-    private bool HasActiveFilters() => statusFilter != "open";
-    private async Task ResetFilters() { statusFilter = "open"; pageIndex = 1; await Load(); }
+    private bool HasActiveFilters() => statusFilter != "open" || !string.IsNullOrEmpty(selectedAppId);
+    private int ActiveFilterCount => (statusFilter == "open" ? 0 : 1) + (string.IsNullOrEmpty(selectedAppId) ? 0 : 1);
+    private async Task ResetFilters() { statusFilter = "open"; selectedAppId = string.Empty; pageIndex = 1; await Load(); }
 
     private void Open(ReportedAnswerDto r) { editing = r; showModal = true; }
     private void Close() { showModal = false; editing = null; }

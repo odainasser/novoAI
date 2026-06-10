@@ -15,16 +15,20 @@ public class ClientAssistantAdminService : IAssistantAdminService
 
     public async Task<PaginatedList<AssistantInteractionDto>> GetInteractionsAsync(
         int pageNumber, int pageSize, string? search = null,
-        bool? unansweredOnly = null, bool? confirmedOnly = null)
+        bool? unansweredOnly = null, bool? confirmedOnly = null, Guid? appId = null)
     {
         var url = $"api/assistant-admin/interactions?pageNumber={pageNumber}&pageSize={pageSize}";
         if (!string.IsNullOrWhiteSpace(search)) url += $"&search={Uri.EscapeDataString(search)}";
         if (unansweredOnly.HasValue) url += $"&unansweredOnly={unansweredOnly.Value}";
         if (confirmedOnly.HasValue) url += $"&confirmedOnly={confirmedOnly.Value}";
+        if (appId.HasValue) url += $"&appId={appId.Value}";
 
         return await _httpClient.GetFromJsonAsync<PaginatedList<AssistantInteractionDto>>(url)
                ?? new PaginatedList<AssistantInteractionDto>(new(), 0, pageNumber, pageSize);
     }
+
+    public async Task<List<AppOptionDto>> GetAppOptionsAsync() =>
+        await _httpClient.GetFromJsonAsync<List<AppOptionDto>>("api/assistant-admin/app-options") ?? new();
 
     public async Task<AssistantPlanOptionsDto> GetPlanOptionsAsync() =>
         await _httpClient.GetFromJsonAsync<AssistantPlanOptionsDto>("api/assistant-admin/plan-options")
@@ -43,22 +47,24 @@ public class ClientAssistantAdminService : IAssistantAdminService
     }
 
     public async Task<PaginatedList<NoAnswerClusterDto>> GetNoAnswersAsync(
-        int pageNumber, int pageSize, string? reason = null, string? search = null)
+        int pageNumber, int pageSize, string? reason = null, string? search = null, Guid? appId = null)
     {
         var url = $"api/assistant-admin/no-answers?pageNumber={pageNumber}&pageSize={pageSize}";
         if (!string.IsNullOrWhiteSpace(reason)) url += $"&reason={Uri.EscapeDataString(reason)}";
         if (!string.IsNullOrWhiteSpace(search)) url += $"&search={Uri.EscapeDataString(search)}";
+        if (appId.HasValue) url += $"&appId={appId.Value}";
 
         return await _httpClient.GetFromJsonAsync<PaginatedList<NoAnswerClusterDto>>(url)
                ?? new PaginatedList<NoAnswerClusterDto>(new(), 0, pageNumber, pageSize);
     }
 
     public async Task<PaginatedList<ReportedAnswerDto>> GetReportedAnswersAsync(
-        int pageNumber, int pageSize, bool? resolved = null, string? search = null)
+        int pageNumber, int pageSize, bool? resolved = null, string? search = null, Guid? appId = null)
     {
         var url = $"api/assistant-admin/reported?pageNumber={pageNumber}&pageSize={pageSize}";
         if (resolved.HasValue) url += $"&resolved={resolved.Value}";
         if (!string.IsNullOrWhiteSpace(search)) url += $"&search={Uri.EscapeDataString(search)}";
+        if (appId.HasValue) url += $"&appId={appId.Value}";
 
         return await _httpClient.GetFromJsonAsync<PaginatedList<ReportedAnswerDto>>(url)
                ?? new PaginatedList<ReportedAnswerDto>(new(), 0, pageNumber, pageSize);

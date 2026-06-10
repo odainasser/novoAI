@@ -34,6 +34,13 @@ public class AssistantInteractionDto
     public string? ReviewedBy { get; set; }
 }
 
+/// <summary>A registered app (id + name) for the review-page app filter.</summary>
+public class AppOptionDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
 /// <summary>The code-owned vocabulary the plan-correction dropdowns read from.</summary>
 public class AssistantPlanOptionsDto
 {
