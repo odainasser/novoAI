@@ -1534,3 +1534,75 @@ aside::-webkit-scrollbar-thumb        { background: rgba(15, 23, 42, 0.12); }
 [data-theme="dark"] .dash-link:hover .dash-chip,
 [data-theme="dark"] .dash-chip-active { background: var(--bf-primary) !important; color: #ffffff !important; }
 [data-theme="dark"] .dash-row:hover { background: rgba(0, 167, 111, 0.12) !important; }
+
+/* ═════════════════════════════════════════════════════════════════════
+   NOVOLOGS-MATCH HEADER  (appended last → overrides the LIGHT HEADER block)
+   The panel header uses the exact Novologs frontend header background:
+       linear-gradient(266.48deg, #006A67 -23.21%, #00D0CA 82.9%)
+   The layouts already paint header content with white utilities, so we
+   set the brand gradient and keep that content WHITE.
+   ═════════════════════════════════════════════════════════════════════ */
+.portal-header,
+.admin-header {
+  background: linear-gradient(266.48deg, #006A67 -23.21%, #00D0CA 82.9%) !important;
+  background-color: #006A67 !important;          /* fallback if gradient unsupported */
+  color: #ffffff !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Keep the layouts' white-on-dark utilities white on the gradient */
+.portal-header .text-white,
+.portal-header .\!text-white            { color: #ffffff !important; }
+.portal-header .text-white\/90          { color: rgba(255, 255, 255, 0.90) !important; }
+.portal-header .text-white\/80          { color: rgba(255, 255, 255, 0.80) !important; }
+.portal-header .text-white\/70,
+.portal-header .text-white\/60          { color: rgba(255, 255, 255, 0.70) !important; }
+.portal-header .text-white\/50          { color: rgba(255, 255, 255, 0.60) !important; }
+.portal-header .hover\:text-white:hover { color: #ffffff !important; }
+
+.portal-header .bg-white\/10,
+.portal-header .bg-white\/15            { background-color: rgba(255, 255, 255, 0.12) !important; }
+.portal-header .bg-white\/20,
+.portal-header .bg-white\/30            { background-color: rgba(255, 255, 255, 0.22) !important; }
+.portal-header .hover\:bg-white\/20:hover,
+.portal-header .hover\:bg-white\/30:hover,
+.portal-header .group:hover .group-hover\:bg-white\/30 { background-color: rgba(255, 255, 255, 0.30) !important; }
+
+.portal-header .border-white\/10,
+.portal-header .border-white\/20,
+.portal-header .border-white\/25,
+.portal-header .border-white\/30        { border-color: rgba(255, 255, 255, 0.25) !important; }
+
+.portal-header .ring-white\/30,
+.portal-header .ring-white\/40,
+.portal-header .ring-white\/50,
+.portal-header .ring-white\/80          { --tw-ring-color: rgba(255, 255, 255, 0.55) !important; }
+.portal-header .group:hover .group-hover\:ring-white\/50,
+.portal-header .group:hover .group-hover\:ring-white\/80 { --tw-ring-color: rgba(255, 255, 255, 0.85) !important; }
+
+/* Avatar fallback (user-initial circle) → translucent white chip on the gradient */
+.portal-header .bg-white\/20.text-white {
+  background-color: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+}
+
+.portal-header .bf-dropdown-menu .text-white,
+.portal-header .bg-red-400.text-white,
+.portal-header .bg-red-500.text-white,
+.portal-header .bg-red-600.text-white   { color: #ffffff !important; }
+
+/* Header icon buttons (bell, dark-mode, menu) + separators — white on the gradient */
+.portal-header .header-icon-btn               { color: rgba(255, 255, 255, 0.88) !important; }
+.portal-header .header-icon-btn:hover         { background: rgba(255, 255, 255, 0.16) !important; color: #ffffff !important; }
+.portal-header .header-icon-btn:focus-visible { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.45) !important; }
+.portal-header .header-separator              { background: rgba(255, 255, 255, 0.22) !important; }
+.portal-header .bf-dropdown-toggle:hover,
+.portal-header .bf-dropdown-toggle[aria-expanded="true"] { background: rgba(255, 255, 255, 0.16) !important; }
+
+/* Same gradient header in dark mode (Novologs header is brand-colored in both) */
+[data-theme="dark"] .portal-header,
+[data-theme="dark"] .admin-header {
+  background: linear-gradient(266.48deg, #006A67 -23.21%, #00D0CA 82.9%) !important;
+  color: #ffffff !important;
+}
