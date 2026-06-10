@@ -55,7 +55,6 @@ internal class AppsAdminService : IAppsAdminService
             Description = Blank(request.Description),
             BaseUrl = baseUrl,
             PersonaPrompt = Blank(request.PersonaPrompt),
-            Currency = Blank(request.Currency) ?? "AED",
             IsActive = request.IsActive,
             CreatedAt = DateTime.UtcNow
         };
@@ -81,7 +80,6 @@ internal class AppsAdminService : IAppsAdminService
         app.Description = Blank(request.Description);
         app.BaseUrl = baseUrl;
         app.PersonaPrompt = Blank(request.PersonaPrompt);
-        app.Currency = Blank(request.Currency) ?? "AED";
         app.IsActive = request.IsActive;
         await _context.SaveChangesAsync(cancellationToken);
     }
@@ -122,7 +120,6 @@ internal class AppsAdminService : IAppsAdminService
         Description = a.Description,
         BaseUrl = a.BaseUrl,
         PersonaPrompt = a.PersonaPrompt,
-        Currency = a.Currency,
         IsActive = a.IsActive,
         CreatedAt = a.CreatedAt
     };

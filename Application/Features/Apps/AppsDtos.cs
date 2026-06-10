@@ -9,7 +9,6 @@ public class AppDto
     public string? Description { get; set; }
     public string BaseUrl { get; set; } = string.Empty;
     public string? PersonaPrompt { get; set; }
-    public string Currency { get; set; } = "AED";
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
 }
@@ -22,6 +21,5 @@ public class SaveAppRequest
     public string? Description { get; set; }
     public string BaseUrl { get; set; } = string.Empty;
     public string? PersonaPrompt { get; set; }
-    public string Currency { get; set; } = "AED";
     public bool IsActive { get; set; } = true;
 }

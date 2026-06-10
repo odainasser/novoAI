@@ -58,7 +58,6 @@
                         <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["AppCode"]</th>
                         <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Name"]</th>
                         <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["BaseUrl"]</th>
-                        <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Currency"]</th>
                         <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Status"]</th>
                         <th class="px-6 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Actions"]</th>
                     </tr>
@@ -70,7 +69,6 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">@app.Code</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">@app.Name</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">@app.BaseUrl</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">@app.Currency</td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 @if (app.IsActive)
                                 {
@@ -217,7 +215,6 @@
             Description = app.Description,
             BaseUrl = app.BaseUrl,
             PersonaPrompt = app.PersonaPrompt,
-            Currency = app.Currency,
             IsActive = app.IsActive
         };
         formError = string.Empty;

@@ -70,7 +70,6 @@ public class ApplicationDbContext
             entity.Property(a => a.Description).HasMaxLength(500);
             entity.Property(a => a.BaseUrl).IsRequired().HasMaxLength(500);
             entity.Property(a => a.PersonaPrompt).HasMaxLength(500);
-            entity.Property(a => a.Currency).IsRequired().HasMaxLength(10);
             entity.HasIndex(a => a.Code).IsUnique();
             entity.HasQueryFilter(a => !a.IsDeleted);
         });

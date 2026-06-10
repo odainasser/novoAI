@@ -30,9 +30,6 @@ public class App : BaseAuditableEntity
     /// </summary>
     public string? PersonaPrompt { get; set; }
 
-    /// <summary>ISO/display currency the app's money values are expressed in.</summary>
-    public string Currency { get; set; } = "AED";
-
     /// <summary>Inactive apps are refused service without being deleted.</summary>
     public bool IsActive { get; set; } = true;
 }
