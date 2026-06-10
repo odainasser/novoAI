@@ -100,7 +100,7 @@
 
   /* Lighter appearance */
   background: transparent; /* transparent by default */
-  color: var(--bf-primary, #00A76F);
+  color: var(--bf-primary, #006A67);
   border: 1px solid rgba(31, 41, 55, 0.06); /* subtle border */
   box-shadow: none; /* remove heavy shadow */
   transition: background-color .15s ease, color .15s ease, border-color .15s ease;
@@ -215,12 +215,12 @@
 
 /* Hover state */
 .sidebar-link:hover {
-  background: var(--bf-primary-50, rgba(0, 167, 111,0.06)) !important;
+  background: var(--bf-primary-50, rgba(0, 106, 103,0.06)) !important;
   color: var(--bf-primary) !important;
 }
 
 .sidebar-link:hover .sidebar-link-icon {
-  background: var(--bf-primary-100, rgba(0, 167, 111,0.12));
+  background: var(--bf-primary-100, rgba(0, 106, 103,0.12));
   color: var(--bf-primary);
 }
 
@@ -245,7 +245,7 @@
 
 /* Active state */
 .sidebar-link-active {
-  background: var(--bf-primary-50, rgba(0, 167, 111,0.08)) !important;
+  background: var(--bf-primary-50, rgba(0, 106, 103,0.08)) !important;
   color: var(--bf-primary) !important;
   font-weight: 600 !important;
 }
@@ -253,7 +253,7 @@
 .sidebar-link-active .sidebar-link-icon {
   background: var(--bf-primary);
   color: #fff;
-  box-shadow: 0 2px 6px rgba(0, 167, 111,0.3);
+  box-shadow: 0 2px 6px rgba(0, 106, 103,0.3);
 }
 
 .sidebar-link-active .sidebar-link-indicator {
@@ -320,7 +320,7 @@
 
 /* Parent highlight when a descendant route is active */
 .sidebar-group.is-current > .sidebar-group-toggle .sidebar-link-icon {
-  background: var(--bf-primary-100, rgba(0, 167, 111,0.12));
+  background: var(--bf-primary-100, rgba(0, 106, 103,0.12));
   color: var(--bf-primary);
 }
 
@@ -499,23 +499,23 @@ aside::-webkit-scrollbar-thumb:hover {
 }
 
 [data-theme="dark"] .sidebar-link:hover .sidebar-link-icon {
-  background: rgba(0, 167, 111,0.18);
-  color: #85D4BA;
+  background: rgba(0, 106, 103,0.18);
+  color: #85B8B6;
 }
 
 [data-theme="dark"] .sidebar-link-active {
-  background: rgba(0, 167, 111,0.15) !important;
-  color: #85D4BA !important;
+  background: rgba(0, 106, 103,0.15) !important;
+  color: #85B8B6 !important;
 }
 
 [data-theme="dark"] .sidebar-link-active .sidebar-link-icon {
   background: var(--bf-primary) !important;
   color: #ffffff !important;
-  box-shadow: 0 2px 6px rgba(0, 167, 111,0.35);
+  box-shadow: 0 2px 6px rgba(0, 106, 103,0.35);
 }
 
 [data-theme="dark"] .sidebar-link-active .sidebar-text {
-  color: #85D4BA !important;
+  color: #85B8B6 !important;
 }
 
 [data-theme="dark"] .sidebar-link-active-danger {
@@ -535,12 +535,12 @@ aside::-webkit-scrollbar-thumb:hover {
 
 [data-theme="dark"] aside nav a:hover,
 [data-theme="dark"] .sidebar-link:hover {
-  background-color: rgba(0, 167, 111,0.10) !important;
-  color: #85D4BA !important;
+  background-color: rgba(0, 106, 103,0.10) !important;
+  color: #85B8B6 !important;
 }
 
 [data-theme="dark"] .sidebar-link:hover .sidebar-text {
-  color: #85D4BA !important;
+  color: #85B8B6 !important;
 }
 
 [data-theme="dark"] .sidebar-link-danger:hover {
@@ -587,17 +587,17 @@ aside::-webkit-scrollbar-thumb:hover {
 }
 
 [data-theme="dark"] .sidebar-group.is-current > .sidebar-group-toggle .sidebar-link-icon {
-  background: rgba(0, 167, 111,0.18);
-  color: #85D4BA;
+  background: rgba(0, 106, 103,0.18);
+  color: #85B8B6;
 }
 
 [data-theme="dark"] .sidebar-group.is-current > .sidebar-group-toggle .sidebar-text {
-  color: #85D4BA !important;
+  color: #85B8B6 !important;
 }
 
 [data-theme="dark"] .sidebar-group-toggle:hover .sidebar-chevron,
 [data-theme="dark"] .sidebar-group.is-current > .sidebar-group-toggle .sidebar-chevron {
-  color: #85D4BA;
+  color: #85B8B6;
 }
 
 [data-theme="dark"] .portal-footer {
@@ -608,13 +608,13 @@ aside::-webkit-scrollbar-thumb:hover {
 
 /* Accessibility focus */
 .bf-dropdown-toggle:focus-visible {
-  box-shadow: 0 0 0 4px rgba(0, 167, 111,0.12);
-  border-color: rgba(0, 167, 111,0.45);
+  box-shadow: 0 0 0 4px rgba(0, 106, 103,0.12);
+  border-color: rgba(0, 106, 103,0.45);
 }
 
 /* Dark dropdown variant that uses theme dark color */
 .bf-dropdown-menu.bf-dropdown-dark {
-  background: var(--bf-primary-700, #007867);
+  background: var(--bf-primary-700, #00524F);
   color: var(--bf-primary-text, #ffffff);
   border-color: rgba(255,255,255,0.06);
 }
@@ -650,7 +650,7 @@ aside::-webkit-scrollbar-thumb:hover {
 
 /* Dark dropdown variant used in header */
 .bf-dropdown-dark {
-  background: var(--bf-primary-700, #007867);
+  background: var(--bf-primary-700, #00524F);
   color: var(--bf-primary-text, #ffffff);
   border-radius: 0.5rem;
   border: 1px solid rgba(255,255,255,0.06);
@@ -669,14 +669,14 @@ aside::-webkit-scrollbar-thumb:hover {
 
 /* Ensure compatibility when MenuClass is combined with bf-dropdown-menu */
 .bf-dropdown-menu.bf-dropdown-dark {
-  background: var(--bf-primary-700, #007867);
+  background: var(--bf-primary-700, #00524F);
   color: var(--bf-primary-text, #ffffff);
   border-color: rgba(255,255,255,0.06);
 }
 
 /* Dark state for the entire dropdown (toggle + menu) */
 .bf-dropdown-dark.bf-dropdown-wrapper {
-  background: var(--bf-primary-700, #007867);
+  background: var(--bf-primary-700, #00524F);
   color: var(--bf-primary-text, #ffffff);
 }
 
@@ -699,10 +699,10 @@ aside::-webkit-scrollbar-thumb:hover {
 
 /* Chart tooltip dots (replaces inline `<span style="color:#…">` markup) */
 .chart-tooltip-row      { line-height: 1.5; }
-.chart-dot-light        { color: #A3DFCB; }
-.chart-dot-mid          { color: #85D4BA; }
-.chart-dot-primary      { color: #00A76F; }
-.chart-dot-dark         { color: #007867; }
+.chart-dot-light        { color: #A3C9C8; }
+.chart-dot-mid          { color: #85B8B6; }
+.chart-dot-primary      { color: #006A67; }
+.chart-dot-dark         { color: #00524F; }
 .chart-dot-muted        { color: #6b7280; }
 
 /* Progress bar fill — width is bound via a CSS custom property
@@ -740,7 +740,7 @@ aside::-webkit-scrollbar-thumb:hover {
 .bf-spinner-xl { width: 3.5rem;   height: 3.5rem;   border-width: 4px;   }
 
 /* Colors — set currentColor; the transparent gap stays transparent */
-.bf-spinner-primary { color: var(--bf-primary, #00A76F); }
+.bf-spinner-primary { color: var(--bf-primary, #006A67); }
 .bf-spinner-white   { color: #ffffff; }
 .bf-spinner-success { color: #15803d; }
 .bf-spinner-danger  { color: #b91c1c; }
@@ -749,7 +749,7 @@ aside::-webkit-scrollbar-thumb:hover {
 .bf-spinner-inherit { color: inherit; }
 
 /* Dark-mode color adjustments */
-[data-theme="dark"] .bf-spinner-primary { color: #85D4BA; }
+[data-theme="dark"] .bf-spinner-primary { color: #85B8B6; }
 [data-theme="dark"] .bf-spinner-success { color: #4ade80; }
 [data-theme="dark"] .bf-spinner-danger  { color: #f87171; }
 [data-theme="dark"] .bf-spinner-warning { color: #fcd34d; }
@@ -822,15 +822,15 @@ aside::-webkit-scrollbar-thumb:hover {
 .bf-hover-text-warning-strong:hover { color: #78350f !important; }
 
 /* Info (brand-blue pill — same contrast pattern as success/danger) */
-.bf-text-info          { color: #004B50 !important; }   /* brand primary-900 — dark, readable */
-.bf-text-info-strong   { color: #00332F !important; }
-.bf-bg-info-50         { background-color: #F0FAF6 !important; }   /* brand primary-50 */
-.bf-bg-info-100        { background-color: #E0F4ED !important; }   /* brand primary-100 — visible tint */
-.bf-bg-info-600        { background-color: #00A76F !important; color: #ffffff !important; }
-.bf-bg-info-700        { background-color: #007867 !important; color: #ffffff !important; }
-.bf-border-info        { border-color: #C2E9DC !important; }
-.bf-hover-bg-info-50:hover  { background-color: #F0FAF6 !important; }
-.bf-hover-bg-info-100:hover { background-color: #E0F4ED !important; }
+.bf-text-info          { color: #003B39 !important; }   /* brand primary-900 — dark, readable */
+.bf-text-info-strong   { color: #002A28 !important; }
+.bf-bg-info-50         { background-color: #F0F6F6 !important; }   /* brand primary-50 */
+.bf-bg-info-100        { background-color: #E0EDED !important; }   /* brand primary-100 — visible tint */
+.bf-bg-info-600        { background-color: #006A67 !important; color: #ffffff !important; }
+.bf-bg-info-700        { background-color: #00524F !important; color: #ffffff !important; }
+.bf-border-info        { border-color: #C2DBDA !important; }
+.bf-hover-bg-info-50:hover  { background-color: #F0F6F6 !important; }
+.bf-hover-bg-info-100:hover { background-color: #E0EDED !important; }
 
 /* Success extras */
 .bf-bg-success-500       { background-color: #22c55e !important; color: #ffffff !important; }
@@ -897,14 +897,14 @@ aside::-webkit-scrollbar-thumb:hover {
 [data-theme="dark"] .bf-hover-text-warning-strong:hover { color: #fde68a !important; }
 
 /* Info / brand-blue in dark mode */
-[data-theme="dark"] .bf-text-info            { color: #85D4BA !important; }   /* brand light — pops on dark */
-[data-theme="dark"] .bf-text-info-strong     { color: #A3DFCB !important; }
-[data-theme="dark"] .bf-bg-info-50           { background-color: rgba(0, 167, 111, 0.10) !important; }
-[data-theme="dark"] .bf-bg-info-100          { background-color: rgba(0, 167, 111, 0.18) !important; }
-[data-theme="dark"] .bf-bg-info-600          { background-color: #00A76F !important; color: #ffffff !important; }
-[data-theme="dark"] .bf-bg-info-700          { background-color: #007867 !important; color: #ffffff !important; }
-[data-theme="dark"] .bf-border-info          { border-color: rgba(0, 167, 111, 0.35) !important; }
-[data-theme="dark"] .bf-hover-bg-info-50:hover    { background-color: rgba(0, 167, 111, 0.14) !important; }
-[data-theme="dark"] .bf-hover-bg-info-100:hover   { background-color: rgba(0, 167, 111, 0.24) !important; }
+[data-theme="dark"] .bf-text-info            { color: #85B8B6 !important; }   /* brand light — pops on dark */
+[data-theme="dark"] .bf-text-info-strong     { color: #A3C9C8 !important; }
+[data-theme="dark"] .bf-bg-info-50           { background-color: rgba(0, 106, 103, 0.10) !important; }
+[data-theme="dark"] .bf-bg-info-100          { background-color: rgba(0, 106, 103, 0.18) !important; }
+[data-theme="dark"] .bf-bg-info-600          { background-color: #006A67 !important; color: #ffffff !important; }
+[data-theme="dark"] .bf-bg-info-700          { background-color: #00524F !important; color: #ffffff !important; }
+[data-theme="dark"] .bf-border-info          { border-color: rgba(0, 106, 103, 0.35) !important; }
+[data-theme="dark"] .bf-hover-bg-info-50:hover    { background-color: rgba(0, 106, 103, 0.14) !important; }
+[data-theme="dark"] .bf-hover-bg-info-100:hover   { background-color: rgba(0, 106, 103, 0.24) !important; }
 
 /* End of dropdown styles */
