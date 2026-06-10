@@ -1,4 +1,6 @@
 using System.Collections.Concurrent;
+using System.Linq;
+using System.Net.Http;
 using System.Text;
 using Infrastructure.Configuration;
 using Infrastructure.Persistence;
@@ -25,9 +27,16 @@ public sealed class AppTokenTrust
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly JwtSettings _jwtSettings;
+    private readonly AppsIntegrationSettings _appsSettings;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<AppTokenTrust> _logger;
 
     private readonly ConcurrentDictionary<string, ConfigurationManager<OpenIdConnectConfiguration>> _oidcConfigs = new(StringComparer.OrdinalIgnoreCase);
+
+    // Directly-fetched JWKS keys (for issuers whose own metadata URL is unreachable),
+    // cached per issuer and refreshed on a short TTL like the OIDC configs.
+    private readonly ConcurrentDictionary<string, (DateTime FetchedUtc, IReadOnlyCollection<SecurityKey> Keys)> _jwksCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly TimeSpan JwksTtl = TimeSpan.FromMinutes(10);
 
     private IReadOnlyDictionary<string, string>? _authorities;   // issuer -> app code
     private DateTime _authoritiesLoadedUtc = DateTime.MinValue;
@@ -37,10 +46,14 @@ public sealed class AppTokenTrust
     public AppTokenTrust(
         IServiceScopeFactory scopeFactory,
         IOptions<JwtSettings> jwtSettings,
+        IOptions<AppsIntegrationSettings> appsSettings,
+        IHttpClientFactory httpClientFactory,
         ILogger<AppTokenTrust> logger)
     {
         _scopeFactory = scopeFactory;
         _jwtSettings = jwtSettings.Value;
+        _appsSettings = appsSettings.Value;
+        _httpClientFactory = httpClientFactory;
         _logger = logger;
     }
 
@@ -70,6 +83,13 @@ public sealed class AppTokenTrust
         if (!Authorities().TryGetValue(issuer, out var appCode))
             return Array.Empty<SecurityKey>();
 
+        // When a reachable JWKS source is configured for this issuer, fetch keys
+        // directly from it — the issuer's own metadata URL may be unreachable from
+        // where novoAI runs (e.g. a docker-internal `iss`).
+        var overrideKeys = ResolveOverrideKeys(issuer, appCode);
+        if (overrideKeys is not null)
+            return overrideKeys;
+
         try
         {
             var manager = _oidcConfigs.GetOrAdd(issuer, a =>
@@ -85,6 +105,39 @@ public sealed class AppTokenTrust
         {
             _logger.LogWarning(ex, "Could not load OIDC signing keys for app '{App}' from {Issuer}.", appCode, issuer);
             return Array.Empty<SecurityKey>();
+        }
+    }
+
+    /// <summary>
+    /// Signing keys for an issuer that has a configured reachable JWKS source, fetched
+    /// directly from that URL (no OIDC discovery) and cached on a short TTL. Returns
+    /// null when no source is configured for the issuer, so the caller falls back to
+    /// OIDC discovery.
+    /// </summary>
+    private IReadOnlyCollection<SecurityKey>? ResolveOverrideKeys(string issuer, string appCode)
+    {
+        var source = _appsSettings.TokenKeySources?
+            .FirstOrDefault(s => !string.IsNullOrWhiteSpace(s.JwksUri)
+                && string.Equals(s.Issuer?.TrimEnd('/'), issuer, StringComparison.OrdinalIgnoreCase));
+        if (source is null)
+            return null;
+
+        if (_jwksCache.TryGetValue(issuer, out var cached) && DateTime.UtcNow - cached.FetchedUtc < JwksTtl)
+            return cached.Keys;
+
+        try
+        {
+            var client = _httpClientFactory.CreateClient("AppTools");
+            var json = client.GetStringAsync(source.JwksUri).GetAwaiter().GetResult();
+            IReadOnlyCollection<SecurityKey> keys = new JsonWebKeySet(json).GetSigningKeys().ToList();
+            _jwksCache[issuer] = (DateTime.UtcNow, keys);
+            return keys;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not fetch JWKS for app '{App}' from {JwksUri}.", appCode, source.JwksUri);
+            // Serve a stale snapshot if we have one rather than rejecting every token.
+            return _jwksCache.TryGetValue(issuer, out var stale) ? stale.Keys : null;
         }
     }
 
