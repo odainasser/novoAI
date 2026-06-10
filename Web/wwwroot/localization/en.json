@@ -1682,7 +1682,7 @@
   "Apps": "Apps",
   "AppsManagement": "Apps Management",
   "AppsManagementDesc": "Register client applications that integrate with the ByteAI assistant service",
-  "RegisterApp": "Register App",
+  "CreateApp": "Create App",
   "EditApp": "Edit App",
   "NoAppsRegistered": "No applications registered yet",
   "AppCode": "App Code",

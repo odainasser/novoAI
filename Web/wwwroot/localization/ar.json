@@ -1681,7 +1681,7 @@
   "Apps": "التطبيقات",
   "AppsManagement": "إدارة التطبيقات",
   "AppsManagementDesc": "تسجيل التطبيقات التي تتكامل مع خدمة مساعد ByteAI",
-  "RegisterApp": "تسجيل تطبيق",
+  "CreateApp": "إنشاء تطبيق",
   "EditApp": "تعديل التطبيق",
   "NoAppsRegistered": "لا توجد تطبيقات مسجلة بعد",
   "AppCode": "رمز التطبيق",
