@@ -159,7 +159,7 @@
 
 
                             @* === ADMINISTRATION === *@
-                            @if (hasAssistantPermission || hasAuditPermission || hasAppsPermission)
+                            @if (hasAssistantPermission || hasAuditPermission)
                             {
                                 <div class="sidebar-section-header mt-5 mb-1.5">
                                     <div class="mx-3 mb-2 border-t border-gray-100"></div>
@@ -168,19 +168,6 @@
                                         @Localizer["Administration"]
                                     </p>
                                 </div>
-
-                                @if (hasAppsPermission)
-                                {
-                                    <NavLink href="/admin/apps"
-                                             @onclick="CloseSidebar"
-                                             class="sidebar-link group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium relative overflow-hidden"
-                                             ActiveClass="sidebar-link-active">
-                                        <span class="sidebar-link-indicator"></span>
-                                        <span class="sidebar-link-icon"><i class="bi bi-grid-3x3-gap"></i></span>
-                                        <span class="sidebar-text">@Localizer["Apps"]</span>
-                                        <span class="sidebar-tooltip">@Localizer["Apps"]</span>
-                                    </NavLink>
-                                }
 
                                 @if (hasAssistantPermission)
                                 {
@@ -237,7 +224,7 @@
                             }
 
                             @* === SETTINGS === *@
-                            @if (hasIdentityPermissions || hasLookupsPermission)
+                            @if (hasIdentityPermissions || hasLookupsPermission || hasAppsPermission)
                             {
                                 <div class="sidebar-section-header mt-5 mb-1.5">
                                     <div class="mx-3 mb-2 border-t border-gray-100"></div>
@@ -246,6 +233,19 @@
                                         @Localizer["Settings"]
                                     </p>
                                 </div>
+
+                                @if (hasAppsPermission)
+                                {
+                                    <NavLink href="/admin/apps"
+                                             @onclick="CloseSidebar"
+                                             class="sidebar-link group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium relative overflow-hidden"
+                                             ActiveClass="sidebar-link-active">
+                                        <span class="sidebar-link-indicator"></span>
+                                        <span class="sidebar-link-icon"><i class="bi bi-grid-3x3-gap"></i></span>
+                                        <span class="sidebar-text">@Localizer["Apps"]</span>
+                                        <span class="sidebar-tooltip">@Localizer["Apps"]</span>
+                                    </NavLink>
+                                }
 
                                 @if (hasIdentityPermissions)
                                 {
