@@ -4,6 +4,8 @@ namespace Web.Models.Assistant;
 public class AssistantInteractionDto
 {
     public Guid Id { get; set; }
+    public Guid? AppId { get; set; }
+    public string? AppName { get; set; }
     public string Question { get; set; } = string.Empty;
     public string Locale { get; set; } = "en";
     public string? Answer { get; set; }
@@ -80,6 +82,8 @@ public class PlanParamInput
 public class NoAnswerClusterDto
 {
     public Guid Id { get; set; }
+    public Guid? AppId { get; set; }
+    public string? AppName { get; set; }
     public string Reason { get; set; } = string.Empty;
     public string? ReviewedReason { get; set; }
     public string EffectiveReason { get; set; } = string.Empty;
@@ -102,6 +106,8 @@ public class NoAnswerClusterDto
 public class ReportedAnswerDto
 {
     public Guid Id { get; set; }
+    public Guid? AppId { get; set; }
+    public string? AppName { get; set; }
     public string Question { get; set; } = string.Empty;
     public string Answer { get; set; } = string.Empty;
     public string? Feedback { get; set; }

@@ -93,6 +93,10 @@ else
                     <tr class="hover:bg-gray-50 align-top">
                         <td class="px-4 py-3 text-sm text-gray-900 max-w-xs" dir="auto">
                             @i.Question
+                            @if (!string.IsNullOrEmpty(i.AppName))
+                            {
+                                <span class="ms-1 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-700">@i.AppName</span>
+                            }
                             @if (i.IsMixing)
                             {
                                 <span class="ms-1 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-700">@Localizer["Mixing"]</span>

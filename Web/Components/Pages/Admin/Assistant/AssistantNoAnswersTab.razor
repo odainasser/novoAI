@@ -76,7 +76,13 @@ else
                 @foreach (var c in naqItems)
                 {
                     <tr class="hover:bg-gray-50 align-top">
-                        <td class="px-4 py-3 text-sm text-gray-900 max-w-md" dir="auto">@c.SampleQuestion</td>
+                        <td class="px-4 py-3 text-sm text-gray-900 max-w-md" dir="auto">
+                            @c.SampleQuestion
+                            @if (!string.IsNullOrEmpty(c.AppName))
+                            {
+                                <span class="ms-1 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-700">@c.AppName</span>
+                            }
+                        </td>
                         <td class="px-4 py-3 whitespace-nowrap">
                             <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium @ReasonClass(c)">@ReasonLabel(c.EffectiveReason)</span>
                             @if (c.IsMisRefusal)

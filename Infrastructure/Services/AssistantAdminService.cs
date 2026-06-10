@@ -90,7 +90,9 @@ internal class AssistantAdminService : IAssistantAdminService
 
         var count = await query.CountAsync();
         var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
-        return new PaginatedList<AssistantInteractionDto>(items.Select(MapInteraction).ToList(), count, pageNumber, pageSize);
+        var appNames = await GetAppNamesAsync();
+        return new PaginatedList<AssistantInteractionDto>(
+            items.Select(i => MapInteraction(i, appNames)).ToList(), count, pageNumber, pageSize);
     }
 
     public async Task<AssistantPlanOptionsDto> GetPlanOptionsAsync(Guid? appId = null)
@@ -295,7 +297,7 @@ internal class AssistantAdminService : IAssistantAdminService
 
     // ── Mapping ─────────────────────────────────────────────────────────
 
-    private AssistantInteractionDto MapInteraction(AssistantInteraction i)
+    private AssistantInteractionDto MapInteraction(AssistantInteraction i, IReadOnlyDictionary<Guid, string> appNames)
     {
         var tools = Split(i.ToolsUsed);
         var domains = new List<string>();
@@ -311,6 +313,8 @@ internal class AssistantAdminService : IAssistantAdminService
         return new AssistantInteractionDto
         {
             Id = i.Id,
+            AppId = i.AppId,
+            AppName = AppNameOf(i.AppId, appNames),
             Question = i.Question,
             Locale = i.Locale,
             Answer = i.Answer,
@@ -334,7 +338,7 @@ internal class AssistantAdminService : IAssistantAdminService
         await TryLoadCatalogsAsync();   // tool domain/entity enrichment is best-effort
 
         var i = await _context.Set<AssistantInteraction>().FindAsync(id);
-        return i is null ? null : MapInteraction(i);
+        return i is null ? null : MapInteraction(i, await GetAppNamesAsync());
     }
 
     /// <summary>The app to operate on: by id when given, else the oldest active app.</summary>
@@ -345,6 +349,16 @@ internal class AssistantAdminService : IAssistantAdminService
             ? await query.FirstOrDefaultAsync(a => a.Id == appId.Value)
             : await query.Where(a => a.IsActive).OrderBy(a => a.CreatedAt).FirstOrDefaultAsync();
     }
+
+    // App-name lookup for row display, loaded once per request. Ignores the soft-delete
+    // filter so rows of a deleted app still show its name.
+    private Dictionary<Guid, string>? _appNames;
+    private async Task<Dictionary<Guid, string>> GetAppNamesAsync() =>
+        _appNames ??= await _context.Apps.IgnoreQueryFilters().AsNoTracking()
+            .ToDictionaryAsync(a => a.Id, a => a.Name);
+
+    private static string? AppNameOf(Guid? appId, IReadOnlyDictionary<Guid, string> appNames) =>
+        appId.HasValue && appNames.TryGetValue(appId.Value, out var name) ? name : null;
 
     // Read paths only enrich rows with tool metadata — don't fail the page when an
     // app's catalog is unreachable.
@@ -392,7 +406,9 @@ internal class AssistantAdminService : IAssistantAdminService
             .ToList();
 
         var count = ordered.Count;
-        var items = ordered.Skip((pageNumber - 1) * pageSize).Take(pageSize).Select(MapCluster).ToList();
+        var appNames = await GetAppNamesAsync();
+        var items = ordered.Skip((pageNumber - 1) * pageSize).Take(pageSize)
+            .Select(c => MapCluster(c, appNames)).ToList();
         return new PaginatedList<NoAnswerClusterDto>(items, count, pageNumber, pageSize);
     }
 
@@ -411,12 +427,14 @@ internal class AssistantAdminService : IAssistantAdminService
     private static bool IsCoverageGap(NoAnswerReason r) =>
         r is NoAnswerReason.NoCallingTool or NoAnswerReason.UnsupportedDomain or NoAnswerReason.UnsupportedEntity;
 
-    private static NoAnswerClusterDto MapCluster(AssistantNoAnswer c)
+    private static NoAnswerClusterDto MapCluster(AssistantNoAnswer c, IReadOnlyDictionary<Guid, string> appNames)
     {
         var eff = c.ReviewedReason ?? c.Reason;
         return new NoAnswerClusterDto
         {
             Id = c.Id,
+            AppId = c.AppId,
+            AppName = AppNameOf(c.AppId, appNames),
             Reason = c.Reason.ToString(),
             ReviewedReason = c.ReviewedReason?.ToString(),
             EffectiveReason = eff.ToString(),
@@ -458,7 +476,9 @@ internal class AssistantAdminService : IAssistantAdminService
 
         var count = await query.CountAsync();
         var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
-        return new PaginatedList<ReportedAnswerDto>(items.Select(MapReport).ToList(), count, pageNumber, pageSize);
+        var appNames = await GetAppNamesAsync();
+        return new PaginatedList<ReportedAnswerDto>(
+            items.Select(r => MapReport(r, appNames)).ToList(), count, pageNumber, pageSize);
     }
 
     public async Task ResolveReportedAnswerAsync(Guid id, bool resolved)
@@ -479,9 +499,11 @@ internal class AssistantAdminService : IAssistantAdminService
             $"{(resolved ? "Resolved" : "Re-opened")} reported answer");
     }
 
-    private static ReportedAnswerDto MapReport(AssistantReportedAnswer r) => new()
+    private static ReportedAnswerDto MapReport(AssistantReportedAnswer r, IReadOnlyDictionary<Guid, string> appNames) => new()
     {
         Id = r.Id,
+        AppId = r.AppId,
+        AppName = AppNameOf(r.AppId, appNames),
         Question = r.Question,
         Answer = r.Answer,
         Feedback = r.Feedback,
