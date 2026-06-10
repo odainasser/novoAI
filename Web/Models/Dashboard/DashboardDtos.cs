@@ -17,10 +17,6 @@ public class DashboardSummaryDto
     public int OpenNoAnswers { get; set; }
     public int UnresolvedReports { get; set; }
 
-    // Identity (secondary)
-    public int TotalUsers { get; set; }
-    public int ActiveUsers { get; set; }
-
     public List<RecentQuestionDto> RecentQuestions { get; set; } = new();
 }
 

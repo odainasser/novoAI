@@ -9,7 +9,7 @@ namespace Infrastructure.Services;
 /// <summary>
 /// Aggregates the dashboard summary: the Apps integration module, assistant
 /// question volume/quality, the governed plan library, the review queues, and a
-/// short recent-questions feed. Identity counts are kept as secondary stats.
+/// short recent-questions feed.
 /// </summary>
 public class DashboardService : IDashboardService
 {
@@ -34,11 +34,6 @@ public class DashboardService : IDashboardService
         var confirmedPlans = await _context.AssistantPlans.CountAsync(p => p.Status == PlanStatus.Confirmed);
         var openNoAnswers = await _context.AssistantNoAnswers.CountAsync();
         var unresolvedReports = await _context.AssistantReportedAnswers.CountAsync(r => !r.Resolved);
-
-        var userStats = await _context.Users
-            .GroupBy(u => 1)
-            .Select(g => new { Total = g.Count(), Active = g.Count(u => u.IsActive) })
-            .FirstOrDefaultAsync();
 
         // Recent questions with their app name (subquery left-join — legacy rows keep working).
         var recentQuestions = await _context.AssistantInteractions.AsNoTracking()
@@ -70,8 +65,6 @@ public class DashboardService : IDashboardService
             ConfirmedPlans = confirmedPlans,
             OpenNoAnswers = openNoAnswers,
             UnresolvedReports = unresolvedReports,
-            TotalUsers = userStats?.Total ?? 0,
-            ActiveUsers = userStats?.Active ?? 0,
             RecentQuestions = recentQuestions
         };
     }
